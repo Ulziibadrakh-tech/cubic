@@ -1,0 +1,6 @@
+dev/
+tests/
+docs/
+CLAUDE.md
+README.md
+*.py

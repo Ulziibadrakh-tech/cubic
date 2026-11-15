@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CUBIC Best-shot Workspace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Inter+Tight:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+/* Swiss layout: one column, phone first, flat colour, black rules, numbers as labels.
+   The cube is the map; a space is a plain list you type into. */
+:root {
+  --bg: #FFFFFF; --sunk: #F2F2F2;
+  --ink: #0A0A0A; --ink-2: #555555;
+  --line: #0A0A0A; --hair: #D6D6D6;
+  --accent: #E30613; --good: #00804A; --bad: #D0000E; --away: #B87400;
+  --f0: #E30613; --fi0: #FFFFFF;  --f1: #0A0A0A; --fi1: #FFFFFF;  --f2: #0047BB; --fi2: #FFFFFF;
+  --f3: #FFD100; --fi3: #0A0A0A;  --f4: #FF6A00; --fi4: #0A0A0A;  --f5: #00804A; --fi5: #FFFFFF;
+  --p-vida: #0047BB; --p-anand: #00804A; --p-obama: #E30613; --p-ink: #FFFFFF;
+  --display: 'Inter Tight', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --body: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --rule: 2px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0A0A0A; --sunk: #1A1A1A; --ink: #F5F5F5; --ink-2: #A8A8A8; --line: #F5F5F5; --hair: #333333;
+    --accent: #FF3B30; --good: #2FD27F; --bad: #FF5A52; --away: #F0A830;
+    --f0: #E8202A; --fi0: #FFFFFF;  --f1: #F5F5F5; --fi1: #0A0A0A;  --f2: #2F6BFF; --fi2: #FFFFFF;
+    --f3: #FFD100; --fi3: #0A0A0A;  --f4: #FF6A00; --fi4: #0A0A0A;  --f5: #00A35C; --fi5: #FFFFFF;
+    --p-vida: #2F6BFF; --p-anand: #00A35C; --p-obama: #E8202A;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0A0A0A; --sunk: #1A1A1A; --ink: #F5F5F5; --ink-2: #A8A8A8; --line: #F5F5F5; --hair: #333333;
+  --accent: #FF3B30; --good: #2FD27F; --bad: #FF5A52; --away: #F0A830;
+  --f0: #E8202A; --fi0: #FFFFFF;  --f1: #F5F5F5; --fi1: #0A0A0A;  --f2: #2F6BFF; --fi2: #FFFFFF;
+  --f3: #FFD100; --fi3: #0A0A0A;  --f4: #FF6A00; --fi4: #0A0A0A;  --f5: #00A35C; --fi5: #FFFFFF;
+  --p-vida: #2F6BFF; --p-anand: #00A35C; --p-obama: #E8202A;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--body); font-size: 16px; line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+.wrap { max-width: 760px; margin: 0 auto; padding: 18px 16px 56px; display: flex; flex-direction: column; gap: 22px; }
+
+/* Masthead */
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.mast { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 4px 12px; border-bottom: 6px solid var(--line); padding-bottom: 10px; }
+.mark { margin: 0; font-family: var(--display); font-weight: 900; font-size: clamp(52px, 15vw, 96px); line-height: .82; letter-spacing: -.055em; }
+.mark::after { content: ''; display: inline-block; width: .16em; height: .16em; background: var(--accent); margin-left: .05em; }
+.mast-side { text-align: right; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; line-height: 1.3; }
+.mast-side span { display: block; color: var(--ink-2); font-weight: 500; }
+.sync { grid-column: 1 / -1; font-size: 13px; color: var(--ink-2); min-height: 19px; font-weight: 500; }
+.sync[data-state="saving"] { color: var(--ink); }
+.sync[data-state="saved"] { color: var(--good); }
+.sync[data-state="failed"] { color: var(--bad); font-weight: 700; }
+.note { border-left: 6px solid var(--accent); background: var(--sunk); padding: 10px 12px; font-size: 14px; }
+
+.label { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; display: flex; gap: 10px; align-items: baseline; }
+.label::before { content: attr(data-n); color: var(--accent); font-variant-numeric: tabular-nums; }
+
+.toggle { display: inline-flex; border: var(--rule) solid var(--line); }
+.toggle button { border: 0; background: transparent; padding: 8px 14px; font-size: 14px; font-weight: 700; color: var(--ink); }
+.toggle button + button { border-left: var(--rule) solid var(--line); }
+.toggle button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+
+/* Cube */
+.stage { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.scene {
+  --size: min(74vw, 320px);
+  width: var(--size); height: var(--size);
+  perspective: 1100px; touch-action: none; user-select: none; -webkit-user-select: none;
+  margin: 30px 0 22px;
+}
+.cube { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform var(--spin, .6s) cubic-bezier(.17,1.18,.32,1); will-change: transform; }
+.cube.dragging { transition: none; }
+.scene { cursor: grab; position: relative; }
+.scene:active { cursor: grabbing; }
+.scene::after { content: ''; position: absolute; left: 14%; right: 14%; bottom: -30px; height: 14px; border-radius: 50%; background: var(--ink); opacity: .12; pointer-events: none; }
+.face {
+  position: absolute; inset: 0; padding: 10px;
+  display: grid; grid-template-rows: auto 1fr; gap: 8px;
+  background: var(--fc); color: var(--fi);
+  backface-visibility: hidden;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fi) 25%, transparent);
+}
+.face-0 { transform: translateZ(calc(var(--size) / 2)); }
+.face-1 { transform: rotateY(90deg) translateZ(calc(var(--size) / 2)); }
+.face-2 { transform: rotateY(180deg) translateZ(calc(var(--size) / 2)); }
+.face-3 { transform: rotateY(-90deg) translateZ(calc(var(--size) / 2)); }
+.face-4 { transform: rotateX(90deg) translateZ(calc(var(--size) / 2)); }
+.face-5 { transform: rotateX(-90deg) translateZ(calc(var(--size) / 2)); }
+.face-name { display: flex; align-items: baseline; gap: 8px; font-family: var(--display); font-weight: 800; font-size: 17px; letter-spacing: -.01em; line-height: 1.1; border-bottom: var(--rule) solid currentColor; padding-bottom: 6px; }
+.face-name i { font-style: normal; font-size: 12px; font-weight: 700; font-family: var(--body); letter-spacing: .06em; }
+.cells { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 6px; min-height: 0; }
+.cell-tile {
+  border: 0; padding: 7px 8px; text-align: left; min-width: 0;
+  background: color-mix(in srgb, var(--fi) 13%, transparent); color: inherit;
+  display: flex; flex-direction: column; justify-content: space-between; gap: 4px;
+}
+.cell-tile:hover { background: color-mix(in srgb, var(--fi) 24%, transparent); }
+.cell-tile em { font-style: normal; font-size: 11px; font-weight: 700; opacity: .8; font-variant-numeric: tabular-nums; }
+.cell-tile strong { font-size: 14px; font-weight: 700; line-height: 1.15; overflow-wrap: anywhere; }
+.cell-tile small { font-size: 12px; opacity: .85; }
+
+.turn { display: grid; grid-template-columns: repeat(4, 46px); gap: 0; border: var(--rule) solid var(--line); }
+.turn button { height: 44px; border: 0; background: transparent; font-size: 18px; font-weight: 700; }
+.turn button + button { border-left: var(--rule) solid var(--line); }
+.turn button:hover { background: var(--ink); color: var(--bg); }
+.now { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; justify-content: center; }
+.now h2 { margin: 0; font-family: var(--display); font-weight: 900; font-size: 30px; letter-spacing: -.03em; text-wrap: balance; }
+.hint { margin: 0; color: var(--ink-2); font-size: 14px; text-align: center; }
+
+/* All spaces (non-3D route) */
+.grid { display: flex; flex-direction: column; gap: 0; }
+.g-face { border-top: var(--rule) solid var(--line); padding: 12px 0 16px; display: grid; grid-template-columns: 10px 1fr; gap: 10px 14px; }
+.g-face::before { content: ''; background: var(--fc); grid-row: 1 / span 2; }
+.g-head { display: flex; align-items: baseline; gap: 10px; }
+.g-head span { font-size: 12px; font-weight: 700; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.g-head h3 { margin: 0; font-family: var(--display); font-weight: 800; font-size: 22px; letter-spacing: -.02em; flex: 1; min-width: 0; }
+.g-cells { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-top: 1px solid var(--hair); }
+.g-cell { border: 0; border-bottom: 1px solid var(--hair); background: transparent; padding: 10px 8px 10px 0; text-align: left; display: grid; grid-template-columns: 26px 1fr; gap: 0 6px; min-width: 0; }
+.g-cell:nth-child(odd) { border-right: 1px solid var(--hair); }
+.g-cell:nth-child(even) { padding-left: 10px; }
+.g-cell em { font-style: normal; font-size: 12px; font-weight: 700; color: var(--accent); grid-row: 1 / span 2; padding-top: 2px; font-variant-numeric: tabular-nums; }
+.g-cell strong { font-weight: 700; font-size: 15px; overflow-wrap: anywhere; }
+.g-cell small { color: var(--ink-2); font-size: 13px; }
+.g-cell:hover strong { text-decoration: underline; text-underline-offset: 3px; }
+
+/* Shared bits */
+.card { border-top: var(--rule) solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 12px; }
+.icon-btn { border: var(--rule) solid var(--line); background: transparent; min-width: 40px; height: 36px; padding: 0 10px; font-size: 13px; font-weight: 700; }
+.icon-btn:hover { background: var(--ink); color: var(--bg); }
+.field { width: 100%; border: var(--rule) solid var(--line); background: var(--bg); border-radius: 0; padding: 10px 12px; font-size: 16px; }
+.field:focus { outline: none; box-shadow: inset 0 0 0 2px var(--accent); border-color: var(--accent); }
+textarea.field { min-height: 120px; resize: vertical; font-size: 13px; font-family: ui-monospace, Consolas, monospace; }
+select.field { padding: 8px 10px; font-size: 14px; }
+.edit-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; width: 100%; }
+.edit-row .field { flex: 1 1 200px; }
+.btn { border: var(--rule) solid var(--ink); padding: 9px 16px; font-weight: 700; background: var(--ink); color: var(--bg); }
+.btn:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.ghost { background: transparent; color: var(--ink); }
+.btn.ghost:hover { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.btn:disabled { opacity: .45; cursor: default; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.editable { border: 0; background: transparent; padding: 2px 4px; margin: -2px -4px; text-align: left; color: inherit; font: inherit; overflow-wrap: anywhere; }
+.editable:hover { background: var(--sunk); }
+
+/* Space */
+.crumb { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.chip { display: inline-flex; align-items: center; gap: 8px; background: var(--fc); color: var(--fi); padding: 6px 12px; font-size: 13px; font-weight: 700; }
+.area-num { margin: 0; font-family: var(--display); font-weight: 900; font-size: 64px; line-height: .85; letter-spacing: -.05em; color: var(--accent); font-variant-numeric: tabular-nums; }
+.area-title { margin: 0; font-family: var(--display); font-weight: 900; font-size: 36px; line-height: 1.02; letter-spacing: -.035em; text-wrap: balance; }
+.items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border-top: var(--rule) solid var(--line); }
+.items:empty { border-top: 0; }
+
+/* Identity and time */
+.me { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: space-between; border: var(--rule) solid var(--line); padding: 8px 10px; }
+.me-who { font-size: 14px; font-weight: 700; }
+.clock { display: flex; align-items: center; gap: 10px; }
+.clock-time { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 16px; }
+.dot { width: 10px; height: 10px; background: var(--hair); display: inline-block; }
+.dot.on { background: var(--good); }
+.dot.away { background: var(--away); }
+.team { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.team li { display: grid; grid-template-columns: 34px 1fr auto; gap: 12px; align-items: center; padding: 10px 0; }
+.team li + li { border-top: 1px solid var(--hair); }
+.team b { font-weight: 700; }
+.team small { display: block; color: var(--ink-2); font-size: 13px; }
+.team .nums { text-align: right; font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 700; }
+.team .nums small { font-weight: 400; }
+.space-time { font-size: 14px; color: var(--ink-2); margin: 0; }
+.fine { font-size: 13px; color: var(--ink-2); margin: 0; }
+.away-box { display: flex; flex-direction: column; gap: 10px; }
+.away-box div { display: flex; gap: 8px; flex-wrap: wrap; }
+.item-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.item-text { font-size: 16px; white-space: pre-wrap; }
+.item-main a { color: var(--accent); overflow-wrap: anywhere; font-size: 14px; font-weight: 700; }
+.x { border: 0; background: transparent; color: var(--ink-2); width: 36px; height: 36px; font-size: 16px; }
+.x:hover { background: var(--bad); color: #fff; }
+.empty { color: var(--ink-2); font-size: 15px; padding: 8px 0; margin: 0; }
+.err { color: var(--bad); font-size: 14px; font-weight: 700; margin: 0; }
+.ok { color: var(--good); font-size: 14px; font-weight: 700; margin: 0; }
+.recent { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.recent li + li { border-top: 1px solid var(--hair); }
+.recent button { width: 100%; border: 0; background: transparent; text-align: left; padding: 10px 0; display: flex; flex-direction: column; gap: 2px; }
+.recent b { font-weight: 500; overflow-wrap: anywhere; }
+.recent small { color: var(--ink-2); font-size: 13px; }
+.toast { position: fixed; left: 16px; right: 16px; bottom: 18px; margin: 0 auto; max-width: 480px; background: var(--ink); color: var(--bg); border-left: 6px solid var(--accent); padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 15px; z-index: 10; }
+.toast button { border: 0; background: transparent; color: inherit; font-weight: 700; text-decoration: underline; padding: 6px; }
+@media (prefers-reduced-motion: reduce) { .cube, .todo { transition: none; } }
+
+/* To-do rows: tick, short text, owner, swipe sideways to remove */
+.row-wrap { position: relative; overflow: hidden; border-bottom: 1px solid var(--hair); }
+.row-wrap:has(.swiping) { background: var(--bad); }
+.row-wrap::before, .row-wrap::after { content: 'Устгах'; position: absolute; top: 0; bottom: 0; display: none; align-items: center; color: #fff; font-weight: 700; font-size: 14px; }
+.row-wrap:has(.swiping)::before, .row-wrap:has(.swiping)::after { display: flex; }
+.row-wrap::before { left: 16px; } .row-wrap::after { right: 16px; }
+.todo { position: relative; z-index: 1; background: var(--bg); padding: 10px 0; display: grid; grid-template-columns: 28px 1fr auto auto; gap: 10px; align-items: center; touch-action: pan-y; transition: transform .28s cubic-bezier(.2,.9,.3,1); }
+.todo.swiping { transition: none; }
+.todo input[type="checkbox"] { width: 22px; height: 22px; margin: 0 0 0 2px; accent-color: var(--ink); }
+.todo.done .item-text { text-decoration: line-through; color: var(--ink-2); }
+.who { width: 32px; height: 32px; border: var(--rule) dashed var(--hair); background: transparent; color: var(--ink-2); font-weight: 700; font-size: 14px; display: grid; place-items: center; }
+.who[data-who="vida"], .who[data-who="anand"], .who[data-who="obama"] { color: var(--p-ink); border-style: solid; border-color: transparent; }
+.who[data-who="vida"] { background: var(--p-vida); }
+.who[data-who="anand"] { background: var(--p-anand); }
+.who[data-who="obama"] { background: var(--p-obama); }
+.add-row { display: flex; gap: 0; }
+.add-row .field { flex: 1; border-right: 0; }
+.pick { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Data: export and import */
+.data-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+@media (min-width: 620px) { .data-grid { grid-template-columns: 1fr 1fr; } }
+.data-grid section { display: flex; flex-direction: column; gap: 10px; }
+.data-grid h4 { margin: 0; font-family: var(--display); font-weight: 800; font-size: 20px; letter-spacing: -.02em; }
+.file-btn { position: relative; overflow: hidden; display: inline-flex; align-items: center; }
+.file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.file-btn:has(input:focus-visible) { outline: 3px solid var(--accent); outline-offset: 2px; }
+.plan { list-style: none; margin: 0; padding: 0; border-top: var(--rule) solid var(--line); }
+.plan li { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--hair); font-size: 14px; }
+.plan b { font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="mast">
+    <h1 class="mark">CUBIC</h1>
+    <div class="mast-side">Best-shot<span>Ажлын талбар</span></div>
+    <div class="sync" id="sync" role="status" aria-live="polite"></div>
+  </header>
+  <div class="note" id="notice" hidden></div>
+  <section class="note away-box" id="whoBox" hidden></section>
+  <section class="me" id="meBar" hidden aria-label="Та ба таны цаг">
+    <button type="button" class="editable me-who" id="meWho" title="Солих"></button>
+    <div class="clock">
+      <span class="dot" id="meDot" aria-hidden="true"></span>
+      <span class="clock-time" id="meTime">0 мин</span>
+      <button type="button" class="btn ghost" id="clockBtn">Түр зогсоох</button>
+    </div>
+  </section>
+  <section class="note away-box" id="awayBox" hidden></section>
+
+  <main id="home">
+    <div class="wrap" style="padding:0;gap:26px">
+      <div class="bar">
+        <div class="toggle" role="group" aria-label="Харагдац">
+          <button type="button" id="modeCube" aria-pressed="true">Шоо</button>
+          <button type="button" id="modeGrid" aria-pressed="false">Жагсаалт</button>
+        </div>
+        <input class="field" id="search" type="search" placeholder="Хайх" aria-label="Хайх" style="flex:1 1 160px;max-width:300px">
+      </div>
+      <section class="card" id="results" hidden aria-label="Хайлтын илэрц">
+        <h2 class="label" data-n="—" id="resultsTitle"></h2>
+        <ul class="recent" id="resultsList"></ul>
+      </section>
+      <section class="stage" id="cubeView" aria-label="Шоо">
+        <div class="scene" id="scene"><div class="cube" id="cube"></div></div>
+        <div class="now"><h2 id="faceTitle"></h2><button type="button" class="icon-btn" id="renameFace">Нэр солих</button></div>
+        <div class="edit-row" id="faceEdit" hidden style="max-width:420px"></div>
+        <p class="hint">Шоог чирж эргүүлнэ. Нүдэн дээр дарж нээнэ.</p>
+        <div class="turn" role="group" aria-label="Шоо эргүүлэх">
+          <button type="button" data-turn="left" aria-label="Зүүн тийш">←</button>
+          <button type="button" data-turn="up" aria-label="Дээш">↑</button>
+          <button type="button" data-turn="down" aria-label="Доош">↓</button>
+          <button type="button" data-turn="right" aria-label="Баруун тийш">→</button>
+        </div>
+      </section>
+      <section class="grid" id="gridView" hidden aria-label="Жагсаалт"></section>
+      <section class="card" aria-label="Баг">
+        <h2 class="label" data-n="01">Баг</h2>
+        <ul class="team" id="team"></ul>
+      </section>
+      <section class="card" id="dataCard" aria-label="Өгөгдөл">
+        <h2 class="label" data-n="02">ӨГӨГДӨЛ</h2>
+        <div class="data-grid">
+          <section>
+            <h4>Гаргах</h4>
+            <p class="fine">Бүх тал, нүд, ажил, цагийг нэг файлд. Нөөц болгон хадгална, эсвэл өөр газар оруулна.</p>
+            <div class="btns">
+              <button type="button" class="btn" id="exportJson">JSON татах</button>
+              <button type="button" class="btn ghost" id="exportCsv">CSV татах</button>
+              <button type="button" class="btn ghost" id="exportCopy">Хуулах</button>
+            </div>
+            <p class="fine" id="exportMsg" hidden></p>
+            <textarea class="field" id="exportText" readonly hidden aria-label="Гаргасан өгөгдөл"></textarea>
+          </section>
+          <section id="importBox">
+            <h4>Оруулах</h4>
+            <p class="fine">JSON эсвэл CSV файл сонгох, эсвэл бичвэрийг буулгах. Одоо байгаа зүйл устахгүй.</p>
+            <div class="btns">
+              <label class="btn ghost file-btn">Файл сонгох<input type="file" id="importFile" accept=".json,.csv,application/json,text/csv,text/plain"></label>
+            </div>
+            <textarea class="field" id="importText" placeholder="Энд буулгана" aria-label="Оруулах өгөгдөл"></textarea>
+            <div class="btns"><button type="button" class="btn ghost" id="importCheck">Шалгах</button></div>
+            <p class="err" id="importErr" hidden></p>
+            <div id="importPlan" hidden></div>
+          </section>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <main id="area" hidden>
+    <div class="wrap" style="padding:0;gap:16px">
+      <div class="crumb">
+        <button type="button" class="btn ghost" id="back">← Буцах</button>
+        <span class="chip" id="areaChip"></span>
+      </div>
+      <p class="area-num" id="areaNum" aria-hidden="true"></p>
+      <div id="areaTitleBox"></div>
+      <p class="space-time" id="spaceTime" hidden></p>
+      <form id="capture" autocomplete="off">
+        <div class="add-row">
+          <input class="field" id="newText" type="text" placeholder="Шинэ ажил" aria-label="Шинэ ажил" maxlength="200">
+          <button class="btn" type="submit" id="addBtn">Нэмэх</button>
+        </div>
+        <p class="err" id="captureErr" hidden></p>
+      </form>
+      <ul class="items" id="items"></ul>
+      <p class="empty" id="itemsEmpty" hidden>Одоогоор ажил алга.</p>
+      <p class="fine" id="swipeHint">Мөрийг хажуу тийш чирж устгана. Үсэгтэй тэмдэг дээр дарж хариуцагчийг солино. Бичвэр дээр дарж засна, өөр нүд рүү зөөнө. Олон мөр буулгавал мөр бүр тусдаа ажил болно.</p>
+    </div>
+  </main>
+</div>
+<div class="toast" id="toast" hidden role="status"><span id="toastText"></span><button type="button" id="toastUndo">Буцаах</button></div>
+
+<script>
+'use strict';
+/* ── Анхны бүтэц. Хуваалцсан хувилбар ачаалагдах хүртэл үүнийг харуулна; бүх нэр засагдана. ── */
+const DEFAULT_FACES = [
+  { title: 'Пилот', icon: '◎', cells: ['Ресторан 1', 'Ресторан 2', 'Туршилт', 'Санал хүсэлт'] },
+  { title: 'Төлөвлөгөө', icon: '➤', cells: ['Одоо', 'Дараа нь', 'Хожим', 'Шалгуур'] },
+  { title: 'Судалгаа', icon: '◇', cells: ['Өрсөлдөгч', 'Зочин', 'Эзэн', 'Санаа'] },
+  { title: 'Маркетинг', icon: '✦', cells: ['Байршуулалт', 'Танилцуулга', 'Суваг', 'Брэнд'] },
+  { title: 'Бизнес', icon: '▤', cells: ['Үнэ', 'Зардал', 'Хууль', 'Хөрөнгө оруулалт'] },
+  { title: 'Техник', icon: '⌘', cells: ['Зочны апп', 'Хөдөлгүүр', 'Платформ', 'Өгөгдөл'] },
+];
+/* The team. `who` on a to-do and in people/<id> is one of these ids. */
+const TEAM = [{ id: 'vida', name: 'Vida' }, { id: 'anand', name: 'Anand' }, { id: 'obama', name: 'Obama' }];
+const member = id => TEAM.find(m => m.id === id) || null;
+
+const S = {
+  db: null, user: null, me: null, canWrite: true, loaded: false, local: false,
+  faces: DEFAULT_FACES.map(f => ({ title: f.title, cells: f.cells.slice(), editedAt: 0, stored: false })),
+  items: new Map(), people: new Map(), clocks: new Map(), clockReady: false, peopleReady: false,
+  face: 0, cell: null, rx: 0, ry: 0,
+  mode: 'cube', pending: 0, renderQueued: false,
+};
+const $ = id => document.getElementById(id);
+const el = (tag, props = {}, kids = []) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'text') n.textContent = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else if (v === true) n.setAttribute(k, '');
+    else if (v !== false && v != null) n.setAttribute(k, v);
+  }
+  (Array.isArray(kids) ? kids : [kids]).forEach(c => c != null && n.append(c));
+  return n;
+};
+const cellKey = (f, c) => `f${f}-c${c}`;
+const CELL_RE = /^f[0-5]-c[0-3]$/;
+const faceStyle = f => `--fc:var(--f${f});--fi:var(--fi${f})`;
+const num = n => String(n).padStart(2, '0');
+const cellNum = (f, c) => num(f * 4 + c + 1);
+
+/* ── Хадгалалтын төлөв: засвар чимээгүй алга болохгүй ── */
+function setSync(state, text) { const s = $('sync'); s.dataset.state = state; s.textContent = text; }
+async function save(fn) {
+  S.pending += 1; setSync('saving', 'Хадгалж байна…');
+  try { await fn(); S.pending -= 1; if (!S.pending) setSync('saved', 'Хадгаллаа'); return true; }
+  catch (e) { S.pending -= 1; setSync('failed', 'Хадгалагдсангүй. Дахин оролдоно уу.'); return false; }
+}
+function notice(text) { const n = $('notice'); n.hidden = !text; n.textContent = text || ''; }
+let undoTimer = null;
+function toast(text, undo) {
+  $('toastText').textContent = text; $('toast').hidden = false;
+  $('toastUndo').hidden = !undo;
+  $('toastUndo').onclick = () => { $('toast').hidden = true; if (undo) undo(); };
+  clearTimeout(undoTimer); undoTimer = setTimeout(() => { $('toast').hidden = true; }, 7000);
+}
+
+/* ── Хүмүүс: Claude-ийн хэрэглэгч бүр гурвын нэг болж сонгоно ── */
+const whoOf = uid => (S.people.get(uid) || {}).who || '';
+const nameOfUid = uid => (member(whoOf(uid)) || {}).name || (uid === S.me ? 'Та' : 'Хэн нэгэн');
+function askWho() {
+  if (!S.me || !S.canWrite) return;
+  const box = $('whoBox'); box.hidden = false;
+  box.replaceChildren(el('span', { text: 'Та хэн бэ?' }),
+    el('div', { class: 'pick' }, TEAM.map(m => el('button', { type: 'button', class: 'btn', text: m.name,
+      onclick: async () => { box.hidden = true; S.people.set(S.me, { who: m.id }); renderAll(); renderClock(); await save(() => S.db.doc(`people/${S.me}`).set({ who: m.id, at: Date.now() })); } }))));
+}
+
+/* ── Байранд нь засах: дарна, бичнэ, Хадгалах эсвэл Болих. Алдаа гарвал бичвэр үлдэнэ.
+   `cell` өгвөл өөр нүд рүү зөөх сонголт гарна. ── */
+function cellPicker(current) {
+  const sel = el('select', { class: 'field', 'aria-label': 'Нүд' });
+  S.faces.forEach((face, f) => {
+    const g = el('optgroup', { label: `${num(f + 1)} ${face.title}` });
+    face.cells.forEach((t, c) => { const o = el('option', { value: cellKey(f, c), text: `${cellNum(f, c)} ${t}` }); if (cellKey(f, c) === current) o.selected = true; g.append(o); });
+    sel.append(g);
+  });
+  return sel;
+}
+function inlineEdit(host, { value, label, onSave, cell }) {
+  if (!S.canWrite) return;
+  const input = el('input', { class: 'field', 'aria-label': label, maxlength: '200' });
+  input.value = value;
+  const picker = cell ? cellPicker(cell) : null;
+  const err = el('p', { class: 'err', hidden: true });
+  const saveBtn = el('button', { class: 'btn', type: 'button', text: 'Хадгалах' });
+  const cancelBtn = el('button', { class: 'btn ghost', type: 'button', text: 'Болих' });
+  const row = el('div', { class: 'edit-row', 'data-editing': '1' }, [input, picker, saveBtn, cancelBtn, err]);
+  const original = [...host.childNodes];
+  host.replaceChildren(row);
+  input.focus(); input.select();
+  const close = () => { host.replaceChildren(...original); queueRender(true); };
+  const commit = async () => {
+    const v = input.value.trim(), to = picker ? picker.value : null;
+    if (!v) { err.hidden = false; err.textContent = 'Хоосон байж болохгүй.'; return; }
+    if (v === value && (!picker || to === cell)) return close();
+    saveBtn.disabled = true;
+    const ok = await onSave(v, to);
+    saveBtn.disabled = false;
+    if (ok) close(); else { err.hidden = false; err.textContent = 'Хадгалж чадсангүй. Бичсэн зүйл тань хэвээр байна.'; }
+  };
+  saveBtn.addEventListener('click', commit);
+  cancelBtn.addEventListener('click', close);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { e.preventDefault(); close(); }
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+  });
+}
+const isEditing = () => !!document.querySelector('[data-editing]');
+
+/* ── Бичилт ── */
+const stamp = () => ({ editedBy: S.me || null, editedAt: Date.now() });
+function saveFace(f) {
+  const face = S.faces[f], s = stamp();
+  return save(() => S.db.doc(`faces/f${f}`).set({ title: face.title, cells: face.cells.slice(), ...s })).then(ok => { if (ok) { face.editedAt = s.editedAt; face.stored = true; } return ok; });
+}
+function renameFace(f, title) { const old = S.faces[f].title; S.faces[f].title = title; return saveFace(f).then(ok => { if (!ok) S.faces[f].title = old; renderAll(); return ok; }); }
+function renameCell(f, c, title) { const old = S.faces[f].cells[c]; S.faces[f].cells[c] = title; return saveFace(f).then(ok => { if (!ok) S.faces[f].cells[c] = old; renderAll(); return ok; }); }
+const newItem = (text, at) => ({ cell: S.cell, text, url: '', who: '', done: false, by: S.me || null, at, ...stamp() });
+function addItem(text) {
+  const ref = S.db.collection('items').doc();
+  return save(() => ref.set(newItem(text, Date.now())));
+}
+/* Many lines pasted at once: one to-do per line, in the order pasted. Stops at the first failure and keeps the rest. */
+async function addLines(lines) {
+  const base = Date.now();
+  let done = 0;
+  await save(async () => { for (const line of lines) { await S.db.collection('items').doc().set(newItem(line, base + lines.length - done)); done += 1; } });
+  return lines.slice(done);
+}
+function patchItem(id, patch) {
+  const cur = S.items.get(id); if (!cur) return Promise.resolve(false);
+  const { id: _omit, ...body } = cur;
+  return save(() => S.db.doc(`items/${id}`).set({ ...body, ...patch, ...stamp() }));
+}
+function moveItem(id, text, to) {
+  const cur = S.items.get(id); if (!cur) return Promise.resolve(false);
+  const from = cur.cell;
+  return patchItem(id, { text, cell: to }).then(ok => {
+    if (ok && to !== from) toast(`«${whereIs(to)}» руу зөөлөө.`, () => patchItem(id, { cell: from }));
+    return ok;
+  });
+}
+function removeItem(id) {
+  const cur = S.items.get(id); if (!cur) return;
+  const { id: _omit, ...body } = cur;
+  save(() => S.db.doc(`items/${id}`).delete()).then(ok => {
+    if (!ok) { queueRender(true); return; }
+    toast('Устгалаа.', () => save(() => S.db.doc(`items/${id}`).set(body)));
+  });
+}
+
+function countFor(key) {
+  let n = 0, open = 0;
+  S.items.forEach(i => { if (i.cell === key) { n += 1; if (!i.done) open += 1; } });
+  return n === 0 ? 'Хоосон' : open ? `${open} үлдсэн` : 'Бүгд дууссан';
+}
+
+/* ── Шоо: чөлөөтэй чирнэ, тавихад эрчээрээ эргээд хамгийн ойрын тал дээр зөөлөн тогтоно ── */
+const TILT_X = -11, TILT_Y = -15;
+function frontFace() {
+  if (S.rx <= -45) return 4; if (S.rx >= 45) return 5;
+  return ((Math.round(-S.ry / 90) % 4) + 4) % 4;
+}
+function applyCube() {
+  $('cube').style.transform = `translateZ(calc(var(--size) / -2)) rotateX(${S.rx + TILT_X}deg) rotateY(${S.ry + TILT_Y}deg)`;
+}
+function settle(fromRx, fromRy) {
+  const dist = Math.hypot(S.rx - fromRx, S.ry - fromRy);
+  $('cube').style.setProperty('--spin', `${Math.min(0.95, Math.max(0.38, 0.32 + dist / 260))}s`);
+  S.face = frontFace(); applyCube(); markFront(); renderFaceTitle(); setHash();
+}
+function snap() {
+  const fx = S.rx, fy = S.ry;
+  if (Math.abs(S.rx) > 45) { S.rx = S.rx > 0 ? 90 : -90; S.ry = Math.round(S.ry / 360) * 360; }
+  else { S.rx = 0; S.ry = Math.round(S.ry / 90) * 90; }
+  settle(fx, fy);
+}
+function showFace(f) {
+  if (f === 4) { S.rx = -90; S.ry = Math.round(S.ry / 360) * 360; }
+  else if (f === 5) { S.rx = 90; S.ry = Math.round(S.ry / 360) * 360; }
+  else { S.rx = 0; const base = Math.round(S.ry / 360) * 360; S.ry = base - f * 90; if (S.ry - base < -180) S.ry += 360; }
+  S.face = f; applyCube(); markFront(); renderFaceTitle();
+}
+function turn(dir) {
+  const fx = S.rx, fy = S.ry;
+  if (dir === 'up') { S.rx = S.rx === 90 ? 0 : -90; }
+  else if (dir === 'down') { S.rx = S.rx === -90 ? 0 : 90; }
+  else { if (S.rx !== 0) S.rx = 0; S.ry += dir === 'left' ? 90 : -90; }
+  if (Math.abs(S.rx) === 90) S.ry = Math.round(S.ry / 360) * 360;
+  settle(fx, fy);
+}
+function markFront() {
+  document.querySelectorAll('#cube .face').forEach((n, i) => {
+    const front = i === S.face;
+    n.toggleAttribute('inert', !front);
+    n.setAttribute('aria-hidden', front ? 'false' : 'true');
+  });
+}
+function renderCube() {
+  $('cube').replaceChildren(...S.faces.map((face, f) =>
+    el('div', { class: `face face-${f}`, style: faceStyle(f) }, [
+      el('div', { class: 'face-name' }, [el('i', { 'aria-hidden': 'true', text: num(f + 1) }), el('span', { text: face.title })]),
+      el('div', { class: 'cells' }, face.cells.map((title, c) =>
+        el('button', { type: 'button', class: 'cell-tile', 'data-open': cellKey(f, c), 'aria-label': `${title}, ${face.title}. ${countFor(cellKey(f, c))}` },
+          [el('em', { 'aria-hidden': 'true', text: cellNum(f, c) }), el('strong', { text: title }), el('small', { text: countFor(cellKey(f, c)) })]))),
+    ])));
+  applyCube(); markFront();
+}
+function renderFaceTitle() { $('faceTitle').textContent = S.faces[S.face].title; $('renameFace').hidden = !S.canWrite; }
+function initCubeInput() {
+  const scene = $('scene'), cube = $('cube');
+  let sx = 0, sy = 0, brx = 0, bry = 0, down = false, moved = false, wasPole = false;
+  let lx = 0, ly = 0, lt = 0, vx = 0, vy = 0;
+  const perPx = () => 90 / (scene.clientWidth * 0.85);          // one cube-width of drag is about a quarter turn
+  scene.addEventListener('pointerdown', e => {
+    down = true; moved = false; sx = lx = e.clientX; sy = ly = e.clientY; lt = e.timeStamp; vx = vy = 0;
+    brx = S.rx; bry = S.ry; wasPole = Math.abs(S.rx) === 90;
+  });
+  window.addEventListener('pointermove', e => {
+    if (!down) return;
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    if (!moved && Math.hypot(dx, dy) < 8) return;
+    if (!moved) { moved = true; cube.classList.add('dragging'); }
+    const dt = Math.max(1, e.timeStamp - lt);
+    vx = 0.7 * ((e.clientX - lx) / dt) + 0.3 * vx; vy = 0.7 * ((e.clientY - ly) / dt) + 0.3 * vy;
+    lx = e.clientX; ly = e.clientY; lt = e.timeStamp;
+    const k = perPx();
+    let rx = brx - dy * k;
+    if (rx > 90) rx = 90 + (rx - 90) * 0.25; if (rx < -90) rx = -90 + (rx + 90) * 0.25;   // rubber band past the poles
+    S.ry = bry + dx * k; S.rx = rx; applyCube();
+  });
+  const end = e => {
+    if (!down) return; down = false;
+    if (!moved) return;
+    cube.classList.remove('dragging');
+    const fx = S.rx, fy = S.ry, k = perPx();
+    if (e && e.timeStamp - lt > 90) { vx = 0; vy = 0; }           // finger rested before lifting: no fling
+    // Carry the motion on for a moment, then come to rest on the nearest side.
+    // A flick alone carries on by at most about one side; a long drag still spins as far as it goes.
+    const fling = v => Math.max(-100, Math.min(100, v * k * 170));
+    S.ry += fling(vx); S.rx = Math.max(-90, Math.min(90, S.rx - fling(vy)));
+    const dx = (e ? e.clientX : lx) - sx, dy = (e ? e.clientY : ly) - sy;
+    if (wasPole && Math.abs(dx) > Math.abs(dy)) { S.rx = 0; S.ry = Math.round(bry / 360) * 360 + (dx < 0 ? -90 : 90); }
+    if (Math.abs(S.rx) > 45) { S.rx = S.rx > 0 ? 90 : -90; S.ry = Math.round(S.ry / 360) * 360; }
+    else { S.rx = 0; S.ry = Math.round(S.ry / 90) * 90; }
+    settle(fx, fy);
+  };
+  window.addEventListener('pointerup', end); window.addEventListener('pointercancel', end);
+  scene.addEventListener('click', e => {
+    if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; return; }
+    const b = e.target.closest('[data-open]'); if (b) openKey(b.dataset.open);
+  }, true);
+  document.querySelectorAll('[data-turn]').forEach(b => b.addEventListener('click', () => turn(b.dataset.turn)));
+  document.addEventListener('keydown', e => {
+    if ($('home').hidden || S.mode !== 'cube' || e.target.closest('input, textarea, select')) return;
+    const map = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
+    if (map[e.key]) { e.preventDefault(); turn(map[e.key]); }
+  });
+}
+
+/* ── Жагсаалт: 3D-гүйгээр мөн 24 нүд ── */
+function renderGrid() {
+  $('gridView').replaceChildren(...S.faces.map((face, f) => {
+    const head = el('div', { class: 'g-head' });
+    head.append(el('span', { 'aria-hidden': 'true', text: num(f + 1) }), el('h3', { text: face.title }));
+    if (S.canWrite) head.append(el('button', { type: 'button', class: 'icon-btn', text: 'Нэр солих', 'aria-label': `${face.title}: нэр солих`,
+      onclick: () => inlineEdit(head, { value: face.title, label: 'Талын нэр', onSave: v => renameFace(f, v) }) }));
+    return el('div', { class: 'g-face', style: faceStyle(f) }, [head,
+      el('div', { class: 'g-cells' }, face.cells.map((title, c) =>
+        el('button', { type: 'button', class: 'g-cell', onclick: () => openKey(cellKey(f, c)) },
+          [el('em', { 'aria-hidden': 'true', text: cellNum(f, c) }), el('strong', { text: title }), el('small', { text: countFor(cellKey(f, c)) })])))]);
+  }));
+}
+
+/* ── Хайлт ── */
+function whereIs(key) { const m = /^f(\d)-c(\d)$/.exec(key || ''); if (!m) return ''; const f = S.faces[+m[1]]; return f ? `${f.title} › ${f.cells[+m[2]]}` : ''; }
+function renderSearch() {
+  const q = $('search').value.trim().toLowerCase();
+  $('results').hidden = !q; if (!q) return;
+  const hits = [...S.items.values()].filter(i => `${i.text} ${i.url || ''}`.toLowerCase().includes(q)).slice(0, 30);
+  $('resultsTitle').textContent = hits.length ? `${hits.length} илэрц` : 'Илэрц алга';
+  $('resultsList').replaceChildren(...hits.map(i => el('li', {}, el('button', { type: 'button', onclick: () => openKey(i.cell) },
+    [el('b', { text: i.text }), el('small', { text: whereIs(i.cell) })]))));
+}
+
+/* ── Нүд: хийх ажлын жагсаалт ── */
+function nextWho(cur) { const order = ['', ...TEAM.map(m => m.id)]; return order[(order.indexOf(cur || '') + 1) % order.length]; }
+function attachSwipe(row, onRemove) {
+  let sx = 0, sy = 0, dx = 0, active = false, locked = false, t0 = 0;
+  row.addEventListener('pointerdown', e => { if (e.target.closest('input, a, select, button:not(.item-text)')) return; active = true; locked = false; sx = e.clientX; sy = e.clientY; dx = 0; t0 = e.timeStamp; });
+  row.addEventListener('pointermove', e => {
+    if (!active) return;
+    dx = e.clientX - sx; const dy = e.clientY - sy;
+    if (!locked) { if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 1.2) return; locked = true; row.classList.add('swiping'); try { row.setPointerCapture(e.pointerId); } catch (x) { /* optional */ } }
+    row.style.transform = `translateX(${dx}px)`;
+  });
+  const end = e => {
+    if (!active) return; active = false;
+    if (!locked) return;
+    row.classList.remove('swiping');
+    const fast = Math.abs(dx) / Math.max(1, e.timeStamp - t0) > 0.6 && Math.abs(dx) > 40;
+    if (Math.abs(dx) > row.offsetWidth * 0.35 || fast) { row.style.transform = `translateX(${dx < 0 ? -110 : 110}%)`; setTimeout(onRemove, 180); }
+    else row.style.transform = '';
+  };
+  row.addEventListener('pointerup', end); row.addEventListener('pointercancel', end);
+}
+function renderArea() {
+  if (!S.cell) return;
+  const [f, c] = [+S.cell[1], +S.cell[4]];
+  const face = S.faces[f]; if (!face) return;
+  const chip = $('areaChip'); chip.setAttribute('style', faceStyle(f)); chip.textContent = `${num(f + 1)} ${face.title}`;
+  $('areaNum').textContent = cellNum(f, c);
+  const box = $('areaTitleBox');
+  const h = el('h1', { class: 'area-title' });
+  if (S.canWrite) h.append(el('button', { type: 'button', class: 'editable', text: face.cells[c], title: 'Нэр солих',
+    onclick: () => inlineEdit(box, { value: face.cells[c], label: 'Нүдний нэр', onSave: v => renameCell(f, c, v) }) }));
+  else h.textContent = face.cells[c];
+  box.replaceChildren(h);
+  $('capture').hidden = !S.canWrite;
+  renderSpaceTime();
+
+  const list = [...S.items.values()].filter(i => i.cell === S.cell)
+    .sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0) || (b.at || 0) - (a.at || 0));
+  $('itemsEmpty').hidden = list.length > 0;
+  $('swipeHint').hidden = !S.canWrite;
+  $('items').replaceChildren(...list.map(i => {
+    const chk = el('input', { type: 'checkbox', id: `chk-${i.id}`, 'aria-label': `Дууссан: ${i.text}`, disabled: !S.canWrite });
+    chk.checked = !!i.done; chk.addEventListener('change', () => patchItem(i.id, { done: chk.checked }));
+    const main = el('div', { class: 'item-main' });
+    const textHost = el('div');
+    textHost.append(S.canWrite
+      ? el('button', { type: 'button', class: 'editable item-text', text: i.text, title: 'Засах',
+          onclick: () => inlineEdit(textHost, { value: i.text, label: 'Ажлыг засах', cell: i.cell, onSave: (v, to) => moveItem(i.id, v, to) }) })
+      : el('span', { class: 'item-text', text: i.text }));
+    main.append(textHost);
+    if (i.url && /^https?:\/\//i.test(i.url)) main.append(el('a', { href: i.url, target: '_blank', rel: 'noopener', text: 'Нээх ↗' }));
+    const m = member(i.who);
+    const who = el(S.canWrite ? 'button' : 'span', { class: 'who', 'data-who': i.who || '', text: m ? m.name[0] : '+',
+      'aria-label': m ? `Хариуцагч: ${m.name}. Солих` : 'Хариуцагч сонгох', title: m ? m.name : 'Хариуцагч' });
+    if (S.canWrite) { who.type = 'button'; who.addEventListener('click', () => patchItem(i.id, { who: nextWho(i.who) })); }
+    const del = S.canWrite ? el('button', { type: 'button', class: 'x', 'aria-label': `Устгах: ${i.text}`, text: '✕', onclick: () => removeItem(i.id) }) : el('span');
+    const row = el('div', { class: `todo${i.done ? ' done' : ''}` }, [chk, main, who, del]);
+    if (S.canWrite) attachSwipe(row, () => removeItem(i.id));
+    return el('li', { class: 'row-wrap' }, row);
+  }));
+}
+function showLeftover(lines) {
+  const err = $('captureErr');
+  if (!lines.length) { err.hidden = true; return; }
+  err.hidden = false;
+  err.replaceChildren(el('span', { text: `${lines.length} мөр нэмэгдсэнгүй: ${lines.join(' · ')} ` }),
+    el('button', { type: 'button', class: 'btn ghost', text: 'Дахин оролдох', onclick: async () => showLeftover(await addLines(lines)) }));
+}
+function initCapture() {
+  $('capture').addEventListener('submit', async e => {
+    e.preventDefault();
+    const text = $('newText').value.trim(), err = $('captureErr'); err.hidden = true;
+    if (!text) { $('newText').focus(); return; }
+    $('addBtn').disabled = true;
+    const ok = await addItem(text);
+    $('addBtn').disabled = false;
+    if (ok) { $('newText').value = ''; $('newText').focus(); }
+    else { err.hidden = false; err.textContent = 'Нэмж чадсангүй. Бичсэн зүйл тань хэвээр байна.'; }
+  });
+  $('newText').addEventListener('paste', async e => {
+    const lines = ((e.clipboardData && e.clipboardData.getData('text')) || '').split(/\r?\n/)
+      .map(l => l.replace(/^\s*(?:[-*•]|\d+[.)]|\[[ xX]?\])\s+/, '').trim().slice(0, 200)).filter(Boolean);
+    if (lines.length < 2) return;
+    e.preventDefault();
+    showLeftover(await addLines(lines));
+  });
+}
+
+/* ── Цаг: хүн ажлын талбарыг нээмэгц цаг нь явна ──
+   Хүн бүрд нэг баримт (clock/<id>): өдөр, нүдээр хаагдсан хугацаа ба нээлттэй хэсэг
+   (openSince, openCell). Зөвхөн төлөв өөрчлөгдөхөд бичнэ: эхлэх, зогсох, нүд солих,
+   гарах, буцаж ирэх. Явж буй тоог дэлгэц дээр openSince-ээс тооцно. */
+const AWAY_ASK_MS = 10 * 60 * 1000;
+const AWAY_MAX_MS = 12 * 60 * 60 * 1000;
+const dayKey = ts => { const d = new Date(ts); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+function fmt(ms) {
+  const m = Math.floor(Math.max(0, ms) / 60000), h = Math.floor(m / 60);
+  return h ? `${h} ц ${String(m % 60).padStart(2, '0')} мин` : `${m} мин`;
+}
+const myClock = () => S.clocks.get(S.me) || null;
+function closeStretch(c, endTs) {
+  if (!c.openSince) return;
+  const dur = Math.max(0, endTs - c.openSince), day = dayKey(c.openSince), where = c.openCell || 'home';
+  c.days = c.days || {};
+  const d = c.days[day] = c.days[day] || { ms: 0, bySpace: {} };
+  d.ms += dur; d.bySpace[where] = (d.bySpace[where] || 0) + dur;
+  c.openSince = null; c.openCell = null; c.leftAt = null;
+}
+let clockChain = Promise.resolve();
+function writeClock(mutate) {
+  if (!S.db || !S.me || !S.canWrite) return Promise.resolve(false);
+  clockChain = clockChain.then(async () => {
+    const cur = JSON.parse(JSON.stringify(myClock() || { days: {} }));
+    mutate(cur);
+    S.clocks.set(S.me, cur); renderClock(); renderTeam();
+    try { await S.db.doc(`clock/${S.me}`).set(cur); return true; }
+    catch (e) { setSync('failed', 'Цагийн өөрчлөлт хадгалагдсангүй.'); return false; }
+  });
+  return clockChain;
+}
+const here = () => S.cell || 'home';
+function startClock() { return writeClock(c => { closeStretch(c, Date.now()); c.openSince = Date.now(); c.openCell = here(); c.leftAt = null; c.paused = false; }); }
+function pauseClock() { return writeClock(c => { closeStretch(c, Date.now()); c.paused = true; }); }
+function moveClock() { const c = myClock(); if (c && c.openSince && !c.leftAt && c.openCell !== here()) startClock(); }
+function liveMs(c, day) {
+  const closed = (c.days && c.days[day] && c.days[day].ms) || 0;
+  const end = c.leftAt && Date.now() - c.leftAt > AWAY_MAX_MS ? c.leftAt : Date.now();
+  return closed + (c.openSince && dayKey(c.openSince) === day ? Math.max(0, end - c.openSince) : 0);
+}
+function weekMs(c) { let t = 0; for (let k = 0; k < 7; k++) t += liveMs(c, dayKey(Date.now() - k * 86400000)); return t; }
+function statusOf(c) {
+  if (!c) return { cls: '', text: 'Нэвтрээгүй' };
+  if (!c.openSince) return { cls: '', text: 'Цаг зогссон' };
+  const where = c.openCell && c.openCell !== 'home' ? whereIs(c.openCell) : 'Нүүр';
+  if (c.leftAt) return { cls: 'away', text: `Эзгүй ${fmt(Date.now() - c.leftAt)}` };
+  return { cls: 'on', text: where };
+}
+function renderClock() {
+  const c = myClock(); if (!S.me || !S.db) return;
+  $('meBar').hidden = false;
+  $('meWho').textContent = nameOfUid(S.me);
+  const running = !!(c && c.openSince);
+  $('meDot').className = `dot${running ? ' on' : ''}`;
+  $('meTime').textContent = `Өнөөдөр ${fmt(c ? liveMs(c, dayKey(Date.now())) : 0)}`;
+  $('clockBtn').textContent = running ? 'Түр зогсоох' : 'Эхлүүлэх';
+  $('clockBtn').hidden = !S.canWrite;
+}
+/* One row per team member: status, open to-dos, time today and over 7 days. */
+function renderTeam() {
+  $('team').replaceChildren(...TEAM.map(m => {
+    const uids = [...S.people.entries()].filter(([, v]) => v.who === m.id).map(([k]) => k);
+    const clocks = uids.map(u => S.clocks.get(u)).filter(Boolean);
+    const live = clocks.find(c => c.openSince && !c.leftAt) || clocks.find(c => c.openSince) || clocks[0] || null;
+    const st = statusOf(live);
+    const today = clocks.reduce((t, c) => t + liveMs(c, dayKey(Date.now())), 0), week = clocks.reduce((t, c) => t + weekMs(c), 0);
+    let open = 0; S.items.forEach(i => { if (i.who === m.id && !i.done) open += 1; });
+    return el('li', {}, [el('span', { class: 'who', 'data-who': m.id, 'aria-hidden': 'true', text: m.name[0] }),
+      el('div', {}, [el('b', { text: m.name }), el('small', { text: `${st.text} · ${open} ажил` })]),
+      el('div', { class: 'nums' }, [el('div', { text: fmt(today) }), el('small', { text: `7 хоног ${fmt(week)}` })])]);
+  }));
+}
+function renderSpaceTime() {
+  const box = $('spaceTime'); if (!S.cell) return;
+  const parts = [];
+  S.clocks.forEach((c, id) => {
+    let ms = 0;
+    Object.values(c.days || {}).forEach(d => { ms += (d.bySpace && d.bySpace[S.cell]) || 0; });
+    if (c.openSince && c.openCell === S.cell && !c.leftAt) ms += Date.now() - c.openSince;
+    if (ms >= 60000) parts.push(`${nameOfUid(id)} ${fmt(ms)}`);
+  });
+  box.hidden = !parts.length; box.textContent = parts.length ? `Энэ нүдэнд: ${parts.join(' · ')}` : '';
+}
+function reconcileClock() {
+  if (!S.clockReady || !S.me || !S.canWrite || document.hidden) return;
+  const c = myClock(), box = $('awayBox');
+  if (!c || !c.openSince) { box.hidden = true; startClock(); return; }
+  const leftAt = c.leftAt || null, gone = leftAt ? Date.now() - leftAt : 0;
+  if (!leftAt) { box.hidden = true; moveClock(); return; }
+  if (gone > AWAY_MAX_MS) { box.hidden = true; writeClock(x => { closeStretch(x, leftAt); }).then(startClock); return; }
+  if (gone < AWAY_ASK_MS) { box.hidden = true; writeClock(x => { x.leftAt = null; }).then(moveClock); return; }
+  box.hidden = false;
+  box.replaceChildren(
+    el('span', { text: `Таныг эзгүй байхад цаг ${fmt(gone)} явсан. Ажиллаж байсан уу?` }),
+    el('div', {}, [
+      el('button', { type: 'button', class: 'btn', text: 'Тийм, тоол', onclick: () => { box.hidden = true; writeClock(x => { x.leftAt = null; }).then(moveClock); } }),
+      el('button', { type: 'button', class: 'btn ghost', text: 'Үгүй, гарсан үеэр зогсоо', onclick: () => { box.hidden = true; writeClock(x => { closeStretch(x, leftAt); }).then(startClock); } }),
+    ]));
+}
+function initClock() {
+  $('clockBtn').addEventListener('click', () => { const c = myClock(); (c && c.openSince) ? pauseClock() : startClock(); });
+  $('meWho').addEventListener('click', askWho);
+  document.addEventListener('visibilitychange', () => {
+    const c = myClock();
+    if (document.hidden) { if (c && c.openSince && !c.leftAt) writeClock(x => { x.leftAt = Date.now(); }); }
+    else reconcileClock();
+  });
+  setInterval(() => { renderClock(); if (!S.cell) renderTeam(); else renderSpaceTime(); }, 15000);
+}
+
+/* ── Өгөгдөл гаргах, оруулах ──
+   Гаргах: бүх цуглуулгыг нэг JSON-д (дахин оруулж болно), эсвэл ажлуудыг CSV-д.
+   Оруулах: эхлээд юу өөрчлөгдөхийг харуулна. Юуг ч устгахгүй. Ижил id-тай ажил,
+   талын нэр зөвхөн оруулж буй нь шинэ бол солигдоно. Хүн, цаг зөвхөн байхгүй бол нэмэгдэнэ. */
+const ITEM_FIELDS = ['cell', 'text', 'url', 'who', 'done', 'by', 'at', 'editedBy', 'editedAt'];
+const todayStamp = () => dayKey(Date.now());
+function exportData() {
+  const items = [...S.items.values()].map(({ id, ...v }) => ({ id, ...v }));
+  return {
+    app: 'cubic', version: 1, exportedAt: new Date().toISOString(),
+    faces: S.faces.map((f, i) => ({ id: `f${i}`, title: f.title, cells: f.cells.slice(), editedAt: f.editedAt || 0 })),
+    items, people: Object.fromEntries(S.people), clock: Object.fromEntries(S.clocks),
+  };
+}
+const csvCell = v => { const s = v == null ? '' : String(v); return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+const CSV_HEAD = ['id', 'cell', 'side', 'space', 'text', 'owner', 'done', 'url', 'at', 'editedAt'];
+function exportCsv() {
+  const rows = [...S.items.values()].sort((a, b) => (a.cell > b.cell ? 1 : a.cell < b.cell ? -1 : (a.at || 0) - (b.at || 0))).map(i => {
+    const f = +i.cell[1], c = +i.cell[4], face = S.faces[f] || { title: '', cells: [] };
+    return [i.id, i.cell, face.title, face.cells[c] || '', i.text, i.who || '', i.done ? 1 : 0, i.url || '', i.at || '', i.editedAt || ''];
+  });
+  return '﻿' + [CSV_HEAD, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n');
+}
+function parseCsv(text) {
+  const rows = []; let row = [], cur = '', q = false;
+  text = text.replace(/^﻿/, '');
+  for (let k = 0; k < text.length; k++) {
+    const ch = text[k];
+    if (q) { if (ch === '"') { if (text[k + 1] === '"') { cur += '"'; k++; } else q = false; } else cur += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === ',') { row.push(cur); cur = ''; }
+    else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[k + 1] === '\n') k++; row.push(cur); rows.push(row); row = []; cur = ''; }
+    else cur += ch;
+  }
+  if (cur || row.length) { row.push(cur); rows.push(row); }
+  return rows.filter(r => r.some(v => v.trim()));
+}
+function cleanItem(v) {
+  if (!v || typeof v.text !== 'string' || !v.text.trim() || !CELL_RE.test(v.cell || '')) return null;
+  const n = x => (Number.isFinite(+x) && +x > 0 ? +x : 0);
+  return { cell: v.cell, text: v.text.trim().slice(0, 500), url: typeof v.url === 'string' ? v.url : '',
+    who: member(String(v.who || '').toLowerCase()) ? String(v.who).toLowerCase() : '', done: v.done === true || v.done === 1 || v.done === '1' || v.done === 'true',
+    by: v.by || null, at: n(v.at) || Date.now(), editedBy: v.editedBy || null, editedAt: n(v.editedAt) };
+}
+/* Reads a JSON export or a CSV, returns what it holds. Throws a plain message when it cannot. */
+function readImport(text) {
+  text = (text || '').trim();
+  if (!text) throw new Error('Хоосон байна.');
+  if (text[0] === '{' || text[0] === '[') {
+    let d; try { d = JSON.parse(text); } catch (e) { throw new Error('JSON уншигдсангүй.'); }
+    if (Array.isArray(d)) d = { items: d };
+    if (d.app && d.app !== 'cubic') throw new Error('Энэ CUBIC-ийн файл биш.');
+    const items = (Array.isArray(d.items) ? d.items : []).map(v => ({ id: typeof v.id === 'string' && /^[^/\s]{1,120}$/.test(v.id) ? v.id : null, body: cleanItem(v) })).filter(x => x.body);
+    const faces = (Array.isArray(d.faces) ? d.faces : []).map((f, i) => {
+      const k = /^f([0-5])$/.exec((f && f.id) || `f${i}`); if (!k || !f) return null;
+      const cells = Array.isArray(f.cells) ? f.cells.slice(0, 4).map(t => (typeof t === 'string' ? t.trim().slice(0, 200) : '')) : [];
+      return { f: +k[1], title: typeof f.title === 'string' ? f.title.trim().slice(0, 200) : '', cells, editedAt: +f.editedAt || 0 };
+    }).filter(Boolean);
+    const obj = x => (x && typeof x === 'object' && !Array.isArray(x) ? x : {});
+    const people = Object.entries(obj(d.people)).filter(([k, v]) => /^[^/\s]{1,120}$/.test(k) && v && member(v.who));
+    const clock = Object.entries(obj(d.clock)).filter(([k, v]) => /^[^/\s]{1,120}$/.test(k) && v && typeof v === 'object');
+    if (!items.length && !faces.length && !people.length && !clock.length) throw new Error('Оруулах зүйл олдсонгүй.');
+    return { items, faces, people, clock };
+  }
+  const rows = parseCsv(text);
+  const head = (rows.shift() || []).map(h => h.trim().toLowerCase());
+  const col = name => head.indexOf(name);
+  if (col('text') < 0 || col('cell') < 0) throw new Error('CSV-д "cell", "text" багана хэрэгтэй.');
+  const items = rows.map(r => {
+    const g = name => (col(name) >= 0 ? (r[col(name)] || '').trim() : '');
+    const id = g('id');
+    return { id: /^[^/\s]{1,120}$/.test(id) ? id : null, body: cleanItem({ cell: g('cell'), text: g('text'), who: g('owner'), done: g('done'), url: g('url'), at: g('at'), editedAt: g('editedat') }) };
+  }).filter(x => x.body);
+  if (!items.length) throw new Error('Оруулах ажил олдсонгүй.');
+  return { items, faces: [], people: [], clock: [] };
+}
+function planImport(d) {
+  const plan = { add: [], update: [], same: 0, older: 0, faces: [], people: [], clock: [] };
+  const sameItem = (a, b) => ITEM_FIELDS.filter(k => !['editedAt', 'editedBy', 'by', 'at'].includes(k)).every(k => (a[k] ?? '') === (b[k] ?? ''));
+  d.items.forEach(({ id, body }) => {
+    const cur = id && S.items.get(id);
+    if (!cur) plan.add.push({ id, body });
+    else if (sameItem(cur, body)) plan.same += 1;
+    else if ((body.editedAt || 0) > (cur.editedAt || 0)) plan.update.push({ id, body });
+    else plan.older += 1;
+  });
+  d.faces.forEach(x => {
+    const cur = S.faces[x.f];
+    const next = { title: x.title || cur.title, cells: cur.cells.map((t, c) => x.cells[c] || t) };
+    const differs = next.title !== cur.title || next.cells.some((t, c) => t !== cur.cells[c]);
+    if (differs && (!cur.stored || x.editedAt > (cur.editedAt || 0))) plan.faces.push({ f: x.f, ...next, editedAt: x.editedAt });
+  });
+  d.people.forEach(([k, v]) => { if (!S.people.has(k)) plan.people.push([k, { who: v.who, at: +v.at || Date.now() }]); });
+  d.clock.forEach(([k, v]) => { if (!S.clocks.has(k)) plan.clock.push([k, JSON.parse(JSON.stringify(v))]); });
+  return plan;
+}
+const planSize = p => p.add.length + p.update.length + p.faces.length + p.people.length + p.clock.length;
+async function applyImport(p) {
+  return save(async () => {
+    for (const x of p.faces) await S.db.doc(`faces/f${x.f}`).set({ title: x.title, cells: x.cells, editedBy: S.me || null, editedAt: Math.max(x.editedAt || 0, Date.now()) });
+    for (const x of p.add) await (x.id ? S.db.doc(`items/${x.id}`) : S.db.collection('items').doc()).set(x.body);
+    for (const x of p.update) await S.db.doc(`items/${x.id}`).set(x.body);
+    for (const [k, v] of p.people) await S.db.doc(`people/${k}`).set(v);
+    for (const [k, v] of p.clock) await S.db.doc(`clock/${k}`).set(v);
+  });
+}
+function download(name, text, type) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const a = el('a', { href: url, download: name }); document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+function exportMsg(text) { const m = $('exportMsg'); m.hidden = !text; m.textContent = text || ''; }
+function renderImportPlan(p) {
+  const box = $('importPlan'); box.hidden = false;
+  const line = (label, n) => (n ? el('li', {}, [el('span', { text: label }), el('b', { text: String(n) })]) : null);
+  const total = planSize(p);
+  const list = el('ul', { class: 'plan' }, [
+    line('Шинэ ажил', p.add.length), line('Шинэчлэгдэх ажил', p.update.length), line('Талын нэр', p.faces.length),
+    line('Хүн', p.people.length), line('Цагийн бүртгэл', p.clock.length),
+    line('Ижил, өөрчлөхгүй', p.same), line('Энд илүү шинэ тул алгасна', p.older),
+  ].filter(Boolean));
+  const msg = el('p', { class: 'fine', hidden: true });
+  const go = el('button', { type: 'button', class: 'btn', text: `Оруулах (${total})`, disabled: !total });
+  const cancel = el('button', { type: 'button', class: 'btn ghost', text: 'Болих', onclick: () => { box.hidden = true; box.replaceChildren(); } });
+  go.addEventListener('click', async () => {
+    go.disabled = true; cancel.disabled = true;
+    const ok = await applyImport(p);
+    if (ok) { box.replaceChildren(el('p', { class: 'ok', text: `Орууллаа: ${total} өөрчлөлт.` })); $('importText').value = ''; $('importFile').value = ''; }
+    else { go.disabled = false; cancel.disabled = false; msg.hidden = false; msg.className = 'err'; msg.textContent = 'Бүгд хадгалагдсангүй. Дахин дарвал үлдсэнийг нь нэмнэ.'; }
+  });
+  box.replaceChildren(...[list, total ? null : el('p', { class: 'fine', text: 'Энд бүгд байгаа. Нэмэх зүйл алга.' }), el('div', { class: 'btns', style: 'margin-top:10px' }, [go, cancel]), msg].filter(Boolean));
+}
+function checkImport(text) {
+  const err = $('importErr'); err.hidden = true; $('importPlan').hidden = true;
+  try { renderImportPlan(planImport(readImport(text))); }
+  catch (e) { err.hidden = false; err.textContent = e.message || 'Уншиж чадсангүй.'; }
+}
+function initData() {
+  // Downloads are blocked inside the Claude page, so there it offers copy only.
+  $('exportJson').hidden = $('exportCsv').hidden = !S.local;
+  $('importBox').hidden = !S.canWrite || !S.db;
+  $('exportJson').onclick = () => { download(`cubic-${todayStamp()}.json`, JSON.stringify(exportData(), null, 2), 'application/json'); exportMsg('Файл татагдлаа.'); };
+  $('exportCsv').onclick = () => { download(`cubic-${todayStamp()}.csv`, exportCsv(), 'text/csv;charset=utf-8'); exportMsg('Файл татагдлаа.'); };
+  $('exportCopy').onclick = async () => {
+    const text = JSON.stringify(exportData(), null, 2), area = $('exportText');
+    try { await navigator.clipboard.writeText(text); area.hidden = true; exportMsg('Хуулсан. Өөр газар «Оруулах» хэсэгт буулгана уу.'); }
+    catch (e) { area.hidden = false; area.value = text; area.focus(); area.select(); exportMsg('Автоматаар хуулж чадсангүй. Доорх бичвэрийг бүгдийг нь хуулна уу.'); }
+  };
+  $('importCheck').onclick = () => checkImport($('importText').value);
+  $('importFile').addEventListener('change', async e => {
+    const file = e.target.files && e.target.files[0]; if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { $('importErr').hidden = false; $('importErr').textContent = 'Файл хэт том байна.'; return; }
+    try { checkImport(await file.text()); } catch (x) { $('importErr').hidden = false; $('importErr').textContent = 'Файлыг уншиж чадсангүй.'; }
+  });
+}
+
+/* ── Чиглүүлэлт: #f2 бол тал, #f2-c1 бол нүд ── */
+function setHash() { const h = S.cell || `f${S.face}`; if (location.hash !== `#${h}`) { try { history.replaceState(null, '', `#${h}`); } catch (e) { location.hash = h; } } }
+function openKey(key) { if (!CELL_RE.test(key || '')) return; S.cell = key; S.face = +key[1]; setHash(); route(); window.scrollTo(0, 0); }
+function route() {
+  const inArea = !!S.cell;
+  $('home').hidden = inArea; $('area').hidden = !inArea;
+  if (inArea) renderArea(); else { showFace(S.face); renderHome(); }
+  moveClock();
+}
+function readHash() {
+  const h = location.hash.slice(1);
+  let m = /^f([0-5])-c([0-3])$/.exec(h);
+  if (m) { S.face = +m[1]; S.cell = h; return; }
+  m = /^f([0-5])$/.exec(h);
+  S.cell = null; if (m) S.face = +m[1];
+}
+function setMode(mode) {
+  S.mode = mode;
+  $('modeCube').setAttribute('aria-pressed', mode === 'cube'); $('modeGrid').setAttribute('aria-pressed', mode === 'grid');
+  $('cubeView').hidden = mode !== 'cube'; $('gridView').hidden = mode !== 'grid';
+  try { localStorage.setItem('cubic-mode', mode); } catch (e) { /* preference only */ }
+}
+function renderHome() { renderCube(); renderGrid(); renderFaceTitle(); renderTeam(); renderSearch(); }
+function renderAll() { if (S.cell) renderArea(); else renderHome(); }
+function queueRender(force) {
+  if (isEditing() && !force) { S.renderQueued = true; return; }
+  if (isEditing() || document.querySelector('.todo.swiping')) return;
+  S.renderQueued = false; renderAll();
+}
+
+/* ── Claude-гүй үед (жишээ нь Vercel): өгөгдлийг зөвхөн энэ хөтөчид хадгална ──
+   Claude-ийн db-тэй ижил хэлбэр: doc/collection, set/delete, onSnapshot. Бусад таб руу
+   `storage` үйл явдлаар дамжина. Хадгалж чадахгүй бол set алдаа шиднэ, save() түүнийг харуулна. */
+function localStore() {
+  const KEY = 'cubic-local-db', ID = 'cubic-local-id';
+  let docs, me;
+  try {
+    docs = new Map(Object.entries(JSON.parse(localStorage.getItem(KEY) || '{}')));
+    me = localStorage.getItem(ID);
+    if (!me) { me = `local-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`; localStorage.setItem(ID, me); }
+  } catch (e) { return null; }
+  const subs = [], meta = { fromCache: false, hasPendingWrites: false };
+  const docSnap = path => ({ id: path.split('/').pop(), exists: docs.has(path), data: () => docs.get(path), metadata: meta });
+  const colSnap = path => ({ docs: [...docs.keys()].filter(k => k.startsWith(path + '/') && !k.slice(path.length + 1).includes('/')).sort().map(docSnap), metadata: meta });
+  const fire = () => subs.forEach(s => s.cb(colSnap(s.path)));
+  const write = next => { localStorage.setItem(KEY, JSON.stringify(Object.fromEntries(next))); docs = next; fire(); };
+  window.addEventListener('storage', e => { if (e.key === KEY) { try { docs = new Map(Object.entries(JSON.parse(e.newValue || '{}'))); fire(); } catch (x) { /* keep what we have */ } } });
+  let n = 0;
+  const doc = path => ({
+    id: path.split('/').pop(),
+    set: async data => { const next = new Map(docs); next.set(path, JSON.parse(JSON.stringify(data))); write(next); },
+    delete: async () => { const next = new Map(docs); next.delete(path); write(next); },
+  });
+  const collection = path => ({
+    doc: id => doc(`${path}/${id || `l${Date.now().toString(36)}${(++n).toString(36)}${Math.random().toString(36).slice(2, 6)}`}`),
+    onSnapshot: cb => { const s = { path, cb }; subs.push(s); setTimeout(() => cb(colSnap(path)), 0); return () => subs.splice(subs.indexOf(s), 1); },
+  });
+  return { db: { doc, collection }, user: { id: async () => me, can: async () => true } };
+}
+
+/* ── Хуваалцсан өгөгдөл ── */
+async function connect() {
+  let db = null, user = null;
+  if (window.claude && window.claude.use) {
+    [db, user] = await Promise.all(['db', 'user'].map(n => window.claude.use(n).catch(() => null)));
+  } else {
+    const local = localStore();
+    if (local) { S.local = true; db = local.db; user = local.user; }
+  }
+  S.db = db; S.user = user;
+  initData();
+  if (!db) { S.canWrite = false; notice(S.local || !window.claude ? 'Энэ хөтөч өгөгдөл хадгалахыг зөвшөөрөхгүй байна. Өөр хөтөчөөр нээнэ үү.' : 'Хуваалцсан өгөгдөл энд нээгдсэнгүй. Claude-д нэвтэрч нээнэ үү.'); renderAll(); return; }
+  if (user) {
+    try { S.me = user.id ? await user.id() : null; } catch (e) { S.me = null; }
+    try { const can = user.can ? await user.can('data.write') : null; if (can === false) { S.canWrite = false; initData(); notice('Та зөвхөн унших эрхтэй. Эзэмшигчээс Contributor эрх хүсээрэй.'); } } catch (e) { /* refused writes decide */ }
+  }
+  const localNote = 'Энэ хуудас өгөгдлийг зөвхөн энэ хөтөч дээр хадгална. Багийн хуваалцсан хувилбар Claude дээр байна. Шилжүүлэхдээ «Өгөгдөл» хэсгийг ашиглана уу.';
+  const slow = setTimeout(() => { if (!S.loaded) notice('Өгөгдөлд холбогдож чадахгүй байна. Харагдаж буй зүйл хуучирсан байж магадгүй.'); }, 10000);
+  const loaded = () => { if (!S.loaded) { S.loaded = true; clearTimeout(slow); if (S.canWrite) notice(S.local ? localNote : ''); } };
+  const failed = () => { clearTimeout(slow); notice('Холболт тасарлаа. Хуудсаа дахин нээнэ үү.'); };
+  db.collection('faces').onSnapshot(snap => {
+    snap.docs.forEach(d => {
+      const m = /^f([0-5])$/.exec(d.id), v = d.data(); if (!m || !v) return;
+      const f = S.faces[+m[1]];
+      if (typeof v.title === 'string' && v.title) f.title = v.title;
+      if (Array.isArray(v.cells)) v.cells.slice(0, 4).forEach((t, c) => { if (typeof t === 'string' && t) f.cells[c] = t; });
+      f.editedAt = +v.editedAt || 0; f.stored = true;
+    });
+    if (!snap.metadata.fromCache) loaded();
+    queueRender();
+  }, failed);
+  db.collection('items').onSnapshot(snap => {
+    S.items = new Map(snap.docs.map(d => [d.id, { id: d.id, ...d.data() }]).filter(([, v]) => typeof v.text === 'string'));
+    if (!snap.metadata.fromCache) loaded();
+    queueRender();
+  }, failed);
+  if (!S.me) { notice('Таныг таньж чадсангүй, тиймээс цаг ажиллахгүй. Claude-д нэвтэрч нээнэ үү.'); return; }
+  db.collection('people').onSnapshot(snap => {
+    const mine = S.people.get(S.me);
+    S.people = new Map(snap.docs.map(d => [d.id, d.data()]).filter(([, v]) => v && member(v.who)));
+    if (mine && snap.metadata.hasPendingWrites) S.people.set(S.me, mine);
+    if (!snap.metadata.fromCache && !S.peopleReady) { S.peopleReady = true; if (!whoOf(S.me)) askWho(); }
+    renderClock(); queueRender();
+  }, failed);
+  let mineSeen = false;
+  db.collection('clock').onSnapshot(snap => {
+    const mine = S.clocks.get(S.me);
+    S.clocks = new Map(snap.docs.map(d => [d.id, d.data()]).filter(([, v]) => v && typeof v === 'object'));
+    if (mine && snap.metadata.hasPendingWrites) S.clocks.set(S.me, mine);
+    if (!snap.metadata.fromCache && !mineSeen) { mineSeen = true; S.clockReady = true; reconcileClock(); }
+    renderClock(); if (!S.cell) renderTeam(); else renderSpaceTime();
+  }, failed);
+}
+
+/* ── Эхлэл ── */
+(function start() {
+  let mode = 'cube';
+  try { mode = localStorage.getItem('cubic-mode') || (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'grid' : 'cube'); } catch (e) { /* default */ }
+  readHash(); initCubeInput(); initCapture(); initClock(); setMode(mode === 'grid' ? 'grid' : 'cube'); route();
+  $('modeCube').addEventListener('click', () => setMode('cube'));
+  $('modeGrid').addEventListener('click', () => setMode('grid'));
+  $('search').addEventListener('input', renderSearch);
+  $('back').addEventListener('click', () => { S.cell = null; setHash(); route(); });
+  $('renameFace').addEventListener('click', () => {
+    const host = $('faceEdit'); host.hidden = false;
+    inlineEdit(host, { value: S.faces[S.face].title, label: 'Талын нэр', onSave: v => renameFace(S.face, v) });
+    new MutationObserver((_, o) => { if (!host.querySelector('[data-editing]')) { host.hidden = true; host.replaceChildren(); o.disconnect(); } }).observe(host, { childList: true });
+  });
+  window.addEventListener('hashchange', () => { readHash(); route(); });
+  document.addEventListener('focusout', () => setTimeout(() => { if (S.renderQueued) queueRender(); }, 50));
+  connect();
+})();
+</script>
+</body>
+</html>
