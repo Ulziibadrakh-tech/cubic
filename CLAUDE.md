@@ -22,6 +22,19 @@ a second artifact for the same workspace: the team's data is tied to this one.
 - Moving data between them is the "Өгөгдөл" export/import. Import only adds
   or updates newer records; it never deletes.
 
+## Working from a phone
+
+The team works mostly from phones, through Claude sessions on this repository.
+
+- Work on a branch and open a pull request; say what changed and how it was
+  checked. Run `tests/check_flow.py` in the session before opening the PR and
+  paste its last line into the PR; there is no CI yet.
+- Merging to `main` redeploys the Vercel copy by itself. The Claude artifact
+  (the team's shared data) is separate: republish `index.html` to it after the
+  merge, as described above.
+- For any visible change, attach phone-sized screenshots to the PR
+  (`py tests/check_flow.py - shots` writes them) so it can be judged on a phone.
+
 ## Before changing the page
 
 1. Run `py dev/serve.py` and `py tests/check_flow.py`. All checks must pass
@@ -61,8 +74,17 @@ strings, so routing uses `#f2` and `#f2-c1`.
 ## Product stance
 
 - Three skilled people: Vida, Anand, Obama (`TEAM` in `index.html`).
-- A space is a plain to-do list for now: short lines, tick, owner, swipe to
-  delete. No due dates, priorities or required fields.
+- A space is a plain to-do list: short lines, tick, owner, swipe to delete.
+  No due dates, priorities or required fields.
+- Sides: Pilots, Plan, Technology, Marketing, Business & Finance, Branding
+  (`DEFAULT_FACES`). Side and space names are English; to-do text is Mongolian.
+- A to-do may wait for others: `deps` is a list of item ids. Status is always
+  derived by `flow()` (done / blocked / blocking / open), never stored.
+  `wouldLoop()` must guard every place that adds a dependency.
+- Two Plan spaces are views, not lists (`isViewCell`): `f1-c0` Timeline and
+  `f1-c3` Dependency graph. Milestones are the to-dos in `f1-c1`; a leading
+  `MM/DD` in the text is the date the Timeline sorts by.
+- Status is written in words and a mark, never by colour alone.
 - Screen text and seeded content are Mongolian. Keep lines short.
 - The cube should feel physical: free drag, momentum, a soft settle. Do not
   replace it with fixed step animations.

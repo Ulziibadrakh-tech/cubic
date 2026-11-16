@@ -21,11 +21,14 @@ the order the rest would come in. Nothing below is committed to a date.
 | Export / import (JSON, CSV), move a to-do, paste many lines | Done |
 | Swiss visual style, both themes | Done |
 | Vercel copy (browser-only data) | Done; shared data stays in the artifact |
+| Dependencies between to-dos, derived blocked / blocking status | Done |
+| Dependency graph and milestone timeline (Plan side) | Done |
 
 ## Decided against, for a team of three
 
 - Roles and per-record permissions. Sharing level on the page is the only gate.
-- Due dates, priorities and checklists. To-dos have only text, owner and done.
+- Due dates, priorities and checklists. To-dos have text, owner, done and what
+  they wait for. A milestone's date is the `MM/DD` at the start of its text.
 - Completion percentages for sides or the cube.
 
 Revisit if the team grows or outside people are invited.
@@ -36,10 +39,8 @@ Revisit if the team grows or outside people are invited.
    change, restaurant, number to watch, result, decision.
 2. **Activity history.** Keep earlier versions of an entry so an edit can be
    reviewed, not only the last editor.
-3. **Timeline.** Decisions, settled bets and experiments on one line of time.
-4. **Time corrections.** Let a person fix a day's total, with a reason kept.
-5. **Dependencies and blocked time.** Only if work starts waiting on work.
-6. **Notifications.** In-page first.
+3. **Time corrections.** Let a person fix a day's total, with a reason kept.
+4. **Notifications.** In-page first.
 
 ## Later
 

@@ -117,3 +117,12 @@ the viewer's local date.
 - Anyone with Contributor access can edit any entry, including another
   person's timer document. Fine for three people who trust each other.
 - Not yet tested with two real people editing at the same moment.
+
+## Plan side: dependencies, graph, timeline
+
+- Edit a to-do and use "Хүлээж буй ажил" to say what it waits for.
+- `Plan › Dependency graph` draws every linked to-do left to right and counts
+  done, open, blocked and blocking. Tap a node to see its chain. The same is
+  listed below as "can start now" and "blocked".
+- `Plan › Milestones` holds the milestones (start the text with `MM/DD`).
+  `Plan › Timeline` shows each one with progress over everything it waits for.

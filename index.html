@@ -230,6 +230,52 @@ select.field { padding: 8px 10px; font-size: 14px; }
 .plan { list-style: none; margin: 0; padding: 0; border-top: var(--rule) solid var(--line); }
 .plan li { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--hair); font-size: 14px; }
 .plan b { font-variant-numeric: tabular-nums; }
+
+/* Dependencies: status is always written out, never colour alone */
+.flow-tag { font-size: 12px; font-weight: 700; letter-spacing: .01em; }
+.flow-tag.blocked { color: var(--bad); }
+.flow-tag.blocking { color: var(--away); }
+.dep-edit { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; border-top: 1px solid var(--hair); padding-top: 8px; }
+.dep-label { flex: 1 1 100%; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); }
+.dep-chip { display: inline-flex; align-items: center; gap: 4px; background: var(--sunk); padding: 4px 4px 4px 10px; font-size: 13px; }
+.dep-chip button { border: 0; background: transparent; width: 28px; height: 28px; color: var(--ink-2); }
+.dep-edit .field { flex: 1 1 100%; }
+#planView { display: flex; flex-direction: column; gap: 16px; }
+.gfilters { display: grid; grid-template-columns: repeat(5, 1fr); border: var(--rule) solid var(--line); }
+.gfilter { border: 0; border-right: 1px solid var(--hair); background: var(--bg); padding: 8px 4px; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+.gfilter:last-child { border-right: 0; }
+.gfilter b { font-family: var(--display); font-weight: 900; font-size: 24px; line-height: 1; font-variant-numeric: tabular-nums; }
+.gfilter span { font-size: 11px; font-weight: 700; text-align: center; overflow-wrap: anywhere; }
+.gfilter[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.gfilter.s-blocked b { color: var(--bad); } .gfilter.s-blocking b { color: var(--away); } .gfilter.s-done b { color: var(--good); }
+.gfilter[aria-pressed="true"] b { color: inherit; }
+.graph-scroll { overflow: auto; border: var(--rule) solid var(--line); padding: 14px; max-height: 68vh; background: var(--sunk); -webkit-overflow-scrolling: touch; }
+.graph-canvas { position: relative; }
+.gedges { position: absolute; left: 0; top: 0; overflow: visible; }
+.gedge { fill: none; stroke: var(--ink-2); stroke-width: 1; opacity: .55; }
+.gedge.live { stroke: var(--bad); stroke-width: 2.5; opacity: 1; }
+.gedge.dim { opacity: .12; }
+.gnode { position: absolute; text-align: left; background: var(--bg); color: var(--ink); border: var(--rule) solid var(--ink); border-left-width: 8px; padding: 5px 8px; display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
+.gnode small { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gnode span { font-size: 12.5px; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.gnode.s-done { border-color: var(--good); color: var(--ink-2); } .gnode.s-done span { text-decoration: line-through; }
+.gnode.s-blocked { border-style: dashed; border-color: var(--bad); border-left-style: solid; }
+.gnode.s-blocking { border-color: var(--away); box-shadow: 4px 4px 0 var(--away); }
+.gnode.s-open { border-color: var(--ink); }
+.gnode.ms { font-weight: 700; background: var(--ink); color: var(--bg); }
+.gnode.ms.s-done { background: var(--good); color: #fff; }
+.gnode.dim { opacity: .22; }
+.gnode.picked { outline: 3px solid var(--accent); outline-offset: 2px; }
+.gdetail { display: flex; flex-direction: column; gap: 6px; }
+.tl { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border-top: var(--rule) solid var(--line); }
+.tl-stone { padding: 14px 0 16px; border-bottom: 1px solid var(--hair); display: flex; flex-direction: column; gap: 8px; }
+.tl-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.tl-head b { font-family: var(--display); font-weight: 800; font-size: 19px; letter-spacing: -.02em; text-wrap: balance; }
+.tl-when { font-size: 13px; font-weight: 700; white-space: nowrap; }
+.tl-stone.late .tl-when { color: var(--bad); } .tl-stone.done .tl-when { color: var(--good); }
+.tl-bar { height: 10px; border: var(--rule) solid var(--line); }
+.tl-bar span { display: block; height: 100%; background: var(--ink); }
+.tl-stone.done .tl-bar span { background: var(--good); }
 </style>
 </head>
 <body>
@@ -328,6 +374,7 @@ select.field { padding: 8px 10px; font-size: 14px; }
         <p class="err" id="captureErr" hidden></p>
       </form>
       <ul class="items" id="items"></ul>
+      <div id="planView" hidden></div>
       <p class="empty" id="itemsEmpty" hidden>Одоогоор ажил алга.</p>
       <p class="fine" id="swipeHint">Мөрийг хажуу тийш чирж устгана. Үсэгтэй тэмдэг дээр дарж хариуцагчийг солино. Бичвэр дээр дарж засна, өөр нүд рүү зөөнө. Олон мөр буулгавал мөр бүр тусдаа ажил болно.</p>
     </div>
@@ -339,13 +386,17 @@ select.field { padding: 8px 10px; font-size: 14px; }
 'use strict';
 /* ── Анхны бүтэц. Хуваалцсан хувилбар ачаалагдах хүртэл үүнийг харуулна; бүх нэр засагдана. ── */
 const DEFAULT_FACES = [
-  { title: 'Пилот', icon: '◎', cells: ['Ресторан 1', 'Ресторан 2', 'Туршилт', 'Санал хүсэлт'] },
-  { title: 'Төлөвлөгөө', icon: '➤', cells: ['Одоо', 'Дараа нь', 'Хожим', 'Шалгуур'] },
-  { title: 'Судалгаа', icon: '◇', cells: ['Өрсөлдөгч', 'Зочин', 'Эзэн', 'Санаа'] },
-  { title: 'Маркетинг', icon: '✦', cells: ['Байршуулалт', 'Танилцуулга', 'Суваг', 'Брэнд'] },
-  { title: 'Бизнес', icon: '▤', cells: ['Үнэ', 'Зардал', 'Хууль', 'Хөрөнгө оруулалт'] },
-  { title: 'Техник', icon: '⌘', cells: ['Зочны апп', 'Хөдөлгүүр', 'Платформ', 'Өгөгдөл'] },
+  { title: 'Pilots', icon: '◎', cells: ['Ресторан 1', 'Ресторан 2', 'Туршилт', 'Санал хүсэлт'] },
+  { title: 'Plan', icon: '➤', cells: ['Timeline', 'Milestones', 'Roadmap', 'Dependency graph'] },
+  { title: 'Technology', icon: '⌘', cells: ['Tech Stack', 'System Design', 'API Documentation', 'Cybersecurity'] },
+  { title: 'Marketing', icon: '✦', cells: ['Slogans', 'Social Media Accounts', 'Posts & Descriptions', 'Content Calendar'] },
+  { title: 'Business & Finance', icon: '▤', cells: ['Business Model', 'Stakeholders', 'Equity', 'Contracts'] },
+  { title: 'Branding', icon: '◇', cells: ['Brand Book', 'UI/UX', 'Design Templates', 'Etc.'] },
 ];
+/* Two spaces on the Plan side are views over every to-do, not lists of their own.
+   Milestones are the to-dos kept in the Milestones space; the Timeline reads them. */
+const TIMELINE_CELL = 'f1-c0', MILESTONE_CELL = 'f1-c1', GRAPH_CELL = 'f1-c3';
+const isViewCell = k => k === TIMELINE_CELL || k === GRAPH_CELL;
 /* The team. `who` on a to-do and in people/<id> is one of these ids. */
 const TEAM = [{ id: 'vida', name: 'Vida' }, { id: 'anand', name: 'Anand' }, { id: 'obama', name: 'Obama' }];
 const member = id => TEAM.find(m => m.id === id) || null;
@@ -409,20 +460,45 @@ function cellPicker(current) {
   const sel = el('select', { class: 'field', 'aria-label': 'Нүд' });
   S.faces.forEach((face, f) => {
     const g = el('optgroup', { label: `${num(f + 1)} ${face.title}` });
-    face.cells.forEach((t, c) => { const o = el('option', { value: cellKey(f, c), text: `${cellNum(f, c)} ${t}` }); if (cellKey(f, c) === current) o.selected = true; g.append(o); });
+    face.cells.forEach((t, c) => {
+      if (isViewCell(cellKey(f, c))) return;
+      const o = el('option', { value: cellKey(f, c), text: `${cellNum(f, c)} ${t}` }); if (cellKey(f, c) === current) o.selected = true; g.append(o);
+    });
     sel.append(g);
   });
   return sel;
 }
-function inlineEdit(host, { value, label, onSave, cell }) {
+/* "Хүлээж буй ажил": the to-dos this one cannot start before. Offers only choices that make no loop. */
+function depEditor(itemId, chosen) {
+  const box = el('div', { class: 'dep-edit' });
+  const draw = () => {
+    const chips = chosen.filter(d => S.items.has(d)).map(d => el('span', { class: 'dep-chip' }, [
+      el('span', { text: short(S.items.get(d).text, 36) }),
+      el('button', { type: 'button', 'aria-label': `Хасах: ${S.items.get(d).text}`, text: '✕', onclick: () => { chosen.splice(chosen.indexOf(d), 1); draw(); } })]));
+    const sel = el('select', { class: 'field', 'aria-label': 'Хүлээх ажил нэмэх' }, el('option', { value: '', text: '＋ Хүлээх ажил нэмэх' }));
+    S.faces.forEach((face, f) => face.cells.forEach((t, c) => {
+      const opts = [...S.items.values()].filter(i => i.cell === cellKey(f, c) && !chosen.includes(i.id) && !wouldLoop(itemId, i.id))
+        .sort((x, y) => (y.at || 0) - (x.at || 0));
+      if (!opts.length) return;
+      sel.append(el('optgroup', { label: `${face.title} › ${t}` }, opts.map(i => el('option', { value: i.id, text: `${i.done ? '✓ ' : ''}${short(i.text, 60)}` }))));
+    }));
+    sel.addEventListener('change', () => { if (sel.value) { chosen.push(sel.value); draw(); } });
+    box.replaceChildren(el('span', { class: 'dep-label', text: 'Хүлээж буй ажил' }), ...chips, sel);
+  };
+  draw();
+  return box;
+}
+function inlineEdit(host, { value, label, onSave, cell, itemId }) {
   if (!S.canWrite) return;
   const input = el('input', { class: 'field', 'aria-label': label, maxlength: '200' });
   input.value = value;
   const picker = cell ? cellPicker(cell) : null;
+  const before = itemId ? depsOf(S.items.get(itemId) || {}) : [], chosen = before.slice();
+  const depBox = itemId ? depEditor(itemId, chosen) : null;
   const err = el('p', { class: 'err', hidden: true });
   const saveBtn = el('button', { class: 'btn', type: 'button', text: 'Хадгалах' });
   const cancelBtn = el('button', { class: 'btn ghost', type: 'button', text: 'Болих' });
-  const row = el('div', { class: 'edit-row', 'data-editing': '1' }, [input, picker, saveBtn, cancelBtn, err]);
+  const row = el('div', { class: 'edit-row', 'data-editing': '1' }, [input, picker, depBox, saveBtn, cancelBtn, err]);
   const original = [...host.childNodes];
   host.replaceChildren(row);
   input.focus(); input.select();
@@ -430,9 +506,10 @@ function inlineEdit(host, { value, label, onSave, cell }) {
   const commit = async () => {
     const v = input.value.trim(), to = picker ? picker.value : null;
     if (!v) { err.hidden = false; err.textContent = 'Хоосон байж болохгүй.'; return; }
-    if (v === value && (!picker || to === cell)) return close();
+    const depsSame = before.length === chosen.length && before.every(d => chosen.includes(d));
+    if (v === value && (!picker || to === cell) && depsSame) return close();
     saveBtn.disabled = true;
-    const ok = await onSave(v, to);
+    const ok = await onSave(v, to, chosen.slice());
     saveBtn.disabled = false;
     if (ok) close(); else { err.hidden = false; err.textContent = 'Хадгалж чадсангүй. Бичсэн зүйл тань хэвээр байна.'; }
   };
@@ -453,7 +530,7 @@ function saveFace(f) {
 }
 function renameFace(f, title) { const old = S.faces[f].title; S.faces[f].title = title; return saveFace(f).then(ok => { if (!ok) S.faces[f].title = old; renderAll(); return ok; }); }
 function renameCell(f, c, title) { const old = S.faces[f].cells[c]; S.faces[f].cells[c] = title; return saveFace(f).then(ok => { if (!ok) S.faces[f].cells[c] = old; renderAll(); return ok; }); }
-const newItem = (text, at) => ({ cell: S.cell, text, url: '', who: '', done: false, by: S.me || null, at, ...stamp() });
+const newItem = (text, at) => ({ cell: S.cell, text, url: '', who: '', done: false, deps: [], by: S.me || null, at, ...stamp() });
 function addItem(text) {
   const ref = S.db.collection('items').doc();
   return save(() => ref.set(newItem(text, Date.now())));
@@ -470,10 +547,10 @@ function patchItem(id, patch) {
   const { id: _omit, ...body } = cur;
   return save(() => S.db.doc(`items/${id}`).set({ ...body, ...patch, ...stamp() }));
 }
-function moveItem(id, text, to) {
+function moveItem(id, text, to, deps) {
   const cur = S.items.get(id); if (!cur) return Promise.resolve(false);
   const from = cur.cell;
-  return patchItem(id, { text, cell: to }).then(ok => {
+  return patchItem(id, { text, cell: to, deps: Array.isArray(deps) ? deps : depsOf(cur) }).then(ok => {
     if (ok && to !== from) toast(`«${whereIs(to)}» руу зөөлөө.`, () => patchItem(id, { cell: from }));
     return ok;
   });
@@ -487,7 +564,43 @@ function removeItem(id) {
   });
 }
 
+/* ── Хамаарал: ажил бүр `deps` (хүлээж буй ажлуудын id) хадгална. Төлөвийг эндээс тооцно. ──
+   done     дууссан
+   blocked  дуусаагүй, хүлээж буй ажлын аль нэг нь дуусаагүй
+   blocking дуусаагүй, өөрөө гацаагүй, гэхдээ өөр дуусаагүй ажил үүнийг хүлээж байгаа
+   open     дуусаагүй, хэнийг ч хүлээхгүй, хэнийг ч гацаахгүй */
+const STATE = { done: 'Дууссан', open: 'Нээлттэй', blocked: 'Гацсан', blocking: 'Гацааж буй' };
+const STATE_MARK = { done: '✓', open: '○', blocked: '■', blocking: '▶' };
+const depsOf = i => (Array.isArray(i.deps) ? i.deps : []).filter(d => d !== i.id && S.items.has(d));
+function flow() {
+  const st = new Map();
+  S.items.forEach(i => st.set(i.id, { waits: [], holds: [], state: 'open' }));
+  S.items.forEach(i => depsOf(i).forEach(d => {
+    if (!i.done && !S.items.get(d).done) { st.get(i.id).waits.push(d); st.get(d).holds.push(i.id); }
+  }));
+  S.items.forEach(i => { const x = st.get(i.id); x.state = i.done ? 'done' : x.waits.length ? 'blocked' : x.holds.length ? 'blocking' : 'open'; });
+  return st;
+}
+/* Everything `id` waits for, directly or through other to-dos. */
+function upstream(id, seen = new Set()) {
+  const i = S.items.get(id); if (!i) return seen;
+  depsOf(i).forEach(d => { if (!seen.has(d)) { seen.add(d); upstream(d, seen); } });
+  return seen;
+}
+function downstream(id) {
+  const rev = new Map();
+  S.items.forEach(i => depsOf(i).forEach(d => { if (!rev.has(d)) rev.set(d, []); rev.get(d).push(i.id); }));
+  const seen = new Set(), walk = x => (rev.get(x) || []).forEach(n => { if (!seen.has(n)) { seen.add(n); walk(n); } });
+  walk(id); return seen;
+}
+/* A to-do may not wait for something that already waits for it. */
+const wouldLoop = (id, candidate) => candidate === id || upstream(candidate).has(id);
+const short = (t, n = 44) => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
+
 function countFor(key) {
+  if (key === GRAPH_CELL) { let b = 0; flow().forEach(x => { if (x.state === 'blocked') b += 1; }); return b ? `${b} гацсан` : 'Гацсан ажилгүй'; }
+  if (key === TIMELINE_CELL) { let m = 0; S.items.forEach(i => { if (i.cell === MILESTONE_CELL && !i.done) m += 1; }); return m ? `${m} шалгуур үлдсэн` : 'Шалгуургүй'; }
+
   let n = 0, open = 0;
   S.items.forEach(i => { if (i.cell === key) { n += 1; if (!i.done) open += 1; } });
   return n === 0 ? 'Хоосон' : open ? `${open} үлдсэн` : 'Бүгд дууссан';
@@ -654,8 +767,16 @@ function renderArea() {
     onclick: () => inlineEdit(box, { value: face.cells[c], label: 'Нүдний нэр', onSave: v => renameCell(f, c, v) }) }));
   else h.textContent = face.cells[c];
   box.replaceChildren(h);
-  $('capture').hidden = !S.canWrite;
+  const view = isViewCell(S.cell);
+  $('capture').hidden = !S.canWrite || view;
+  $('items').hidden = view; $('planView').hidden = !view;
   renderSpaceTime();
+  if (view) {
+    $('itemsEmpty').hidden = true; $('swipeHint').hidden = true;
+    if (S.cell === GRAPH_CELL) renderGraph(); else renderTimeline();
+    return;
+  }
+  const fl = flow();
 
   const list = [...S.items.values()].filter(i => i.cell === S.cell)
     .sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0) || (b.at || 0) - (a.at || 0));
@@ -668,9 +789,12 @@ function renderArea() {
     const textHost = el('div');
     textHost.append(S.canWrite
       ? el('button', { type: 'button', class: 'editable item-text', text: i.text, title: 'Засах',
-          onclick: () => inlineEdit(textHost, { value: i.text, label: 'Ажлыг засах', cell: i.cell, onSave: (v, to) => moveItem(i.id, v, to) }) })
+          onclick: () => inlineEdit(textHost, { value: i.text, label: 'Ажлыг засах', cell: i.cell, itemId: i.id, onSave: (v, to, deps) => moveItem(i.id, v, to, deps) }) })
       : el('span', { class: 'item-text', text: i.text }));
     main.append(textHost);
+    const x = fl.get(i.id);
+    if (x && x.state === 'blocked') main.append(el('span', { class: 'flow-tag blocked', text: `■ Гацсан · ${short(S.items.get(x.waits[0]).text, 34)}${x.waits.length > 1 ? ` +${x.waits.length - 1}` : ''}` }));
+    else if (x && x.state === 'blocking') main.append(el('span', { class: 'flow-tag blocking', text: `▶ ${x.holds.length} ажлыг гацааж буй` }));
     if (i.url && /^https?:\/\//i.test(i.url)) main.append(el('a', { href: i.url, target: '_blank', rel: 'noopener', text: 'Нээх ↗' }));
     const m = member(i.who);
     const who = el(S.canWrite ? 'button' : 'span', { class: 'who', 'data-who': i.who || '', text: m ? m.name[0] : '+',
@@ -824,7 +948,7 @@ function initClock() {
    Гаргах: бүх цуглуулгыг нэг JSON-д (дахин оруулж болно), эсвэл ажлуудыг CSV-д.
    Оруулах: эхлээд юу өөрчлөгдөхийг харуулна. Юуг ч устгахгүй. Ижил id-тай ажил,
    талын нэр зөвхөн оруулж буй нь шинэ бол солигдоно. Хүн, цаг зөвхөн байхгүй бол нэмэгдэнэ. */
-const ITEM_FIELDS = ['cell', 'text', 'url', 'who', 'done', 'by', 'at', 'editedBy', 'editedAt'];
+const ITEM_FIELDS = ['cell', 'text', 'url', 'who', 'done', 'deps', 'by', 'at', 'editedBy', 'editedAt'];
 const todayStamp = () => dayKey(Date.now());
 function exportData() {
   const items = [...S.items.values()].map(({ id, ...v }) => ({ id, ...v }));
@@ -862,6 +986,7 @@ function cleanItem(v) {
   const n = x => (Number.isFinite(+x) && +x > 0 ? +x : 0);
   return { cell: v.cell, text: v.text.trim().slice(0, 500), url: typeof v.url === 'string' ? v.url : '',
     who: member(String(v.who || '').toLowerCase()) ? String(v.who).toLowerCase() : '', done: v.done === true || v.done === 1 || v.done === '1' || v.done === 'true',
+    deps: Array.isArray(v.deps) ? v.deps.filter(d => typeof d === 'string' && d).slice(0, 40) : [],
     by: v.by || null, at: n(v.at) || Date.now(), editedBy: v.editedBy || null, editedAt: n(v.editedAt) };
 }
 /* Reads a JSON export or a CSV, returns what it holds. Throws a plain message when it cannot. */
@@ -898,7 +1023,7 @@ function readImport(text) {
 }
 function planImport(d) {
   const plan = { add: [], update: [], same: 0, older: 0, faces: [], people: [], clock: [] };
-  const sameItem = (a, b) => ITEM_FIELDS.filter(k => !['editedAt', 'editedBy', 'by', 'at'].includes(k)).every(k => (a[k] ?? '') === (b[k] ?? ''));
+  const sameItem = (a, b) => ITEM_FIELDS.filter(k => !['editedAt', 'editedBy', 'by', 'at'].includes(k)).every(k => (k === 'deps' ? JSON.stringify(a.deps || []) === JSON.stringify(b.deps || []) : (a[k] ?? '') === (b[k] ?? '')));
   d.items.forEach(({ id, body }) => {
     const cur = id && S.items.get(id);
     if (!cur) plan.add.push({ id, body });
@@ -974,6 +1099,128 @@ function initData() {
     if (file.size > 5 * 1024 * 1024) { $('importErr').hidden = false; $('importErr').textContent = 'Файл хэт том байна.'; return; }
     try { checkImport(await file.text()); } catch (x) { $('importErr').hidden = false; $('importErr').textContent = 'Файлыг уншиж чадсангүй.'; }
   });
+}
+
+/* ── Dependency graph: зүүнээс баруун тийш, хүлээж буй ажил нь зүүн талдаа ── */
+const G = { W: 172, H: 62, GX: 46, GY: 10, filter: 'all', pick: null };
+function graphLayout() {
+  const nodes = [...S.items.values()].filter(i => depsOf(i).length || [...S.items.values()].some(o => depsOf(o).includes(i.id)));
+  const ids = new Set(nodes.map(n => n.id)), level = new Map();
+  const lev = (id, trail = new Set()) => {
+    if (level.has(id)) return level.get(id);
+    if (trail.has(id)) return 0;
+    trail.add(id);
+    const ds = depsOf(S.items.get(id)).filter(d => ids.has(d));
+    const v = ds.length ? 1 + Math.max(...ds.map(d => lev(d, trail))) : 0;
+    level.set(id, v); return v;
+  };
+  nodes.forEach(n => lev(n.id));
+  const cols = [];
+  nodes.forEach(n => { const l = level.get(n.id); (cols[l] = cols[l] || []).push(n); });
+  const row = new Map();
+  cols.forEach((col, l) => {
+    const centre = n => { const ds = depsOf(n).filter(d => row.has(d)); return ds.length ? ds.reduce((t, d) => t + row.get(d), 0) / ds.length : 1e6; };
+    if (l === 0) col.sort((a, b) => (a.cell > b.cell ? 1 : a.cell < b.cell ? -1 : (b.at || 0) - (a.at || 0)));
+    else col.sort((a, b) => centre(a) - centre(b) || (a.cell > b.cell ? 1 : -1));
+    col.forEach((n, k) => row.set(n.id, k));
+  });
+  const pos = new Map();
+  cols.forEach((col, l) => col.forEach((n, k) => pos.set(n.id, { x: l * (G.W + G.GX), y: k * (G.H + G.GY) })));
+  const tall = Math.max(1, ...cols.map(c => (c ? c.length : 0)));
+  return { nodes, pos, w: cols.length * (G.W + G.GX) - G.GX, h: tall * (G.H + G.GY) - G.GY, loose: S.items.size - nodes.length };
+}
+function renderGraph() {
+  const host = $('planView'), old = host.querySelector('.graph-scroll');
+  const keep = old ? { x: old.scrollLeft, y: old.scrollTop } : null;
+  const fl = flow(), lay = graphLayout();
+  if (G.pick && !S.items.has(G.pick)) G.pick = null;
+  const tally = { all: S.items.size, done: 0, open: 0, blocked: 0, blocking: 0 };
+  fl.forEach(x => { tally[x.state] += 1; });
+  const filters = el('div', { class: 'gfilters', role: 'group', 'aria-label': 'Төлөвөөр шүүх' }, [['all', 'Бүгд'], ['blocking', STATE.blocking], ['blocked', STATE.blocked], ['open', STATE.open], ['done', STATE.done]].map(([k, label]) =>
+    el('button', { type: 'button', class: `gfilter s-${k}`, 'aria-pressed': String(G.filter === k), onclick: () => { G.filter = k; renderGraph(); } },
+      [el('b', { text: String(tally[k]) }), el('span', { text: `${STATE_MARK[k] ? STATE_MARK[k] + ' ' : ''}${label}` })])));
+
+  const chain = G.pick ? new Set([G.pick, ...upstream(G.pick), ...downstream(G.pick)]) : null;
+  const dim = n => (chain ? !chain.has(n.id) : G.filter !== 'all' && fl.get(n.id).state !== G.filter);
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('width', lay.w); svg.setAttribute('height', lay.h); svg.setAttribute('class', 'gedges'); svg.setAttribute('aria-hidden', 'true');
+  lay.nodes.forEach(n => depsOf(n).forEach(d => {
+    const a = lay.pos.get(d), b = lay.pos.get(n.id); if (!a || !b) return;
+    const x1 = a.x + G.W, y1 = a.y + G.H / 2, x2 = b.x, y2 = b.y + G.H / 2, mx = (x1 + x2) / 2;
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`);
+    const live = !S.items.get(d).done && !n.done;
+    path.setAttribute('class', `gedge${live ? ' live' : ''}${chain && !(chain.has(d) && chain.has(n.id)) ? ' dim' : ''}`);
+    svg.append(path);
+  }));
+  const canvas = el('div', { class: 'graph-canvas', style: `width:${lay.w}px;height:${lay.h}px` }, svg);
+  lay.nodes.forEach(n => {
+    const p = lay.pos.get(n.id), x = fl.get(n.id);
+    canvas.append(el('button', { type: 'button', class: `gnode s-${x.state}${n.cell === MILESTONE_CELL ? ' ms' : ''}${dim(n) ? ' dim' : ''}${G.pick === n.id ? ' picked' : ''}`,
+      style: `left:${p.x}px;top:${p.y}px;width:${G.W}px;height:${G.H}px`, 'aria-label': `${STATE[x.state]}: ${n.text}`,
+      onclick: () => { G.pick = G.pick === n.id ? null : n.id; renderGraph(); } },
+      [el('small', { text: `${STATE_MARK[x.state]} ${STATE[x.state]}${member(n.who) ? ' · ' + member(n.who).name : ''}` }), el('span', { text: n.text })]));
+  });
+  const scroll = el('div', { class: 'graph-scroll', tabindex: '0', 'aria-label': 'Хамаарлын граф. Хажуу тийш гүйлгэнэ.' }, canvas);
+
+  let detail = null;
+  if (G.pick) {
+    const n = S.items.get(G.pick), x = fl.get(G.pick);
+    const names = arr => arr.map(d => short(S.items.get(d).text, 40)).join(' · ');
+    detail = el('div', { class: 'note gdetail' }, [
+      el('b', { text: n.text }),
+      el('span', { text: `${STATE[x.state]} · ${whereIs(n.cell)}` }),
+      x.waits.length ? el('span', { text: `Хүлээж буй: ${names(x.waits)}` }) : null,
+      x.holds.length ? el('span', { text: `Гацааж буй: ${names(x.holds)}` }) : null,
+      el('div', { class: 'btns' }, [el('button', { type: 'button', class: 'btn', text: 'Нүдийг нээх', onclick: () => openKey(n.cell) }),
+        el('button', { type: 'button', class: 'btn ghost', text: 'Сонголтыг болих', onclick: () => { G.pick = null; renderGraph(); } })])]);
+  }
+  /* The same information as lists: what can start now (most blocking first), and what is stuck on what. */
+  const undone = [...S.items.values()].filter(i => !i.done);
+  const ready = undone.filter(i => fl.get(i.id).state !== 'blocked' && (depsOf(i).length || fl.get(i.id).holds.length))
+    .map(i => ({ i, n: [...downstream(i.id)].filter(d => !S.items.get(d).done).length })).sort((a, b) => b.n - a.n).slice(0, 12);
+  const stuck = undone.filter(i => fl.get(i.id).state === 'blocked');
+  const line = (i, sub) => el('li', {}, el('button', { type: 'button', onclick: () => openKey(i.cell) }, [el('b', { text: i.text }), el('small', { text: sub })]));
+  host.replaceChildren(...[
+    filters, detail,
+    lay.nodes.length ? scroll : el('p', { class: 'empty', text: 'Одоогоор хамаарал алга. Ажлыг засахдаа «Хүлээж буй ажил» нэмнэ үү.' }),
+    el('p', { class: 'fine', text: `Зүүн талын ажил дуусаж байж баруун талынх эхэлнэ. Зузаан шугам: одоо гацааж буй холбоос. Ажил дээр дарвал түүний гинжийг тодруулна.${lay.loose ? ` Хамааралгүй ${lay.loose} ажил графт ороогүй.` : ''}` }),
+    el('section', { class: 'card' }, [el('h2', { class: 'label', 'data-n': '▶', text: 'Одоо эхлэх боломжтой' }),
+      el('ul', { class: 'recent' }, ready.length ? ready.map(({ i, n }) => line(i, `${whereIs(i.cell)}${n ? ` · ${n} ажлыг нээнэ` : ''}${member(i.who) ? ' · ' + member(i.who).name : ''}`)) : [el('li', {}, el('p', { class: 'empty', text: 'Алга.' }))])]),
+    el('section', { class: 'card' }, [el('h2', { class: 'label', 'data-n': '■', text: 'Гацсан' }),
+      el('ul', { class: 'recent' }, stuck.length ? stuck.map(i => line(i, `Хүлээж буй: ${fl.get(i.id).waits.map(d => short(S.items.get(d).text, 30)).join(' · ')}`)) : [el('li', {}, el('p', { class: 'empty', text: 'Алга.' }))])])].filter(Boolean));
+  if (keep) { const now = host.querySelector('.graph-scroll'); if (now) { now.scrollLeft = keep.x; now.scrollTop = keep.y; } }
+}
+
+/* ── Timeline: шалгуур (milestone) бүр, түүнд хүрэхэд үлдсэн ажил ── */
+function milestoneDate(text) {
+  const m = /^\s*(\d{1,2})\s*[\/.]\s*(\d{1,2})/.exec(text); if (!m) return null;
+  const d = new Date(new Date().getFullYear(), +m[1] - 1, +m[2]); return Number.isNaN(d.getTime()) ? null : d;
+}
+function renderTimeline() {
+  const fl = flow(), today = new Date(); today.setHours(0, 0, 0, 0);
+  const stones = [...S.items.values()].filter(i => i.cell === MILESTONE_CELL)
+    .map(i => ({ i, date: milestoneDate(i.text) })).sort((a, b) => (a.date ? a.date.getTime() : 9e15) - (b.date ? b.date.getTime() : 9e15) || (a.i.at || 0) - (b.i.at || 0));
+  const host = $('planView');
+  if (!stones.length) { host.replaceChildren(el('p', { class: 'empty', text: 'Milestones нүдэнд шалгуур нэмбэл энд цагийн дарааллаар харагдана. Эхэнд нь огноо бичнэ: 11/22 · …' })); return; }
+  const shown = new Set();   /* a to-do is listed under the first milestone that needs it */
+  host.replaceChildren(el('ol', { class: 'tl' }, stones.map(({ i, date }) => {
+    const need = [...upstream(i.id)].map(d => S.items.get(d));
+    const done = need.filter(n => n.done).length, blocked = need.filter(n => fl.get(n.id).state === 'blocked').length;
+    const ready = need.filter(n => !n.done && fl.get(n.id).state !== 'blocked');
+    const fresh = ready.filter(n => !shown.has(n.id)); ready.forEach(n => shown.add(n.id));
+    const days = date ? Math.round((date - today) / 86400000) : null;
+    const complete = i.done || (need.length > 0 && done === need.length);
+    const when = i.done ? '✓ Хүрсэн' : days === null ? 'Огноогүй' : days < 0 ? `${-days} хоног хэтэрсэн` : days === 0 ? 'Өнөөдөр' : `${days} хоног үлдсэн`;
+    const pct = need.length ? Math.round(done / need.length * 100) : (i.done ? 100 : 0);
+    return el('li', { class: `tl-stone${i.done ? ' done' : ''}${!i.done && days !== null && days < 0 ? ' late' : ''}` }, [
+      el('div', { class: 'tl-head' }, [el('b', { text: i.text }), el('span', { class: 'tl-when', text: when })]),
+      el('div', { class: 'tl-bar', role: 'img', 'aria-label': `${need.length}-аас ${done} дууссан` }, el('span', { style: `width:${pct}%` })),
+      el('p', { class: 'fine', text: need.length ? `${need.length}-аас ${done} дууссан · ${blocked} гацсан · ${ready.length} эхлэх боломжтой${complete && !i.done ? ' · бүх ажил дууссан, шалгуураа тэмдэглэнэ үү' : ''}` : 'Энэ шалгуурт ажил холбоогүй байна.' }),
+      fresh.length ? el('ul', { class: 'recent' }, fresh.slice(0, 6).map(n => el('li', {}, el('button', { type: 'button', onclick: () => openKey(n.cell) },
+        [el('b', { text: n.text }), el('small', { text: `${whereIs(n.cell)}${member(n.who) ? ' · ' + member(n.who).name : ''}` })])))) : null,
+    ]);
+  })));
 }
 
 /* ── Чиглүүлэлт: #f2 бол тал, #f2-c1 бол нүд ── */
