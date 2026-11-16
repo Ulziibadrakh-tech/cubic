@@ -333,6 +333,7 @@ select.field { padding: 8px 10px; font-size: 14px; }
           <section>
             <h4>Гаргах</h4>
             <p class="fine">Бүх тал, нүд, ажил, цагийг нэг файлд. Нөөц болгон хадгална, эсвэл өөр газар оруулна.</p>
+            <p class="fine" id="backupHint">Нөөц: «JSON татах» дараад хадгалах газраас Proton Drive-ыг сонгоно. Долоо хоногт нэг удаа.</p>
             <div class="btns">
               <button type="button" class="btn" id="exportJson">JSON татах</button>
               <button type="button" class="btn ghost" id="exportCsv">CSV татах</button>
@@ -1051,10 +1052,17 @@ async function applyImport(p) {
     for (const [k, v] of p.clock) await S.db.doc(`clock/${k}`).set(v);
   });
 }
-function download(name, text, type) {
+/* Inside Claude the page may not download itself: the downloads capability asks the
+   person first, and on a phone opens the share sheet (Proton Drive is one choice there). */
+async function download(name, text, type) {
+  if (S.downloads) {
+    try { await S.downloads.save({ filename: name, data: text }); return true; }
+    catch (e) { exportMsg(e && e.code === 'declined' ? 'Хадгалсангүй.' : 'Файл хадгалж чадсангүй. «Хуулах»-ыг ашиглана уу.'); return false; }
+  }
   const url = URL.createObjectURL(new Blob([text], { type }));
   const a = el('a', { href: url, download: name }); document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
+  return true;
 }
 function exportMsg(text) { const m = $('exportMsg'); m.hidden = !text; m.textContent = text || ''; }
 function renderImportPlan(p) {
@@ -1083,11 +1091,12 @@ function checkImport(text) {
   catch (e) { err.hidden = false; err.textContent = e.message || 'Уншиж чадсангүй.'; }
 }
 function initData() {
-  // Downloads are blocked inside the Claude page, so there it offers copy only.
-  $('exportJson').hidden = $('exportCsv').hidden = !S.local;
+  // Inside Claude a file can be saved only through the downloads capability; without it, copy only.
+  const canSave = S.local || !!S.downloads;
+  $('exportJson').hidden = $('exportCsv').hidden = $('backupHint').hidden = !canSave;
   $('importBox').hidden = !S.canWrite || !S.db;
-  $('exportJson').onclick = () => { download(`cubic-${todayStamp()}.json`, JSON.stringify(exportData(), null, 2), 'application/json'); exportMsg('Файл татагдлаа.'); };
-  $('exportCsv').onclick = () => { download(`cubic-${todayStamp()}.csv`, exportCsv(), 'text/csv;charset=utf-8'); exportMsg('Файл татагдлаа.'); };
+  $('exportJson').onclick = async () => { if (await download(`cubic-${todayStamp()}.json`, JSON.stringify(exportData(), null, 2), 'application/json')) exportMsg('Файл хадгалагдлаа.'); };
+  $('exportCsv').onclick = async () => { if (await download(`cubic-${todayStamp()}.csv`, exportCsv(), 'text/csv;charset=utf-8')) exportMsg('Файл хадгалагдлаа.'); };
   $('exportCopy').onclick = async () => {
     const text = JSON.stringify(exportData(), null, 2), area = $('exportText');
     try { await navigator.clipboard.writeText(text); area.hidden = true; exportMsg('Хуулсан. Өөр газар «Оруулах» хэсэгт буулгана уу.'); }
@@ -1287,7 +1296,9 @@ function localStore() {
 async function connect() {
   let db = null, user = null;
   if (window.claude && window.claude.use) {
-    [db, user] = await Promise.all(['db', 'user'].map(n => window.claude.use(n).catch(() => null)));
+    let dl;
+    [db, user, dl] = await Promise.all(['db', 'user', 'downloads'].map(n => window.claude.use(n).catch(() => null)));
+    S.downloads = dl || null;
   } else {
     const local = localStore();
     if (local) { S.local = true; db = local.db; user = local.user; }

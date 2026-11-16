@@ -23,6 +23,7 @@ the order the rest would come in. Nothing below is committed to a date.
 | Vercel copy (browser-only data) | Done; shared data stays in the artifact |
 | Dependencies between to-dos, derived blocked / blocking status | Done |
 | Dependency graph and milestone timeline (Plan side) | Done |
+| Backup file from inside Claude (save to Proton Drive by hand) | Done, via the `downloads` capability |
 
 ## Decided against, for a team of three
 

@@ -7,7 +7,9 @@ file: no build step, no framework, no dependencies beyond the two Google Fonts.
 
 - Slug: `e702c5a1-64a8-4f1c-9d1b-7dfb135f1869`
 - URL: https://claude.ai/artifact/VXX9JmKG23SPdy8pm1ZMSp
-- Declared capabilities: `{"db": {}, "user": {"scopes": ["profile"]}}`
+- Declared capabilities: `{"db": {}, "user": {"scopes": ["profile"]}, "downloads": true}`
+  (`downloads` lets "JSON татах" save a backup file; on a phone the share sheet
+  offers Proton Drive. Pass the whole set when publishing.)
 
 To publish: read the current version with `get_artifact`, then republish
 `index.html` with that `base_version`. Capabilities carry forward. Never create
@@ -67,7 +69,7 @@ The team works mostly from phones, through Claude sessions on this repository.
 
 ## What the artifact sandbox does not allow
 
-`alert`/`confirm`/`prompt`, downloads, service workers, `fetch` or WebSocket to
+`alert`/`confirm`/`prompt`, direct downloads (only `downloads.save`), service workers, `fetch` or WebSocket to
 other hosts, remote images. Only a plain `#name` survives in the URL: no query
 strings, so routing uses `#f2` and `#f2-c1`.
 

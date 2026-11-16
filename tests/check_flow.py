@@ -208,6 +208,19 @@ async def main():
         msg = await pg.inner_text("#exportMsg")
         check("copy says what happened", "Хуулсан" in msg or (await pg.locator("#exportText").is_visible() and '"app": "cubic"' in await pg.input_value("#exportText")), msg)
 
+        # Inside Claude with the downloads capability: a backup file can be saved (phone: share sheet, e.g. Proton Drive).
+        pgd = await ctx.new_page()
+        pgd.on("pageerror", lambda e: errors.append(str(e)))
+        await pgd.goto(f"{BASE}/?dl=1#f0")
+        await pgd.wait_for_timeout(700)
+        check("with downloads granted, JSON backup is offered", await pgd.locator("#exportJson").is_visible() and await pgd.locator("#backupHint").is_visible())
+        await pgd.click("#exportJson")
+        await pgd.wait_for_timeout(300)
+        saved = await pgd.evaluate("(window.__saved || []).map(f => [f.filename, f.data.length > 50 && JSON.parse(f.data).app])")
+        check("backup saves the whole workspace as one JSON file", len(saved) == 1 and saved[0][0].endswith(".json") and saved[0][1] == "cubic", str(saved))
+        check("saving says it was saved", "хадгалагдлаа" in await pgd.inner_text("#exportMsg"))
+        await pgd.close()
+
         # As served on Vercel: no Claude, data stays in this browser.
         ctx3 = await b.new_context(viewport={"width": 390, "height": 844}, accept_downloads=True)
         pg3 = await ctx3.new_page()
