@@ -47,6 +47,8 @@
     isOwner: () => me === 'obama', canEdit: () => true, can: async () => (q.get('readonly') ? false : true),
     profiles: async ids => Object.fromEntries(ids.map(i => [i, { id: i, name: cap(i) }])),
   };
-  window.claude = { use: async name => (name === 'db' ? { doc, collection } : name === 'user' ? user : null) };
+  // ?dl=1 pretends the downloads capability is granted; saved files are kept in window.__saved.
+  const downloads = q.get('dl') ? { save: async f => { (window.__saved = window.__saved || []).push(f); return { status: 'saved' }; } } : null;
+  window.claude = { use: async name => (name === 'db' ? { doc, collection } : name === 'user' ? user : name === 'downloads' ? downloads : null) };
   console.info(`[cubic dev] local data, signed in as "${me}". Add ?as=name to switch person, ?reset=1 to clear.`);
 })();

@@ -19,10 +19,11 @@ the order the rest would come in. Nothing below is committed to a date.
 | Attribution (who, when) on entries | Done |
 | Search and recent changes | Done, simple |
 | Export / import (JSON, CSV), move a to-do, paste many lines | Done |
-| Swiss visual style, both themes | Done |
+| Friendly style: Apple-like panels, rounded type, candy colours, springy motion; both themes | Done |
 | Vercel copy (browser-only data) | Done; shared data stays in the artifact |
 | Dependencies between to-dos, derived blocked / blocking status | Done |
 | Dependency graph and milestone timeline (Plan side) | Done |
+| Backup file from inside Claude (save to Proton Drive by hand) | Done, via the `downloads` capability |
 
 ## Decided against, for a team of three
 
