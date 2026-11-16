@@ -98,7 +98,8 @@ async def main():
         if SHOTS:
             await pg.mouse.move(row["x"] + 250, y); await pg.mouse.down(); await pg.mouse.move(row["x"] + 150, y, steps=5)
             await pg.screenshot(path=f"{SHOTS}/area_swipe.png"); await pg.mouse.move(row["x"] + 250, y, steps=3); await pg.mouse.up(); await pg.wait_for_timeout(400)
-        await drag(pg, row["x"] + 260, y, row["x"] + 40, y, hold=60)
+        # Start left of the owner circle: buttons do not start a swipe.
+        await drag(pg, row["x"] + row["width"] * 0.6, y, row["x"] + 20, y, hold=60)
         await pg.wait_for_timeout(600)
         check("swiping sideways deletes", await pg.locator(".todo").count() == 2)
         await pg.click("#toastUndo")

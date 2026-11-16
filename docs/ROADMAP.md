@@ -19,7 +19,7 @@ the order the rest would come in. Nothing below is committed to a date.
 | Attribution (who, when) on entries | Done |
 | Search and recent changes | Done, simple |
 | Export / import (JSON, CSV), move a to-do, paste many lines | Done |
-| Calm editorial style (serif headings, green actions, rounded panels), both themes | Done |
+| Friendly style: Apple-like panels, rounded type, candy colours, springy motion; both themes | Done |
 | Vercel copy (browser-only data) | Done; shared data stays in the artifact |
 | Dependencies between to-dos, derived blocked / blocking status | Done |
 | Dependency graph and milestone timeline (Plan side) | Done |
