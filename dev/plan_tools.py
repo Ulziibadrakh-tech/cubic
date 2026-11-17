@@ -6,7 +6,7 @@
 PLAN.json describes the plan:
 
     {"name": "...", "idPrefix": "bs-", "by": "claude", "baseAt": <ms>, "milestoneCell": "f1-c1",
-     "tasks": [{"key": "01", "cell": "f2-c0", "text": "01 ...", "days": 1, "after": []}, ...],
+     "tasks": [{"key": "01", "cell": "f2-c0", "text": "01 ...", "days": 1, "after": [], "who": "vida"}, ...],
      "milestones": [{"key": "M1", "text": "11/20 · M1 ...", "after": ["01", ...]}, ...],
      "check": {"layers": [["01", ...], ...], "criticalDays": 18.5, "impliedLinks": 8}}
 
@@ -32,9 +32,9 @@ def load(path):
     plan = json.loads(Path(path).read_text(encoding="utf-8"))
     nodes, rank = {}, {}
     for t in plan["tasks"]:
-        nodes[t["key"]] = {"cell": t["cell"], "text": t["text"], "days": float(t.get("days", 0)), "after": list(t.get("after", [])), "task": True}
+        nodes[t["key"]] = {"cell": t["cell"], "text": t["text"], "days": float(t.get("days", 0)), "after": list(t.get("after", [])), "task": True, "who": t.get("who", "")}
     for m in plan.get("milestones", []):
-        nodes[m["key"]] = {"cell": plan.get("milestoneCell", "f1-c1"), "text": m["text"], "days": 0.0, "after": list(m.get("after", [])), "task": False}
+        nodes[m["key"]] = {"cell": plan.get("milestoneCell", "f1-c1"), "text": m["text"], "days": 0.0, "after": list(m.get("after", [])), "task": False, "who": ""}
     for k, key in enumerate([t["key"] for t in plan["tasks"]] + [m["key"] for m in plan.get("milestones", [])]):
         if key in rank:
             raise SystemExit(f"{key} appears twice")
@@ -138,7 +138,9 @@ def build(plan, nodes, rank):
     items = []
     for i, k in enumerate(order):
         n, at = nodes[k], base - i * 1000
-        items.append({"id": doc(k), "cell": n["cell"], "text": n["text"], "url": "", "who": "", "done": False,
+        if n["who"] not in ("", "vida", "anand", "obama"):
+            raise SystemExit(f"{k}: unknown owner {n['who']}")
+        items.append({"id": doc(k), "cell": n["cell"], "text": n["text"], "url": "", "who": n["who"], "done": False,
                       "deps": [doc(d) for d in n["after"]], "by": by, "at": at, "editedBy": by, "editedAt": at})
         report.append(f"  {i + 1:2d}. L{layer[k]:<2d} {n['text']}")
     return report, items

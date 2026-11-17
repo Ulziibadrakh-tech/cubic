@@ -71,7 +71,15 @@ The team works mostly from phones, through Claude sessions on this repository.
 - **Works without the cube.** Every space stays reachable from "All spaces",
   by keyboard, and with reduced motion.
 - **Both themes.** Colors come from the tokens in `:root`; the dark values are
-  defined twice (media query and `[data-theme="dark"]`).
+  defined twice (media query and `[data-theme="dark"]`). `--accent` is for text
+  and outlines, `--accent-fill` for filled buttons (white text must pass 4.5:1).
+  The theme button stores a per-viewer choice; with none, the phone decides.
+  The timeline HUD (`--hud-*`) is a dark screen in both themes.
+- **Two languages.** Screen text is Mongolian by default with an МН/EN toggle.
+  Every string on screen goes through `tr(key, ...)` with entries in both
+  `L.mn` and `L.en`; static markup uses `data-t`, `data-t-ph`, `data-t-al`,
+  `data-t-ti`. Never hard-code screen text. To-do text and the team's own side
+  and space names are never translated (only untouched default names are).
 - **Plain words on screen.** No jargon, and never a status the page cannot
   back up.
 
@@ -83,7 +91,11 @@ strings, so routing uses `#f2` and `#f2-c1`.
 
 ## Product stance
 
-- Three skilled people: Vida, Anand, Obama (`TEAM` in `index.html`).
+- Three skilled people (`TEAM` in `index.html`): Vida and Anand build the
+  technology, Anand as forward deployed engineer with the restaurants; Obama
+  runs business, marketing and branding. A new to-do starts with its side's
+  owner (`SIDE_OWNER`: Pilots → Anand, Technology → Vida, Marketing, Business &
+  Finance and Branding → Obama, Plan → nobody); one tap changes it.
 - A space is a plain to-do list: short lines, tick, owner, swipe to delete.
   No due dates, priorities or required fields.
 - Sides: Pilots, Plan, Technology, Marketing, Business & Finance, Branding
@@ -97,7 +109,11 @@ strings, so routing uses `#f2` and `#f2-c1`.
   `f1-c3` Dependency graph. Milestones are the to-dos in `f1-c1`; a leading
   `MM/DD` in the text is the date the Timeline sorts by.
 - Status is written in words and a mark, never by colour alone.
-- Screen text and seeded content are Mongolian. Keep lines short.
+- Screen text is Mongolian first (English on the toggle); seeded content is
+  Mongolian. Keep lines short in both.
+- Timeline and Milestones draw an SVG chart: planned tasks by milestone date,
+  today, and what is done now. Nothing stores when a to-do was ticked, so the
+  chart never invents a history; status is also written in words.
 - The cube should feel physical: free drag, momentum, a soft settle. Do not
   replace it with fixed step animations.
 - Time is shown per person and per space, never as a ranking.

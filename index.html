@@ -16,7 +16,7 @@
   --bg: #F5F5F7; --sunk: #FFFFFF;
   --ink: #1D1D1F; --ink-2: #6E6E73;
   --line: #1D1D1F; --hair: #E3E3E8;
-  --accent: #0071E3; --on-accent: #FFFFFF; --warm: #FFB800; --good: #188038; --on-good: #FFFFFF; --bad: #D93025; --away: #B25E00;
+  --accent: #0071E3; --accent-fill: #0071E3; --on-accent: #FFFFFF; --warm: #FFB800; --good: #188038; --on-good: #FFFFFF; --bad: #D93025; --away: #B25E00;
   --f0: #FF6B5B; --fi0: #1D1D1F;  --f1: #4DA3FF; --fi1: #0B1B33;  --f2: #FFC93C; --fi2: #1D1D1F;
   --f3: #3CCB97; --fi3: #0B2A1F;  --f4: #A78BFA; --fi4: #1D1D1F;  --f5: #FF8FB1; --fi5: #1D1D1F;
   --p-vida: #0071E3; --p-anand: #D93025; --p-obama: #7B4AE2; --p-ink: #FFFFFF;
@@ -25,28 +25,32 @@
   --rule: 1.5px; --r: 22px; --r-sm: 14px;
   --spring: cubic-bezier(.34, 1.56, .64, 1);
   --glow: color-mix(in srgb, #0071E3 9%, #F5F5F7);
+  /* The timeline HUD is a screen: dark with neon in both themes. */
+  --hud-bg: #0A0B1A; --hud-panel: #12142E; --hud-grid: rgba(0, 229, 255, .07); --hud-line: rgba(0, 229, 255, .22);
+  --hud-cyan: #00E5FF; --hud-magenta: #FF2BD6; --hud-yellow: #FCEE0A; --hud-text: #E6F7FF; --hud-dim: #8C95BA;
+  --hud-mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
   --shadow: 0 1px 2px rgba(0,0,0,.04), 0 12px 32px rgba(29,29,31,.08);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #000000; --sunk: #1C1C1E; --ink: #F5F5F7; --ink-2: #A1A1A6; --line: #F5F5F7; --hair: #2C2C2E;
-    --accent: #0A84FF; --on-accent: #000000; --warm: #FFD60A; --good: #32D74B; --on-good: #000000; --bad: #FF453A; --away: #FF9F0A;
-    --f0: #FF6B5B; --fi0: #1D1D1F;  --f1: #4DA3FF; --fi1: #0B1B33;  --f2: #FFC93C; --fi2: #1D1D1F;
-    --f3: #3CCB97; --fi3: #0B2A1F;  --f4: #A78BFA; --fi4: #1D1D1F;  --f5: #FF8FB1; --fi5: #1D1D1F;
-    --p-vida: #0062CC; --p-anand: #C42B22; --p-obama: #6A48E0;
-    --glow: color-mix(in srgb, #0A84FF 18%, #000000);
-    --shadow: 0 1px 0 rgba(255,255,255,.04), 0 12px 32px rgba(0,0,0,.5);
+    --bg: #0D1117; --sunk: #161B22; --ink: #E6EDF3; --ink-2: #9198A1; --line: #E6EDF3; --hair: #30363D;
+    --accent: #4493F8; --accent-fill: #1F6FEB; --on-accent: #FFFFFF; --warm: #E3B341; --good: #3FB950; --on-good: #0D1117; --bad: #F85149; --away: #D29922;
+    --f0: #F47067; --fi0: #1C2128;  --f1: #539BF5; --fi1: #0D1117;  --f2: #DAAA3F; --fi2: #1C2128;
+    --f3: #57AB5A; --fi3: #0D1117;  --f4: #B083F0; --fi4: #0D1117;  --f5: #E275AD; --fi5: #0D1117;
+    --p-vida: #1F6FEB; --p-anand: #DA3633; --p-obama: #8957E5;
+    --glow: color-mix(in srgb, #1F6FEB 16%, #0D1117);
+    --shadow: 0 0 0 1px #30363D, 0 8px 24px rgba(1,4,9,.55);
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #000000; --sunk: #1C1C1E; --ink: #F5F5F7; --ink-2: #A1A1A6; --line: #F5F5F7; --hair: #2C2C2E;
-  --accent: #0A84FF; --on-accent: #000000; --warm: #FFD60A; --good: #32D74B; --on-good: #000000; --bad: #FF453A; --away: #FF9F0A;
-  --f0: #FF6B5B; --fi0: #1D1D1F;  --f1: #4DA3FF; --fi1: #0B1B33;  --f2: #FFC93C; --fi2: #1D1D1F;
-  --f3: #3CCB97; --fi3: #0B2A1F;  --f4: #A78BFA; --fi4: #1D1D1F;  --f5: #FF8FB1; --fi5: #1D1D1F;
-  --p-vida: #0062CC; --p-anand: #C42B22; --p-obama: #6A48E0;
-  --glow: color-mix(in srgb, #0A84FF 18%, #000000);
-  --shadow: 0 1px 0 rgba(255,255,255,.04), 0 12px 32px rgba(0,0,0,.5);
+  --bg: #0D1117; --sunk: #161B22; --ink: #E6EDF3; --ink-2: #9198A1; --line: #E6EDF3; --hair: #30363D;
+  --accent: #4493F8; --accent-fill: #1F6FEB; --on-accent: #FFFFFF; --warm: #E3B341; --good: #3FB950; --on-good: #0D1117; --bad: #F85149; --away: #D29922;
+  --f0: #F47067; --fi0: #1C2128;  --f1: #539BF5; --fi1: #0D1117;  --f2: #DAAA3F; --fi2: #1C2128;
+  --f3: #57AB5A; --fi3: #0D1117;  --f4: #B083F0; --fi4: #0D1117;  --f5: #E275AD; --fi5: #0D1117;
+  --p-vida: #1F6FEB; --p-anand: #DA3633; --p-obama: #8957E5;
+  --glow: color-mix(in srgb, #1F6FEB 16%, #0D1117);
+  --shadow: 0 0 0 1px #30363D, 0 8px 24px rgba(1,4,9,.55);
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -69,6 +73,9 @@ button { cursor: pointer; }
 .mark::after { content: ''; display: inline-block; width: .16em; height: .16em; background: var(--accent); margin-left: .05em; }
 .mast-side { text-align: right; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; line-height: 1.3; }
 .mast-side span { display: block; color: var(--ink-2); font-weight: 500; }
+.mast-tools { display: flex; gap: 6px; justify-content: flex-end; margin-top: 8px; }
+.tool { min-width: 40px; height: 34px; padding: 0 10px; border: 1px solid var(--hair); border-radius: 999px; background: var(--sunk); color: var(--ink); font: 700 13px/1 var(--body); letter-spacing: .04em; }
+.tool:hover { border-color: var(--accent); color: var(--accent); }
 .sync { grid-column: 1 / -1; font-size: 13px; color: var(--ink-2); min-height: 19px; font-weight: 500; }
 .sync[data-state="saving"] { color: var(--ink); }
 .sync[data-state="saved"] { color: var(--good); }
@@ -157,7 +164,7 @@ select.field { padding: 8px 10px; font-size: 16px; }
 .edit-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; width: 100%; }
 .edit-row .field { flex: 1 1 200px; }
 .btn { border: var(--rule) solid var(--ink); padding: 9px 16px; font-weight: 700; background: var(--ink); color: var(--bg); }
-.btn:hover { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn:hover { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--on-accent); }
 .btn.ghost { background: transparent; color: var(--ink); }
 .btn.ghost:hover { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .btn:disabled { opacity: .45; cursor: default; }
@@ -186,6 +193,7 @@ select.field { padding: 8px 10px; font-size: 16px; }
 .team li + li { border-top: 1px solid var(--hair); }
 .team b { font-weight: 700; }
 .team small { display: block; color: var(--ink-2); font-size: 13px; }
+.team small.role { color: var(--accent); font-weight: 600; font-size: 12px; letter-spacing: .01em; }
 .team .nums { text-align: right; font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 700; }
 .team .nums small { font-weight: 400; }
 .space-time { font-size: 14px; color: var(--ink-2); margin: 0; }
@@ -278,15 +286,6 @@ select.field { padding: 8px 10px; font-size: 16px; }
 .gnode.dim { opacity: .22; }
 .gnode.picked { outline: 3px solid var(--accent); outline-offset: 2px; }
 .gdetail { display: flex; flex-direction: column; gap: 6px; }
-.tl { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border-top: var(--rule) solid var(--line); }
-.tl-stone { padding: 14px 0 16px; border-bottom: 1px solid var(--hair); display: flex; flex-direction: column; gap: 8px; }
-.tl-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
-.tl-head b { font-family: var(--display); font-weight: 800; font-size: 19px; letter-spacing: -.02em; text-wrap: balance; }
-.tl-when { font-size: 13px; font-weight: 700; white-space: nowrap; }
-.tl-stone.late .tl-when { color: var(--bad); } .tl-stone.done .tl-when { color: var(--good); }
-.tl-bar { height: 10px; border: var(--rule) solid var(--line); }
-.tl-bar span { display: block; height: 100%; background: var(--ink); }
-.tl-stone.done .tl-bar span { background: var(--good); }
 
 /* ── Friendly layer: shapes, light and motion on top of the layout above ── */
 body { background: radial-gradient(130% 42% at 50% 0%, var(--glow), transparent 70%) no-repeat, var(--bg); }
@@ -310,8 +309,8 @@ body { background: radial-gradient(130% 42% at 50% 0%, var(--glow), transparent 
 .scene::after { filter: blur(6px); opacity: .18; }
 .turn { border: 0; border-radius: 999px; overflow: hidden; background: var(--sunk); box-shadow: var(--shadow); }
 .turn button + button { border-left: 1px solid var(--hair); }
-.turn button:hover { background: var(--accent); color: var(--on-accent); }
-.now h2, .g-head h3, .area-title, .tl-head b, .data-grid h4, .face-name, .gfilter b { font-weight: 900; letter-spacing: -.02em; }
+.turn button:hover { background: var(--accent-fill); color: var(--on-accent); }
+.now h2, .g-head h3, .area-title, .data-grid h4, .face-name, .gfilter b { font-weight: 900; letter-spacing: -.02em; }
 .now h2 { font-size: 32px; }
 .g-face { border-top: 0; background: var(--sunk); border-radius: var(--r); padding: 14px 16px 16px; margin-bottom: 12px; box-shadow: var(--shadow); }
 .g-face::before { border-radius: 999px; }
@@ -321,11 +320,11 @@ body { background: radial-gradient(130% 42% at 50% 0%, var(--glow), transparent 
 .card { border-top: 0; background: var(--sunk); border-radius: var(--r); padding: 18px 16px; box-shadow: var(--shadow); }
 .card .todo { background: var(--sunk); }
 .icon-btn { border: 0; border-radius: 999px; background: var(--sunk); font-weight: 600; box-shadow: var(--shadow); }
-.icon-btn:hover { background: var(--accent); color: var(--on-accent); }
+.icon-btn:hover { background: var(--accent-fill); color: var(--on-accent); }
 .field { border: 1px solid transparent; border-radius: var(--r-sm); padding: 12px 14px; background: color-mix(in srgb, var(--ink) 6%, var(--sunk)); }
 .field:focus { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); border-color: var(--accent); background: var(--sunk); }
-.btn { border: 0; background: var(--accent); color: var(--on-accent); border-radius: 999px; padding: 12px 20px; font-weight: 600; box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 30%, transparent); }
-.btn:hover { background: color-mix(in srgb, var(--accent) 88%, #000000); color: var(--on-accent); }
+.btn { border: 0; background: var(--accent-fill); color: var(--on-accent); border-radius: 999px; padding: 12px 20px; font-weight: 600; box-shadow: 0 4px 14px color-mix(in srgb, var(--accent-fill) 30%, transparent); }
+.btn:hover { background: color-mix(in srgb, var(--accent-fill) 86%, #000000); color: var(--on-accent); }
 .btn.ghost { background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink); box-shadow: none; }
 .btn.ghost:hover { background: color-mix(in srgb, var(--ink) 12%, transparent); color: var(--ink); }
 .editable { border-radius: 8px; }
@@ -354,18 +353,15 @@ body { background: radial-gradient(130% 42% at 50% 0%, var(--glow), transparent 
 .dep-label { font-weight: 700; }
 .gfilters { border: 0; border-radius: var(--r-sm); overflow: hidden; background: var(--sunk); box-shadow: var(--shadow); }
 .gfilter { background: var(--sunk); }
-.gfilter[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.gfilter[aria-pressed="true"] { background: var(--accent-fill); color: var(--on-accent); }
 .graph-scroll { border: 0; border-radius: var(--r); box-shadow: inset 0 0 0 1px var(--hair); background: var(--bg); }
 .gnode { border-radius: 10px; border-width: 1.5px; border-left-width: 6px; }
-.gnode.ms { background: var(--accent); color: var(--on-accent); }
-.tl { border-top: 0; }
-.tl-bar { border: 0; border-radius: 999px; background: color-mix(in srgb, var(--ink) 8%, transparent); overflow: hidden; height: 12px; }
-.tl-bar span { background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 60%, #FFFFFF)); border-radius: 999px; }
+.gnode.ms { background: var(--accent-fill); color: var(--on-accent); }
 
 /* Plan views: plan picker, layer labels, loops, build order */
 .gchips { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
 .gchip { flex: 0 0 auto; border: 0; border-radius: 999px; padding: 9px 14px; font-size: 14px; font-weight: 600; white-space: nowrap; background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink); }
-.gchip[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.gchip[aria-pressed="true"] { background: var(--accent-fill); color: var(--on-accent); }
 .glayer { position: absolute; top: 0; height: 18px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); white-space: nowrap; }
 .gnode.loop { border-style: dashed; border-color: var(--bad); }
 .gnode[aria-pressed="true"] { outline: 3px solid var(--accent); outline-offset: 2px; }
@@ -377,6 +373,65 @@ details.build[open] > summary::after { content: '－'; }
 .build-list li { counter-increment: step; }
 .build-list button { padding-left: 34px; position: relative; }
 .build-list button::before { content: counter(step); position: absolute; left: 0; top: 10px; width: 26px; text-align: right; font-size: 12px; font-weight: 700; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+
+/* Timeline HUD and milestone cards (cyberpunk: neon on a dark screen, in both themes) */
+.hud-wrap { position: relative; margin: 0; border-radius: 16px; overflow: hidden; background: var(--hud-bg); box-shadow: 0 0 0 1px var(--hud-line), 0 0 28px rgba(0, 229, 255, .14), var(--shadow); }
+.hud-wrap::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .035) 0 1px, transparent 1px 3px); mix-blend-mode: screen; }
+svg.hud { display: block; width: 100%; height: auto; font-family: var(--hud-mono); }
+.hud-bg { fill: var(--hud-bg); }
+.hud-gridline { fill: none; stroke: var(--hud-grid); stroke-width: 1; }
+.hud-corner { fill: none; stroke: var(--hud-cyan); stroke-width: 1.5; opacity: .85; }
+.hud-title { fill: var(--hud-cyan); font-size: 10px; font-weight: 700; letter-spacing: .12em; }
+.hud-stat { fill: var(--hud-yellow); font-size: 10px; font-weight: 700; letter-spacing: .08em; }
+.hud-guide { stroke: var(--hud-line); stroke-dasharray: 2 4; }
+.hud-tick { fill: var(--hud-dim); font-size: 8px; }
+.hud-area-top { stop-color: var(--hud-cyan); stop-opacity: .3; }
+.hud-area-bottom { stop-color: var(--hud-cyan); stop-opacity: 0; }
+.hud-plan { fill: none; stroke: var(--hud-cyan); stroke-width: 2; stroke-linejoin: round; }
+.hud-today { stroke: var(--hud-magenta); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.hud-today-label { fill: var(--hud-magenta); font-size: 8.5px; font-weight: 700; letter-spacing: .14em; }
+.hud-dot { fill: var(--hud-magenta); }
+.hud-pulse { fill: none; stroke: var(--hud-magenta); stroke-width: 1.5; transform-box: fill-box; transform-origin: center; animation: hudPulse 2.2s ease-out infinite; }
+@keyframes hudPulse { from { transform: scale(.6); opacity: .9; } to { transform: scale(2.2); opacity: 0; } }
+.hud-axis { stroke: var(--hud-line); }
+.hud-ms { stroke-width: 1.5; }
+.hud-ms.s-done { fill: var(--hud-cyan); stroke: var(--hud-cyan); }
+.hud-ms.s-late { fill: var(--hud-magenta); stroke: var(--hud-magenta); }
+.hud-ms.s-soon { fill: none; stroke: var(--hud-yellow); }
+.hud-ms.s-ahead { fill: var(--hud-bg); stroke: var(--hud-dim); }
+.hud-ms-label { font-size: 8.5px; font-weight: 700; letter-spacing: .06em; fill: var(--hud-dim); }
+.hud-ms-label.s-done { fill: var(--hud-cyan); } .hud-ms-label.s-late { fill: var(--hud-magenta); } .hud-ms-label.s-soon { fill: var(--hud-yellow); }
+.hud-warn { fill: var(--hud-magenta); font-size: 9.5px; font-weight: 700; }
+.hud-ok { fill: var(--hud-cyan); font-size: 9.5px; font-weight: 700; }
+.hud-dim { fill: var(--hud-dim); font-size: 11px; }
+#hudTop { margin: 2px 0 4px; }
+.tl { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.ms-card { --c: var(--hud-dim); position: relative; display: flex; flex-direction: column; gap: 8px; padding: 14px 14px 14px 18px;
+  background: linear-gradient(135deg, var(--hud-panel), var(--hud-bg)); color: var(--hud-text);
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 45%, transparent); }
+.ms-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--c); box-shadow: 0 0 12px var(--c); }
+.ms-card.s-done { --c: var(--hud-cyan); } .ms-card.s-late { --c: var(--hud-magenta); } .ms-card.s-soon { --c: var(--hud-yellow); }
+.ms-top { display: flex; gap: 12px; align-items: center; }
+.ms-head { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ms-head b { font-family: var(--display); font-weight: 900; font-size: 17px; line-height: 1.15; letter-spacing: -.01em; overflow-wrap: anywhere; }
+.ms-when { font-family: var(--hud-mono); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--c); }
+.ms-card.s-ahead .ms-when { color: var(--hud-text); }
+.ms-stats { margin: 0; font-family: var(--hud-mono); font-size: 12px; color: var(--hud-dim); }
+.ms-ready { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border-top: 1px solid var(--hud-line); }
+.ms-ready li + li { border-top: 1px solid var(--hud-line); }
+.ms-ready button { width: 100%; border: 0; background: transparent; color: var(--hud-text); text-align: left; padding: 9px 0; display: flex; flex-direction: column; gap: 2px; }
+.ms-ready b { font-weight: 500; font-size: 15px; overflow-wrap: anywhere; }
+.ms-ready small { color: var(--hud-dim); font-size: 12px; }
+.ms-ready button:hover b, .ms-ready button:focus-visible b { color: var(--hud-cyan); }
+.ms-ready button:focus-visible { outline: 2px solid var(--hud-cyan); outline-offset: 2px; }
+.ms-more { margin: 0; font-size: 12px; color: var(--hud-dim); }
+svg.ring { width: 56px; height: 56px; flex: 0 0 56px; }
+.ring-track { fill: none; stroke: rgba(255, 255, 255, .09); stroke-width: 5; }
+.ring-arc { fill: none; stroke: var(--c); stroke-width: 5; stroke-linecap: round; }
+.ms-card.s-ahead .ring-arc { stroke: var(--hud-cyan); }
+.ring-text { fill: var(--hud-text); font: 700 12px var(--hud-mono); }
+@media (prefers-reduced-motion: reduce) { .hud-pulse { animation: none; opacity: .5; } }
 
 /* Motion: squash on press, overshoot on release, rows pop in, a tick bounces. */
 .btn, .icon-btn, .chip, .who, .x, .cell-tile, .g-cell, .toggle button, .turn button, .gfilter, .todo input[type="checkbox"] { transition: transform .45s var(--spring), background-color .2s, box-shadow .2s; }
@@ -397,13 +452,14 @@ details.build[open] > summary::after { content: '－'; }
 <div class="wrap">
   <header class="mast">
     <h1 class="mark">CUBIC</h1>
-    <div class="mast-side">Best-shot<span>Ажлын талбар</span></div>
+    <div class="mast-side">Best-shot<span data-t="mastSub">Ажлын талбар</span>
+      <div class="mast-tools"><button type="button" class="tool" id="themeBtn" aria-label="Харанхуй горим руу">☾</button><button type="button" class="tool" id="langBtn" aria-label="Switch to English" lang="en">EN</button></div></div>
     <div class="sync" id="sync" role="status" aria-live="polite"></div>
   </header>
   <div class="note" id="notice" hidden></div>
   <section class="note away-box" id="whoBox" hidden></section>
-  <section class="me" id="meBar" hidden aria-label="Та ба таны цаг">
-    <button type="button" class="editable me-who" id="meWho" title="Солих"></button>
+  <section class="me" id="meBar" hidden aria-label="Та ба таны цаг" data-t-al="meAria">
+    <button type="button" class="editable me-who" id="meWho" title="Солих" data-t-ti="change"></button>
     <div class="clock">
       <span class="dot" id="meDot" aria-hidden="true"></span>
       <span class="clock-time" id="meTime">0 мин</span>
@@ -415,56 +471,56 @@ details.build[open] > summary::after { content: '－'; }
   <main id="home">
     <div class="wrap" style="padding:0;gap:26px">
       <div class="bar">
-        <div class="toggle" role="group" aria-label="Харагдац">
-          <button type="button" id="modeCube" aria-pressed="true">Шоо</button>
-          <button type="button" id="modeGrid" aria-pressed="false">Жагсаалт</button>
+        <div class="toggle" role="group" aria-label="Харагдац" data-t-al="viewAria">
+          <button type="button" id="modeCube" aria-pressed="true" data-t="cube">Шоо</button>
+          <button type="button" id="modeGrid" aria-pressed="false" data-t="list">Жагсаалт</button>
         </div>
-        <input class="field" id="search" type="search" placeholder="Хайх" aria-label="Хайх" style="flex:1 1 160px;max-width:300px">
+        <input class="field" id="search" type="search" placeholder="Хайх" aria-label="Хайх" data-t-ph="search" data-t-al="search" style="flex:1 1 160px;max-width:300px">
       </div>
-      <section class="card" id="results" hidden aria-label="Хайлтын илэрц">
+      <section class="card" id="results" hidden aria-label="Хайлтын илэрц" data-t-al="resultsAria">
         <h2 class="label" data-n="—" id="resultsTitle"></h2>
         <ul class="recent" id="resultsList"></ul>
       </section>
-      <section class="stage" id="cubeView" aria-label="Шоо">
-        <div class="scene" id="scene" tabindex="0" role="group" aria-label="Шоо. Сумаар эргүүлнэ."><div class="cube" id="cube"></div></div>
-        <div class="now"><h2 id="faceTitle"></h2><button type="button" class="icon-btn" id="renameFace">Нэр солих</button></div>
+      <section class="stage" id="cubeView" aria-label="Шоо" data-t-al="cube">
+        <div class="scene" id="scene" tabindex="0" role="group" aria-label="Шоо. Сумаар эргүүлнэ." data-t-al="sceneAria"><div class="cube" id="cube"></div></div>
+        <div class="now"><h2 id="faceTitle"></h2><button type="button" class="icon-btn" id="renameFace" data-t="rename">Нэр солих</button></div>
         <div class="edit-row" id="faceEdit" hidden style="max-width:420px"></div>
-        <p class="hint">Шоог чирж эргүүлнэ. Нүдэн дээр дарж нээнэ.</p>
-        <div class="turn" role="group" aria-label="Шоо эргүүлэх">
-          <button type="button" data-turn="left" aria-label="Зүүн тийш">←</button>
-          <button type="button" data-turn="up" aria-label="Дээш">↑</button>
-          <button type="button" data-turn="down" aria-label="Доош">↓</button>
-          <button type="button" data-turn="right" aria-label="Баруун тийш">→</button>
+        <p class="hint" data-t="hint">Шоог чирж эргүүлнэ. Нүдэн дээр дарж нээнэ.</p>
+        <div class="turn" role="group" aria-label="Шоо эргүүлэх" data-t-al="turnAria">
+          <button type="button" data-turn="left" aria-label="Зүүн тийш" data-t-al="tLeft">←</button>
+          <button type="button" data-turn="up" aria-label="Дээш" data-t-al="tUp">↑</button>
+          <button type="button" data-turn="down" aria-label="Доош" data-t-al="tDown">↓</button>
+          <button type="button" data-turn="right" aria-label="Баруун тийш" data-t-al="tRight">→</button>
         </div>
       </section>
-      <section class="grid" id="gridView" hidden aria-label="Жагсаалт"></section>
-      <section class="card" aria-label="Баг">
-        <h2 class="label" data-n="01">Баг</h2>
+      <section class="grid" id="gridView" hidden aria-label="Жагсаалт" data-t-al="list"></section>
+      <section class="card" aria-label="Баг" data-t-al="team">
+        <h2 class="label" data-n="01" data-t="team">Баг</h2>
         <ul class="team" id="team"></ul>
       </section>
-      <section class="card" id="dataCard" aria-label="Өгөгдөл">
-        <h2 class="label" data-n="02">ӨГӨГДӨЛ</h2>
+      <section class="card" id="dataCard" aria-label="Өгөгдөл" data-t-al="data">
+        <h2 class="label" data-n="02" data-t="data">Өгөгдөл</h2>
         <div class="data-grid">
           <section>
-            <h4>Гаргах</h4>
-            <p class="fine">Бүх тал, нүд, ажил, цагийг нэг файлд. Нөөц болгон хадгална, эсвэл өөр газар оруулна.</p>
-            <p class="fine" id="backupHint">Нөөц: «JSON татах» дараад хадгалах газраас Proton Drive-ыг сонгоно. Долоо хоногт нэг удаа.</p>
+            <h4 data-t="export">Гаргах</h4>
+            <p class="fine" data-t="exportHelp">Бүх тал, нүд, ажил, цагийг нэг файлд. Нөөц болгон хадгална, эсвэл өөр газар оруулна.</p>
+            <p class="fine" id="backupHint" data-t="backupHint">Нөөц: «JSON татах» дараад хадгалах газраас Proton Drive-ыг сонгоно. Долоо хоногт нэг удаа.</p>
             <div class="btns">
-              <button type="button" class="btn" id="exportJson">JSON татах</button>
-              <button type="button" class="btn ghost" id="exportCsv">CSV татах</button>
-              <button type="button" class="btn ghost" id="exportCopy">Хуулах</button>
+              <button type="button" class="btn" id="exportJson" data-t="exportJson">JSON татах</button>
+              <button type="button" class="btn ghost" id="exportCsv" data-t="exportCsv">CSV татах</button>
+              <button type="button" class="btn ghost" id="exportCopy" data-t="copy">Хуулах</button>
             </div>
             <p class="fine" id="exportMsg" hidden></p>
-            <textarea class="field" id="exportText" readonly hidden aria-label="Гаргасан өгөгдөл"></textarea>
+            <textarea class="field" id="exportText" readonly hidden aria-label="Гаргасан өгөгдөл" data-t-al="exportTextAria"></textarea>
           </section>
           <section id="importBox">
-            <h4>Оруулах</h4>
-            <p class="fine">JSON эсвэл CSV файл сонгох, эсвэл бичвэрийг буулгах. Одоо байгаа зүйл устахгүй.</p>
+            <h4 data-t="import">Оруулах</h4>
+            <p class="fine" data-t="importHelp">JSON эсвэл CSV файл сонгох, эсвэл бичвэрийг буулгах. Одоо байгаа зүйл устахгүй.</p>
             <div class="btns">
-              <label class="btn ghost file-btn">Файл сонгох<input type="file" id="importFile" accept=".json,.csv,application/json,text/csv,text/plain"></label>
+              <label class="btn ghost file-btn"><span data-t="chooseFile">Файл сонгох</span><input type="file" id="importFile" accept=".json,.csv,application/json,text/csv,text/plain"></label>
             </div>
-            <textarea class="field" id="importText" placeholder="Энд буулгана" aria-label="Оруулах өгөгдөл"></textarea>
-            <div class="btns"><button type="button" class="btn ghost" id="importCheck">Шалгах</button></div>
+            <textarea class="field" id="importText" placeholder="Энд буулгана" aria-label="Оруулах өгөгдөл" data-t-ph="pasteHere" data-t-al="importAria"></textarea>
+            <div class="btns"><button type="button" class="btn ghost" id="importCheck" data-t="check">Шалгах</button></div>
             <p class="err" id="importErr" hidden></p>
             <div id="importPlan" hidden></div>
           </section>
@@ -476,7 +532,7 @@ details.build[open] > summary::after { content: '－'; }
   <main id="area" hidden>
     <div class="wrap" style="padding:0;gap:16px">
       <div class="crumb">
-        <button type="button" class="btn ghost" id="back">← Буцах</button>
+        <button type="button" class="btn ghost" id="back" data-t="back">← Буцах</button>
         <span class="chip" id="areaChip"></span>
       </div>
       <p class="area-num" id="areaNum" aria-hidden="true"></p>
@@ -484,19 +540,20 @@ details.build[open] > summary::after { content: '－'; }
       <p class="space-time" id="spaceTime" hidden></p>
       <form id="capture" autocomplete="off">
         <div class="add-row">
-          <input class="field" id="newText" type="text" placeholder="Шинэ ажил" aria-label="Шинэ ажил" maxlength="200">
-          <button class="btn" type="submit" id="addBtn">Нэмэх</button>
+          <input class="field" id="newText" type="text" placeholder="Шинэ ажил" aria-label="Шинэ ажил" data-t-ph="newTodo" data-t-al="newTodo" maxlength="200">
+          <button class="btn" type="submit" id="addBtn" data-t="add">Нэмэх</button>
         </div>
         <p class="err" id="captureErr" hidden></p>
       </form>
+      <div id="hudTop" hidden></div>
       <ul class="items" id="items"></ul>
       <div id="planView" hidden></div>
       <p class="empty" id="itemsEmpty" hidden>Одоогоор ажил алга.</p>
-      <p class="fine" id="swipeHint">Мөрийг хажуу тийш чирж устгана. Үсэгтэй тэмдэг дээр дарж хариуцагчийг солино. Бичвэр дээр дарж засна, өөр нүд рүү зөөнө. Олон мөр буулгавал мөр бүр тусдаа ажил болно.</p>
+      <p class="fine" id="swipeHint" data-t="swipeHint">Мөрийг хажуу тийш чирж устгана. Үсэгтэй тэмдэг дээр дарж хариуцагчийг солино. Бичвэр дээр дарж засна, өөр нүд рүү зөөнө. Олон мөр буулгавал мөр бүр тусдаа ажил болно.</p>
     </div>
   </main>
 </div>
-<div class="toast" id="toast" hidden role="status"><span id="toastText"></span><button type="button" id="toastUndo">Буцаах</button></div>
+<div class="toast" id="toast" hidden role="status"><span id="toastText"></span><button type="button" id="toastUndo" data-t="undo">Буцаах</button></div>
 
 <script>
 'use strict';
@@ -511,10 +568,20 @@ const DEFAULT_FACES = [
 ];
 /* Two spaces on the Plan side are views over every to-do, not lists of their own.
    Milestones are the to-dos kept in the Milestones space; the Timeline reads them. */
+/* English for the default space names that are in Mongolian; a name the team has set is shown as written. */
+const DEFAULT_CELLS_EN = { 0: ['Restaurant 1', 'Restaurant 2', 'Experiment', 'Feedback'] };
+const cellName = (f, c) => { const face = S.faces[f]; if (!face) return ''; const def = DEFAULT_FACES[f] && DEFAULT_FACES[f].cells[c];
+  return S.lang === 'en' && face.cells[c] === def && DEFAULT_CELLS_EN[f] ? DEFAULT_CELLS_EN[f][c] : face.cells[c]; };
 const TIMELINE_CELL = 'f1-c0', MILESTONE_CELL = 'f1-c1', GRAPH_CELL = 'f1-c3';
 const isViewCell = k => k === TIMELINE_CELL || k === GRAPH_CELL;
-/* The team. `who` on a to-do and in people/<id> is one of these ids. */
-const TEAM = [{ id: 'vida', name: 'Vida' }, { id: 'anand', name: 'Anand' }, { id: 'obama', name: 'Obama' }];
+/* The team. `who` on a to-do and in people/<id> is one of these ids. Vida and Anand build the
+   technology (Anand as forward deployed engineer, with the restaurants); Obama runs business,
+   marketing and branding. */
+const TEAM = [{ id: 'vida', name: 'Vida', role: 'roleVida' }, { id: 'anand', name: 'Anand', role: 'roleAnand' }, { id: 'obama', name: 'Obama', role: 'roleObama' }];
+/* Who a new to-do starts with, by side (one tap on the badge changes it). Plan has no default:
+   milestones and roadmap ideas belong to everyone. */
+const SIDE_OWNER = ['anand', '', 'vida', 'obama', 'obama', 'obama'];
+const ownerFor = cell => (CELL_RE.test(cell || '') ? SIDE_OWNER[+cell[1]] || '' : '');
 const member = id => TEAM.find(m => m.id === id) || null;
 
 /* ── Screen language: Mongolian by default, English on the МН/EN toggle (kept per viewer). ──
@@ -523,6 +590,49 @@ const member = id => TEAM.find(m => m.id === id) || null;
 const L = { mn: {}, en: {} };
 const tr = (key, ...a) => { const v = (L[S.lang] && key in L[S.lang]) ? L[S.lang][key] : L.mn[key]; return typeof v === 'function' ? v(...a) : (v == null ? key : v); };
 Object.assign(L.mn, {
+  reached: 'Хүрсэн', noDate: 'Огноогүй', lateN: n => `${n} хоног хэтэрсэн`, todayW: 'Өнөөдөр', daysLeft: n => `${n} хоног үлдсэн`,
+  hudTitle: n => `TIMELINE // ${n} ШАЛГУУР`, hudDone: (d, n, p) => `ДУУССАН ${d}/${n} · ${p}%`, hudToday: 'ӨНӨӨДӨР', hudNoDates: 'Огноотой шалгуур алга',
+  hudBehind: (p, d) => `▲ Төлөвлөгөөгөөр өнөөдөр ${p} дуусах ёстой, ${d} дууссан`, hudOnTrack: (p, d) => `◆ Төлөвлөгөөнд хүрсэн: ${p} ёстой, ${d} дууссан`,
+  hudDesc: (n, d, t) => `${n} шалгуур. ${t} ажлаас ${d} дууссан.`,
+  msStats: (n, d, b, r) => `${n}-аас ${d} дууссан · ${b} гацсан · ${r} эхлэх боломжтой`, msTick: ' · бүх ажил дууссан, шалгуураа тэмдэглэнэ үү', msNoTasks: 'Энэ шалгуурт ажил холбоогүй байна.',
+  moreReady: n => `Бас ${n} ажил эхлэх боломжтой. Бүгдийг «Dependency graph»-ийн «Барих дараалал»-аас харна.`,
+  tlEmpty: 'Milestones нүдэнд шалгуур нэмбэл энд цагийн дарааллаар харагдана. Эхэнд нь огноо бичнэ: 11/22 · …', tlNoneInPlan: 'Энэ төлөвлөгөөнд шалгуур алга.',
+  mastSub: 'Ажлын талбар', meAria: 'Та ба таны цаг', change: 'Солих', viewAria: 'Харагдац', cube: 'Шоо', list: 'Жагсаалт', search: 'Хайх',
+  resultsAria: 'Хайлтын илэрц', sceneAria: 'Шоо. Сумаар эргүүлнэ.', hint: 'Шоог чирж эргүүлнэ. Нүдэн дээр дарж нээнэ.', turnAria: 'Шоо эргүүлэх',
+  tLeft: 'Зүүн тийш', tUp: 'Дээш', tDown: 'Доош', tRight: 'Баруун тийш', team: 'Баг', data: 'Өгөгдөл', export: 'Гаргах',
+  exportHelp: 'Бүх тал, нүд, ажил, цагийг нэг файлд. Нөөц болгон хадгална, эсвэл өөр газар оруулна.',
+  backupHint: 'Нөөц: «JSON татах» дараад хадгалах газраас Proton Drive-ыг сонгоно. Долоо хоногт нэг удаа.',
+  exportJson: 'JSON татах', exportCsv: 'CSV татах', copy: 'Хуулах', exportTextAria: 'Гаргасан өгөгдөл', import: 'Оруулах',
+  importHelp: 'JSON эсвэл CSV файл сонгох, эсвэл бичвэрийг буулгах. Одоо байгаа зүйл устахгүй.', chooseFile: 'Файл сонгох', pasteHere: 'Энд буулгана',
+  importAria: 'Оруулах өгөгдөл', check: 'Шалгах', back: '← Буцах', newTodo: 'Шинэ ажил', add: 'Нэмэх', undo: 'Буцаах',
+  swipeHint: 'Мөрийг хажуу тийш чирж устгана. Үсэгтэй тэмдэг дээр дарж хариуцагчийг солино. Бичвэр дээр дарж засна, өөр нүд рүү зөөнө. Олон мөр буулгавал мөр бүр тусдаа ажил болно.',
+  saveQuota: 'Өгөгдлийн сан дүүрсэн тул хадгалагдсангүй.', saveRevoked: 'Хадгалах эрх алга болсон. Хуудсаа дахин нээнэ үү.', saveFailed: 'Хадгалагдсангүй. Дахин оролдоно уу.',
+  saving: 'Хадгалж байна…', saved: 'Хадгаллаа', you: 'Та', someone: 'Хэн нэгэн', whoAreYou: 'Та хэн бэ?', space: 'Нүд',
+  removeX: t => `Хасах: ${t}`, addWaitAria: 'Хүлээх ажил нэмэх', addWait: '＋ Хүлээх ажил нэмэх', depLabel: 'Хүлээж буй ажил', save: 'Хадгалах', cancel: 'Болих',
+  st_done: 'Дууссан', st_open: 'Нээлттэй', st_blocked: 'Гацсан', st_blocking: 'Гацааж буй',
+  pickPlan: 'Төлөвлөгөө сонгох', otherN: n => `Бусад · ${n}`, allN: n => `Бүгд · ${n}`, all: 'Бүгд',
+  nBlocked: n => `${n} гацсан`, noneBlocked: 'Гацсан ажилгүй', msLeft: n => `${n} шалгуур үлдсэн`, noMs: 'Шалгуургүй', empty: 'Хоосон', nLeft: n => `${n} үлдсэн`, allDone: 'Бүгд дууссан',
+  rename: 'Нэр солих', renameOf: t => `${t}: нэр солих`, sideName: 'Талын нэр', spaceName: 'Нүдний нэр', nHits: n => `${n} илэрц`, noHits: 'Илэрц алга',
+  doneOf: t => `Дууссан: ${t}`, edit: 'Засах', editTodo: 'Ажлыг засах', blockedBy: (t, more) => `■ Гацсан · ${t}${more}`, blockingN: n => `▶ ${n} ажлыг гацааж буй`, openLink: 'Нээх ↗',
+  ownerIs: n => `Хариуцагч: ${n}. Солих`, pickOwner: 'Хариуцагч сонгох', owner: 'Хариуцагч', deleteX: t => `Устгах: ${t}`,
+  leftover: (n, where, list) => `${n} мөр нэмэгдсэнгүй (${where}): ${list} `, retry: 'Дахин оролдох', pasteWait: 'Өгөгдөл ачаалагдаж байна. Түр хүлээгээд дахин буулгана уу.',
+  hm: (h, mm) => `${h} ц ${mm} мин`, min: m => `${m} мин`, notSignedIn: 'Нэвтрээгүй', clockStopped: 'Цаг зогссон', home: 'Нүүр', awayFor: t => `Эзгүй ${t}`,
+  todayT: t => `Өнөөдөр ${t}`, pause: 'Түр зогсоох', start: 'Эхлүүлэх', weekT: t => `7 хоног ${t}`, inSpace: l => `Энэ нүдэнд: ${l}`,
+  awayQ: t => `Таныг эзгүй байхад цаг ${t} явсан. Ажиллаж байсан уу?`, awayYes: 'Тийм, тоол', awayNo: 'Үгүй, гарсан үеэр зогсоо',
+  impEmpty: 'Хоосон байна.', impBadJson: 'JSON уншигдсангүй.', impNotCubic: 'Энэ CUBIC-ийн файл биш.', impCsvCols: 'CSV-д "cell", "text" багана хэрэгтэй.', impNoTodos: 'Оруулах ажил олдсонгүй.',
+  dlDeclined: 'Хадгалсангүй.', dlFailed: 'Файл хадгалж чадсангүй. «Хуулах»-ыг ашиглана уу.',
+  pNew: 'Шинэ ажил', pUpd: 'Шинэчлэгдэх ажил', pFaces: 'Талын нэр', pPeople: 'Хүн', pClock: 'Цагийн бүртгэл', pSame: 'Ижил, өөрчлөхгүй', pOlder: 'Энд илүү шинэ тул алгасна',
+  pLoops: 'Тойрог үүсгэх тул хасах хамаарал', pSkipped: 'Алгасах мөр (нүд эсвэл бичвэр буруу)', importN: n => `Оруулах (${n})`,
+  impPartial: 'Бүгд хадгалагдсангүй. Дахин дарвал үлдсэнийг нь нэмнэ.', impNone: 'Энд бүгд байгаа. Нэмэх зүйл алга.', impUnreadable: 'Уншиж чадсангүй.',
+  fileSaved: 'Файл хадгалагдлаа.', copied: 'Хуулсан. Өөр газар «Оруулах» хэсэгт буулгана уу.', copyManual: 'Автоматаар хуулж чадсангүй. Доорх бичвэрийг бүгдийг нь хуулна уу.',
+  filterBy: 'Төлөвөөр шүүх', noOrder: 'Тойрогийн улмаас дараалалгүй', layerN: n => `Давхарга ${n}`, loopCol: '⟲ Тойрог', graphAria: 'Хамаарлын граф. Хажуу тийш гүйлгэнэ.',
+  waitsFor: l => `Хүлээж буй: ${l}`, holdsUp: l => `Гацааж буй: ${l}`, openSpace: 'Нүдийг нээх', unpick: 'Сонголтыг болих',
+  loopN: n => `⟲ ${n} ажил бие биеэ хүлээж тойрог үүсгэсэн`, loopHelp: 'Нэгнийх нь «Хүлээж буй ажил»-аас нөгөөг хасна уу. Тэр хүртэл эдгээр болон тэднийг хүлээж буй ажил барих дараалалд хамгийн сүүлд орно.',
+  buildOrder: (n, l) => `Барих дараалал · ${n} ажил, ${l} давхарга`, noDeps: 'Одоогоор хамаарал алга. Ажлыг засахдаа «Хүлээж буй ажил» нэмнэ үү.',
+  graphHelp: (imp, loose) => `Зүүн талын ажил дуусаж байж баруун талынх эхэлнэ. Багана бүр нэг давхарга. Зузаан шугам: одоо гацааж буй холбоос. Ажил дээр дарвал түүний гинжийг тодруулна.${imp ? ` Өөр холбоосоор илэрхийлэгдсэн ${imp} шууд бус холбоосыг зураагүй.` : ''}${loose ? ` Хамааралгүй ${loose} ажил графт ороогүй.` : ''}`,
+  canStart: 'Одоо эхлэх боломжтой', opensN: n => ` · ${n} ажлыг нээнэ`, none: 'Алга.',
+  langBtn: 'EN', langAria: 'Switch to English', themeToDark: 'Харанхуй горим руу', themeToLight: 'Гэрэл горим руу',
+  roleVida: 'Технологи', roleAnand: 'Технологи · Forward deployed engineering', roleObama: 'Бизнес, маркетинг, брэнд',
   addWait: 'Өгөгдөл ачаалагдаж байна. Түр хүлээгээд дахин дарна уу.', addFailed: 'Нэмж чадсангүй. Бичсэн зүйл тань хэвээр байна.',
   loading: 'Ачаалж байна…', noTodos: 'Одоогоор ажил алга.', nTodos: n => `${n} ажил`,
   fileBig: 'Файл хэт том байна.', fileUnreadable: 'Файлыг уншиж чадсангүй.',
@@ -536,6 +646,49 @@ Object.assign(L.mn, {
   loopSkipped: n => `${n} хамаарал тойрог үүсгэх тул нэмсэнгүй.`, moved: w => `«${w}» руу зөөлөө.`, deleted: 'Устгалаа.',
 });
 Object.assign(L.en, {
+  reached: 'Reached', noDate: 'No date', lateN: n => `${n} ${n === 1 ? 'day' : 'days'} late`, todayW: 'Today', daysLeft: n => `${n} ${n === 1 ? 'day' : 'days'} left`,
+  hudTitle: n => `TIMELINE // ${n} ${n === 1 ? 'MILESTONE' : 'MILESTONES'}`, hudDone: (d, n, p) => `DONE ${d}/${n} · ${p}%`, hudToday: 'TODAY', hudNoDates: 'No dated milestones',
+  hudBehind: (p, d) => `▲ Plan says ${p} done by today; ${d} done`, hudOnTrack: (p, d) => `◆ On plan: ${p} due by today, ${d} done`,
+  hudDesc: (n, d, t) => `${n} milestones. ${d} of ${t} tasks done.`,
+  msStats: (n, d, b, r) => `${d} of ${n} done · ${b} blocked · ${r} can start`, msTick: ' · every task is done, tick the milestone', msNoTasks: 'No tasks are linked to this milestone.',
+  moreReady: n => `${n} more can start. See them all in “Build order” on the Dependency graph.`,
+  tlEmpty: 'Add milestones in the Milestones space and they show here in date order. Start the text with a date: 11/22 · …', tlNoneInPlan: 'No milestones in this plan.',
+  mastSub: 'Workspace', meAria: 'You and your time', change: 'Change', viewAria: 'View', cube: 'Cube', list: 'List', search: 'Search',
+  resultsAria: 'Search results', sceneAria: 'Cube. Turn it with the arrow keys.', hint: 'Drag the cube to turn it. Tap a space to open it.', turnAria: 'Turn the cube',
+  tLeft: 'Left', tUp: 'Up', tDown: 'Down', tRight: 'Right', team: 'Team', data: 'Data', export: 'Export',
+  exportHelp: 'Every side, space, to-do and time record in one file. Keep it as a backup, or import it elsewhere.',
+  backupHint: 'Backup: tap “Save JSON”, then choose Proton Drive as the place to save. Once a week.',
+  exportJson: 'Save JSON', exportCsv: 'Save CSV', copy: 'Copy', exportTextAria: 'Exported data', import: 'Import',
+  importHelp: 'Choose a JSON or CSV file, or paste its text. Nothing already here is deleted.', chooseFile: 'Choose a file', pasteHere: 'Paste here',
+  importAria: 'Data to import', check: 'Check', back: '← Back', newTodo: 'New to-do', add: 'Add', undo: 'Undo',
+  swipeHint: 'Swipe a row sideways to delete it. Tap the letter badge to change the owner. Tap the text to edit or move it. Paste several lines to add one to-do per line.',
+  saveQuota: 'Not saved: the database is full.', saveRevoked: 'Saving is no longer allowed. Please open the page again.', saveFailed: 'Not saved. Please try again.',
+  saving: 'Saving…', saved: 'Saved', you: 'You', someone: 'Someone', whoAreYou: 'Who are you?', space: 'Space',
+  removeX: t => `Remove: ${t}`, addWaitAria: 'Add something it waits for', addWait: '＋ Add something it waits for', depLabel: 'Waits for', save: 'Save', cancel: 'Cancel',
+  st_done: 'Done', st_open: 'Open', st_blocked: 'Blocked', st_blocking: 'Blocking',
+  pickPlan: 'Choose a plan', otherN: n => `Other · ${n}`, allN: n => `All · ${n}`, all: 'All',
+  nBlocked: n => `${n} blocked`, noneBlocked: 'Nothing blocked', msLeft: n => `${n} ${n === 1 ? 'milestone' : 'milestones'} left`, noMs: 'No milestones', empty: 'Empty', nLeft: n => `${n} left`, allDone: 'All done',
+  rename: 'Rename', renameOf: t => `${t}: rename`, sideName: 'Side name', spaceName: 'Space name', nHits: n => `${n} ${n === 1 ? 'result' : 'results'}`, noHits: 'No results',
+  doneOf: t => `Done: ${t}`, edit: 'Edit', editTodo: 'Edit to-do', blockedBy: (t, more) => `■ Blocked · ${t}${more}`, blockingN: n => `▶ Holding up ${n}`, openLink: 'Open ↗',
+  ownerIs: n => `Owner: ${n}. Change`, pickOwner: 'Choose an owner', owner: 'Owner', deleteX: t => `Delete: ${t}`,
+  leftover: (n, where, list) => `${n} ${n === 1 ? 'line was' : 'lines were'} not added (${where}): ${list} `, retry: 'Try again', pasteWait: 'The data is still loading. Wait a moment and paste again.',
+  hm: (h, mm) => `${h} h ${mm} min`, min: m => `${m} min`, notSignedIn: 'Not signed in', clockStopped: 'Timer stopped', home: 'Home', awayFor: t => `Away ${t}`,
+  todayT: t => `Today ${t}`, pause: 'Pause', start: 'Start', weekT: t => `7 days ${t}`, inSpace: l => `In this space: ${l}`,
+  awayQ: t => `The timer ran ${t} while you were away. Were you working?`, awayYes: 'Yes, count it', awayNo: 'No, stop it when I left',
+  impEmpty: 'It is empty.', impBadJson: 'Could not read the JSON.', impNotCubic: 'This is not a CUBIC file.', impCsvCols: 'The CSV needs "cell" and "text" columns.', impNoTodos: 'No to-dos to import were found.',
+  dlDeclined: 'Not saved.', dlFailed: 'Could not save the file. Use “Copy”.',
+  pNew: 'New to-dos', pUpd: 'Updated to-dos', pFaces: 'Side names', pPeople: 'People', pClock: 'Time records', pSame: 'Same, unchanged', pOlder: 'Newer here, skipped',
+  pLoops: 'Dependencies left out (would loop)', pSkipped: 'Rows skipped (bad space or text)', importN: n => `Import (${n})`,
+  impPartial: 'Not everything was saved. Press again to add the rest.', impNone: 'Everything is already here. Nothing to add.', impUnreadable: 'Could not read it.',
+  fileSaved: 'File saved.', copied: 'Copied. Paste it into “Import” on the other copy.', copyManual: 'Could not copy automatically. Copy all of the text below.',
+  filterBy: 'Filter by status', noOrder: 'No place in the order (loop)', layerN: n => `Layer ${n}`, loopCol: '⟲ Loop', graphAria: 'Dependency graph. Scroll sideways.',
+  waitsFor: l => `Waits for: ${l}`, holdsUp: l => `Holding up: ${l}`, openSpace: 'Open the space', unpick: 'Clear the selection',
+  loopN: n => `⟲ ${n} to-dos wait on each other in a loop`, loopHelp: 'Remove one from the other’s “Waits for”. Until then, these and what waits on them come last in the build order.',
+  buildOrder: (n, l) => `Build order · ${n} ${n === 1 ? 'to-do' : 'to-dos'}, ${l} ${l === 1 ? 'layer' : 'layers'}`, noDeps: 'No dependencies yet. Add “Waits for” when you edit a to-do.',
+  graphHelp: (imp, loose) => `A to-do on the left must be done before the ones to its right start. Each column is one layer. A thick line is a link holding things up now. Tap a to-do to light up its chain.${imp ? ` ${imp} indirect ${imp === 1 ? 'link is' : 'links are'} already implied by others and not drawn.` : ''}${loose ? ` ${loose} to-dos with no links are not on the graph.` : ''}`,
+  canStart: 'Can start now', opensN: n => ` · unblocks ${n}`, none: 'None.',
+  langBtn: 'МН', langAria: 'Монгол руу шилжих', themeToDark: 'Switch to dark theme', themeToLight: 'Switch to light theme',
+  roleVida: 'Technology', roleAnand: 'Technology · Forward deployed engineering', roleObama: 'Business, marketing, branding',
   addWait: 'The data is still loading. Wait a moment and press again.', addFailed: 'Could not add it. Your text is still here.',
   loading: 'Loading…', noTodos: 'No to-dos yet.', nTodos: n => `${n} ${n === 1 ? 'to-do' : 'to-dos'}`,
   fileBig: 'The file is too large.', fileUnreadable: 'Could not read the file.',
@@ -594,12 +747,10 @@ function dbWrite(path, op, data) {
   next.catch(() => {}).then(() => { if (writeLines.get(path) === next) writeLines.delete(path); });
   return next;
 }
-const failText = e => (e && e.code === 'quota_exceeded' ? 'Өгөгдлийн сан дүүрсэн тул хадгалагдсангүй.'
-  : e && (e.code === 'revoked' || e.code === 'not_granted') ? 'Хадгалах эрх алга болсон. Хуудсаа дахин нээнэ үү.'
-  : 'Хадгалагдсангүй. Дахин оролдоно уу.');
+const failText = e => (e && e.code === 'quota_exceeded' ? tr('saveQuota') : e && (e.code === 'revoked' || e.code === 'not_granted') ? tr('saveRevoked') : tr('saveFailed'));
 async function save(fn) {
-  S.pending += 1; setSync('saving', 'Хадгалж байна…');
-  try { await fn(); S.pending -= 1; S.wroteOnce = true; if (!S.pending) setSync('saved', 'Хадгаллаа'); return true; }
+  S.pending += 1; setSync('saving', tr('saving'));
+  try { await fn(); S.pending -= 1; S.wroteOnce = true; if (!S.pending) setSync('saved', tr('saved')); return true; }
   catch (e) { S.pending -= 1; if (refusedWrite(e)) setSync('', ''); else setSync('failed', failText(e)); return false; }
 }
 /* When the host does not say whether this viewer may write (can() is null), the first refused write
@@ -640,11 +791,11 @@ function toast(text, undo) {
 
 /* ── Хүмүүс: Claude-ийн хэрэглэгч бүр гурвын нэг болж сонгоно ── */
 const whoOf = uid => (S.people.get(uid) || {}).who || '';
-const nameOfUid = uid => (member(whoOf(uid)) || {}).name || (uid === S.me ? 'Та' : 'Хэн нэгэн');
+const nameOfUid = uid => (member(whoOf(uid)) || {}).name || (uid === S.me ? tr('you') : tr('someone'));
 function askWho() {
   if (!S.me || !S.canWrite) return;
   const box = $('whoBox'); box.hidden = false;
-  box.replaceChildren(el('span', { text: 'Та хэн бэ?' }),
+  box.replaceChildren(el('span', { text: tr('whoAreYou') }),
     el('div', { class: 'pick' }, TEAM.map(m => el('button', { type: 'button', class: 'btn', text: m.name,
       onclick: async () => {
         const prev = S.people.get(S.me);
@@ -657,10 +808,10 @@ function askWho() {
 /* ── Байранд нь засах: дарна, бичнэ, Хадгалах эсвэл Болих. Алдаа гарвал бичвэр үлдэнэ.
    `cell` өгвөл өөр нүд рүү зөөх сонголт гарна. ── */
 function cellPicker(current) {
-  const sel = el('select', { class: 'field', 'aria-label': 'Нүд' });
+  const sel = el('select', { class: 'field', 'aria-label': tr('space') });
   S.faces.forEach((face, f) => {
     const g = el('optgroup', { label: `${num(f + 1)} ${face.title}` });
-    face.cells.forEach((t, c) => {
+    face.cells.forEach((_, c, __, t = cellName(f, c)) => {
       if (isViewCell(cellKey(f, c))) return;
       const o = el('option', { value: cellKey(f, c), text: `${cellNum(f, c)} ${t}` }); if (cellKey(f, c) === current) o.selected = true; g.append(o);
     });
@@ -674,16 +825,16 @@ function depEditor(itemId, chosen) {
   const draw = () => {
     const chips = chosen.filter(d => S.items.has(d)).map(d => el('span', { class: 'dep-chip' }, [
       el('span', { text: short(S.items.get(d).text, 36) }),
-      el('button', { type: 'button', 'aria-label': `Хасах: ${S.items.get(d).text}`, text: '✕', onclick: () => { chosen.splice(chosen.indexOf(d), 1); draw(); } })]));
-    const sel = el('select', { class: 'field', 'aria-label': 'Хүлээх ажил нэмэх' }, el('option', { value: '', text: '＋ Хүлээх ажил нэмэх' }));
-    S.faces.forEach((face, f) => face.cells.forEach((t, c) => {
+      el('button', { type: 'button', 'aria-label': tr('removeX', S.items.get(d).text), text: '✕', onclick: () => { chosen.splice(chosen.indexOf(d), 1); draw(); } })]));
+    const sel = el('select', { class: 'field', 'aria-label': tr('addWaitAria') }, el('option', { value: '', text: tr('addWait') }));
+    S.faces.forEach((face, f) => face.cells.forEach((_, c, __, t = cellName(f, c)) => {
       const opts = [...S.items.values()].filter(i => i.cell === cellKey(f, c) && !chosen.includes(i.id) && !wouldLoop(itemId, i.id))
         .sort((x, y) => (y.at || 0) - (x.at || 0));
       if (!opts.length) return;
       sel.append(el('optgroup', { label: `${face.title} › ${t}` }, opts.map(i => el('option', { value: i.id, text: `${i.done ? '✓ ' : ''}${short(i.text, 60)}` }))));
     }));
     sel.addEventListener('change', () => { if (sel.value) { chosen.push(sel.value); draw(); } });
-    box.replaceChildren(el('span', { class: 'dep-label', text: 'Хүлээж буй ажил' }), ...chips, sel);
+    box.replaceChildren(el('span', { class: 'dep-label', text: tr('depLabel') }), ...chips, sel);
   };
   draw();
   return box;
@@ -698,8 +849,8 @@ function inlineEdit(host, { value, label, onSave, cell, itemId }) {
   const before = itemId ? depsOf(S.items.get(itemId) || {}) : [], chosen = before.slice();
   const depBox = itemId ? depEditor(itemId, chosen) : null;
   const err = el('p', { class: 'err', hidden: true });
-  const saveBtn = el('button', { class: 'btn', type: 'button', text: 'Хадгалах' });
-  const cancelBtn = el('button', { class: 'btn ghost', type: 'button', text: 'Болих' });
+  const saveBtn = el('button', { class: 'btn', type: 'button', text: tr('save') });
+  const cancelBtn = el('button', { class: 'btn ghost', type: 'button', text: tr('cancel') });
   const row = el('div', { class: 'edit-row', 'data-editing': '1' }, [input, picker, depBox, saveBtn, cancelBtn, err]);
   const original = [...host.childNodes];
   host.replaceChildren(row);
@@ -756,7 +907,7 @@ function saveFace(f) {
    box redraws the page itself when it closes. */
 function renameFace(f, title) { const old = S.faces[f].title; S.faces[f].title = title; return saveFace(f).then(ok => { if (!ok) S.faces[f].title = old; return ok; }); }
 function renameCell(f, c, title) { const old = S.faces[f].cells[c]; S.faces[f].cells[c] = title; return saveFace(f).then(ok => { if (!ok) S.faces[f].cells[c] = old; return ok; }); }
-const newItem = (text, at, cell) => ({ cell, text, url: '', who: '', done: false, deps: [], by: S.me || null, at, ...stamp() });
+const newItem = (text, at, cell) => ({ cell, text, url: '', who: ownerFor(cell), done: false, deps: [], by: S.me || null, at, ...stamp() });
 const newItemPath = () => `items/${S.db.collection('items').doc().id}`;
 function addItem(text, cell) {
   return save(() => dbWrite(newItemPath(), 'set', newItem(text, Date.now(), cell)));
@@ -800,7 +951,7 @@ function removeItem(id) {
    blocked  дуусаагүй, хүлээж буй ажлын аль нэг нь дуусаагүй
    blocking дуусаагүй, өөрөө гацаагүй, гэхдээ өөр дуусаагүй ажил үүнийг хүлээж байгаа
    open     дуусаагүй, хэнийг ч хүлээхгүй, хэнийг ч гацаахгүй */
-const STATE = { done: 'Дууссан', open: 'Нээлттэй', blocked: 'Гацсан', blocking: 'Гацааж буй' };
+const STATE = new Proxy({}, { get: (_, k) => tr(`st_${String(k)}`) });   /* status words in the screen language */
 const STATE_MARK = { done: '✓', open: '○', blocked: '■', blocking: '▶' };
 const depsOf = i => [...new Set(Array.isArray(i.deps) ? i.deps : [])].filter(d => d !== i.id && S.items.has(d));
 function flow() {
@@ -939,22 +1090,22 @@ function groupChips(P, picked, redraw) {
   const big = P.groups.filter(g => g.size >= GROUP_MIN);
   const rest = P.groups.filter(g => g.size < GROUP_MIN).reduce((t, g) => t + g.size, 0);
   const chip = (key, text, on) => el('button', { type: 'button', class: 'gchip', 'data-fkey': `p:${key}`, 'aria-pressed': String(on), onclick: () => { G.group = key; G.pick = null; redraw(); } }, text);
-  return el('div', { class: 'gchips', role: 'group', 'aria-label': 'Төлөвлөгөө сонгох' }, [
+  return el('div', { class: 'gchips', role: 'group', 'aria-label': tr('pickPlan') }, [
     ...big.map(g => chip(g.key, `${short(g.label, 30)} · ${g.size}`, !!picked && picked.key === g.key)),
-    rest ? chip('other', `Бусад · ${rest}`, !!picked && picked.key === 'other') : null,
-    chip('all', `Бүгд · ${P.ids.length}`, !picked),
+    rest ? chip('other', tr('otherN', rest), !!picked && picked.key === 'other') : null,
+    chip('all', tr('allN', P.ids.length), !picked),
   ].filter(Boolean));
 }
 
 function countFor(key) {
   if (!S.db) return '';
   if (!S.loaded) return tr('loading');
-  if (key === GRAPH_CELL) { let b = 0; flow().forEach(x => { if (x.state === 'blocked') b += 1; }); return b ? `${b} гацсан` : 'Гацсан ажилгүй'; }
-  if (key === TIMELINE_CELL) { let m = 0; S.items.forEach(i => { if (i.cell === MILESTONE_CELL && !i.done) m += 1; }); return m ? `${m} шалгуур үлдсэн` : 'Шалгуургүй'; }
+  if (key === GRAPH_CELL) { let b = 0; flow().forEach(x => { if (x.state === 'blocked') b += 1; }); return b ? tr('nBlocked', b) : tr('noneBlocked'); }
+  if (key === TIMELINE_CELL) { let m = 0; S.items.forEach(i => { if (i.cell === MILESTONE_CELL && !i.done) m += 1; }); return m ? tr('msLeft', m) : tr('noMs'); }
 
   let n = 0, open = 0;
   S.items.forEach(i => { if (i.cell === key) { n += 1; if (!i.done) open += 1; } });
-  return n === 0 ? 'Хоосон' : open ? `${open} үлдсэн` : 'Бүгд дууссан';
+  return n === 0 ? tr('empty') : open ? tr('nLeft', open) : tr('allDone');
 }
 
 /* ── Шоо: чөлөөтэй чирнэ, тавихад эрчээрээ эргээд хамгийн ойрын тал дээр зөөлөн тогтоно ── */
@@ -1002,7 +1153,7 @@ function renderCube() {
   $('cube').replaceChildren(...S.faces.map((face, f) =>
     el('div', { class: `face face-${f}`, style: faceStyle(f) }, [
       el('div', { class: 'face-name' }, [el('i', { 'aria-hidden': 'true', text: num(f + 1) }), el('span', { text: face.title })]),
-      el('div', { class: 'cells' }, face.cells.map((title, c) =>
+      el('div', { class: 'cells' }, face.cells.map((_, c, __, title = cellName(f, c)) =>
         el('button', { type: 'button', class: 'cell-tile', 'data-open': cellKey(f, c), 'data-fkey': `t:${cellKey(f, c)}`, 'aria-label': `${title}, ${face.title}. ${countFor(cellKey(f, c))}` },
           [el('em', { 'aria-hidden': 'true', text: cellNum(f, c) }), el('strong', { text: title }), el('small', { text: countFor(cellKey(f, c)) })]))),
     ])));
@@ -1068,22 +1219,22 @@ function renderGrid() {
   $('gridView').replaceChildren(...S.faces.map((face, f) => {
     const head = el('div', { class: 'g-head' });
     head.append(el('span', { 'aria-hidden': 'true', text: num(f + 1) }), el('h3', { text: face.title }));
-    if (S.canWrite) head.append(el('button', { type: 'button', class: 'icon-btn', text: 'Нэр солих', 'aria-label': `${face.title}: нэр солих`,
-      onclick: () => inlineEdit(head, { value: face.title, label: 'Талын нэр', onSave: v => renameFace(f, v) }) }));
+    if (S.canWrite) head.append(el('button', { type: 'button', class: 'icon-btn', text: tr('rename'), 'aria-label': tr('renameOf', face.title),
+      onclick: () => inlineEdit(head, { value: face.title, label: tr('sideName'), onSave: v => renameFace(f, v) }) }));
     return el('div', { class: 'g-face', style: faceStyle(f) }, [head,
-      el('div', { class: 'g-cells' }, face.cells.map((title, c) =>
+      el('div', { class: 'g-cells' }, face.cells.map((_, c, __, title = cellName(f, c)) =>
         el('button', { type: 'button', class: 'g-cell', 'data-fkey': `gc:${cellKey(f, c)}`, onclick: () => openKey(cellKey(f, c)) },
           [el('em', { 'aria-hidden': 'true', text: cellNum(f, c) }), el('strong', { text: title }), el('small', { text: countFor(cellKey(f, c)) })])))]);
   }));
 }
 
 /* ── Хайлт ── */
-function whereIs(key) { const m = /^f(\d)-c(\d)$/.exec(key || ''); if (!m) return ''; const f = S.faces[+m[1]]; return f ? `${f.title} › ${f.cells[+m[2]]}` : ''; }
+function whereIs(key) { const m = /^f(\d)-c(\d)$/.exec(key || ''); if (!m) return ''; const f = S.faces[+m[1]]; return f ? `${f.title} › ${cellName(+m[1], +m[2])}` : ''; }
 function renderSearch() {
   const q = $('search').value.trim().toLowerCase();
   $('results').hidden = !q; if (!q) return;
   const hits = [...S.items.values()].filter(i => `${i.text} ${i.url || ''}`.toLowerCase().includes(q)).slice(0, 30);
-  $('resultsTitle').textContent = hits.length ? `${hits.length} илэрц` : 'Илэрц алга';
+  $('resultsTitle').textContent = hits.length ? tr('nHits', hits.length) : tr('noHits');
   $('resultsList').replaceChildren(...hits.map(i => el('li', {}, el('button', { type: 'button', onclick: () => openKey(i.cell) },
     [el('b', { text: i.text }), el('small', { text: whereIs(i.cell) })]))));
 }
@@ -1119,10 +1270,11 @@ function renderArea() {
   $('areaNum').textContent = cellNum(f, c);
   const box = $('areaTitleBox');
   const h = el('h1', { class: 'area-title' });
-  if (S.canWrite) h.append(el('button', { type: 'button', class: 'editable', text: face.cells[c], title: 'Нэр солих',
-    onclick: () => inlineEdit(box, { value: face.cells[c], label: 'Нүдний нэр', onSave: v => renameCell(f, c, v) }) }));
-  else h.textContent = face.cells[c];
+  if (S.canWrite) h.append(el('button', { type: 'button', class: 'editable', 'data-fkey': 'title', text: cellName(f, c), title: tr('rename'),
+    onclick: () => inlineEdit(box, { value: face.cells[c], label: tr('spaceName'), onSave: v => renameCell(f, c, v) }) }));
+  else h.textContent = cellName(f, c);
   box.replaceChildren(h);
+  drawMilestoneHud();
   const view = isViewCell(S.cell);
   $('capture').hidden = !S.canWrite || view;
   $('items').hidden = view; $('planView').hidden = !view;
@@ -1146,24 +1298,24 @@ function renderArea() {
   const fkey = active && itemsBox.contains(active) && active.dataset ? active.dataset.fkey || null : null;
   const fRow = fkey ? [...itemsBox.querySelectorAll('[data-fkey^="c:"]')].findIndex(n => n.dataset.fkey === `c:${fkey.slice(2)}`) : -1;
   $('items').replaceChildren(...list.map((i, k) => {
-    const chk = el('input', { type: 'checkbox', id: `chk-${i.id}`, 'data-fkey': `c:${i.id}`, 'aria-label': `Дууссан: ${i.text}`, disabled: !S.canWrite });
+    const chk = el('input', { type: 'checkbox', id: `chk-${i.id}`, 'data-fkey': `c:${i.id}`, 'aria-label': tr('doneOf', i.text), disabled: !S.canWrite });
     chk.checked = !!i.done; chk.addEventListener('change', () => patchItem(i.id, { done: chk.checked }));
     const main = el('div', { class: 'item-main' });
     const textHost = el('div');
     textHost.append(S.canWrite
-      ? el('button', { type: 'button', class: 'editable item-text', text: i.text, title: 'Засах',
-          onclick: () => inlineEdit(textHost, { value: i.text, label: 'Ажлыг засах', cell: i.cell, itemId: i.id, onSave: (v, to, changes) => moveItem(i.id, changes) }) })
+      ? el('button', { type: 'button', class: 'editable item-text', 'data-fkey': `e:${i.id}`, text: i.text, title: tr('edit'),
+          onclick: () => inlineEdit(textHost, { value: i.text, label: tr('editTodo'), cell: i.cell, itemId: i.id, onSave: (v, to, changes) => moveItem(i.id, changes) }) })
       : el('span', { class: 'item-text', text: i.text }));
     main.append(textHost);
     const x = fl.get(i.id);
-    if (x && x.state === 'blocked') main.append(el('span', { class: 'flow-tag blocked', text: `■ Гацсан · ${short(S.items.get(x.waits[0]).text, 34)}${x.waits.length > 1 ? ` +${x.waits.length - 1}` : ''}` }));
-    else if (x && x.state === 'blocking') main.append(el('span', { class: 'flow-tag blocking', text: `▶ ${x.holds.length} ажлыг гацааж буй` }));
-    if (i.url && /^https?:\/\//i.test(i.url)) main.append(el('a', { href: i.url, target: '_blank', rel: 'noopener', text: 'Нээх ↗' }));
+    if (x && x.state === 'blocked') main.append(el('span', { class: 'flow-tag blocked', text: tr('blockedBy', short(S.items.get(x.waits[0]).text, 34), x.waits.length > 1 ? ` +${x.waits.length - 1}` : '') }));
+    else if (x && x.state === 'blocking') main.append(el('span', { class: 'flow-tag blocking', text: tr('blockingN', x.holds.length) }));
+    if (i.url && /^https?:\/\//i.test(i.url)) main.append(el('a', { href: i.url, target: '_blank', rel: 'noopener', text: tr('openLink') }));
     const m = member(i.who);
     const who = el(S.canWrite ? 'button' : 'span', { class: 'who', 'data-who': i.who || '', 'data-fkey': `w:${i.id}`, text: m ? m.name[0] : '+',
-      'aria-label': m ? `Хариуцагч: ${m.name}. Солих` : 'Хариуцагч сонгох', title: m ? m.name : 'Хариуцагч' });
+      'aria-label': m ? tr('ownerIs', m.name) : tr('pickOwner'), title: m ? m.name : tr('owner') });
     if (S.canWrite) { who.type = 'button'; who.addEventListener('click', () => { const cur = S.items.get(i.id); if (cur) patchItem(i.id, { who: nextWho(cur.who) }); }); }
-    const del = S.canWrite ? el('button', { type: 'button', class: 'x', 'data-fkey': `x:${i.id}`, 'aria-label': `Устгах: ${i.text}`, text: '✕', onclick: () => removeItem(i.id) }) : el('span');
+    const del = S.canWrite ? el('button', { type: 'button', class: 'x', 'data-fkey': `x:${i.id}`, 'aria-label': tr('deleteX', i.text), text: '✕', onclick: () => removeItem(i.id) }) : el('span');
     const row = el('div', { class: `todo${i.done ? ' done' : ''}${i.done && !ROWS.done.has(i.id) ? ' just-done' : ''}` }, [chk, main, who, del]);
     if (S.canWrite) attachSwipe(row, () => removeItem(i.id));
     const fresh = !ROWS.seen.has(i.id);
@@ -1180,8 +1332,8 @@ function showLeftover(lines, cell) {
   const err = $('captureErr');
   if (!lines.length) { err.hidden = true; return; }
   err.hidden = false;
-  err.replaceChildren(el('span', { text: `${lines.length} мөр нэмэгдсэнгүй: ${lines.join(' · ')} ` }),
-    el('button', { type: 'button', class: 'btn ghost', text: 'Дахин оролдох', onclick: async () => showLeftover(await addLines(lines, cell), cell) }));
+  err.replaceChildren(el('span', { text: tr('leftover', lines.length, whereIs(cell), lines.join(' · ')) }),
+    el('button', { type: 'button', class: 'btn ghost', text: tr('retry'), onclick: async () => showLeftover(await addLines(lines, cell), cell) }));
 }
 function initCapture() {
   $('capture').addEventListener('submit', async e => {
@@ -1202,7 +1354,7 @@ function initCapture() {
     if (lines.length < 2) return;
     e.preventDefault();
     const cell = S.cell, err = $('captureErr');
-    if (!canWriteNow() || !cell) { err.hidden = false; err.textContent = 'Өгөгдөл ачаалагдаж байна. Түр хүлээгээд дахин буулгана уу.'; return; }
+    if (!canWriteNow() || !cell) { err.hidden = false; err.textContent = tr('pasteWait'); return; }
     showLeftover(await addLines(lines, cell), cell);
   });
 }
@@ -1216,7 +1368,7 @@ const AWAY_MAX_MS = 12 * 60 * 60 * 1000;
 const dayKey = ts => { const d = new Date(ts); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 function fmt(ms) {
   const m = Math.floor(Math.max(0, ms) / 60000), h = Math.floor(m / 60);
-  return h ? `${h} ц ${String(m % 60).padStart(2, '0')} мин` : `${m} мин`;
+  return h ? tr('hm', h, String(m % 60).padStart(2, '0')) : tr('min', m);
 }
 const myClock = () => S.clocks.get(S.me) || null;
 /* A clock document as the page uses it, or null when it is not one. A damaged or hand-made record
@@ -1299,10 +1451,10 @@ function personMs(clocks, day) {
 }
 function personWeekMs(clocks) { let t = 0; for (let k = 0; k < 7; k++) t += personMs(clocks, dayKey(Date.now() - k * 86400000)); return t; }
 function statusOf(c) {
-  if (!c) return { cls: '', text: 'Нэвтрээгүй' };
-  if (!c.openSince) return { cls: '', text: 'Цаг зогссон' };
-  const where = c.openCell && c.openCell !== 'home' ? whereIs(c.openCell) : 'Нүүр';
-  if (c.leftAt) return { cls: 'away', text: `Эзгүй ${fmt(Date.now() - c.leftAt)}` };
+  if (!c) return { cls: '', text: tr('notSignedIn') };
+  if (!c.openSince) return { cls: '', text: tr('clockStopped') };
+  const where = c.openCell && c.openCell !== 'home' ? whereIs(c.openCell) : tr('home');
+  if (c.leftAt) return { cls: 'away', text: tr('awayFor', fmt(Date.now() - c.leftAt)) };
   return { cls: 'on', text: where };
 }
 function renderClock() {
@@ -1311,8 +1463,8 @@ function renderClock() {
   $('meWho').textContent = nameOfUid(S.me);
   const running = !!(c && c.openSince);
   $('meDot').className = `dot${running ? ' on' : ''}`;
-  $('meTime').textContent = `Өнөөдөр ${fmt(c ? liveMs(c, dayKey(Date.now())) : 0)}`;
-  $('clockBtn').textContent = running ? 'Түр зогсоох' : 'Эхлүүлэх';
+  $('meTime').textContent = tr('todayT', fmt(c ? liveMs(c, dayKey(Date.now())) : 0));
+  $('clockBtn').textContent = running ? tr('pause') : tr('start');
   $('clockBtn').hidden = !S.canWrite || !S.clockReady;
 }
 /* One row per team member: status, open to-dos, time today and over 7 days. */
@@ -1325,8 +1477,8 @@ function renderTeam() {
     const today = personMs(clocks, dayKey(Date.now())), week = personWeekMs(clocks);
     let open = 0; S.items.forEach(i => { if (i.who === m.id && !i.done) open += 1; });
     return el('li', {}, [el('span', { class: 'who', 'data-who': m.id, 'aria-hidden': 'true', text: m.name[0] }),
-      el('div', {}, [el('b', { text: m.name }), el('small', { text: !S.db ? '' : S.loaded && S.peopleReady && S.clockReady ? `${st.text} · ${tr('nTodos', open)}` : tr('loading') })]),
-      el('div', { class: 'nums' }, [el('div', { text: fmt(today) }), el('small', { text: `7 хоног ${fmt(week)}` })])]);
+      el('div', {}, [el('b', { text: m.name }), el('small', { class: 'role', text: tr(m.role) }), el('small', { text: !S.db ? '' : S.loaded && S.peopleReady && S.clockReady ? `${st.text} · ${tr('nTodos', open)}` : tr('loading') })]),
+      el('div', { class: 'nums' }, [el('div', { text: fmt(today) }), el('small', { text: tr('weekT', fmt(week)) })])]);
   }));
 }
 function renderSpaceTime() {
@@ -1340,7 +1492,7 @@ function renderSpaceTime() {
     if (live && live.openCell === S.cell) ms += Math.max(0, (live.leftAt || Date.now()) - live.openSince);
     return { name: p.name, ms };
   }).filter(x => x.ms >= 60000).map(x => `${x.name} ${fmt(x.ms)}`);
-  box.hidden = !parts.length; box.textContent = parts.length ? `Энэ нүдэнд: ${parts.join(' · ')}` : '';
+  box.hidden = !parts.length; box.textContent = parts.length ? tr('inSpace', parts.join(' · ')) : '';
 }
 /* Opening the workspace starts the timer. Coming back to it (another app, the screen locked) keeps
    a pause the person chose. */
@@ -1359,10 +1511,10 @@ function reconcileClock(opening) {
   if (gone < AWAY_ASK_MS) { box.hidden = true; writeClock(x => { x.leftAt = null; }).then(moveClock); return; }
   box.hidden = false;
   box.replaceChildren(
-    el('span', { text: `Таныг эзгүй байхад цаг ${fmt(gone)} явсан. Ажиллаж байсан уу?` }),
+    el('span', { text: tr('awayQ', fmt(gone)) }),
     el('div', {}, [
-      el('button', { type: 'button', class: 'btn', text: 'Тийм, тоол', onclick: () => { box.hidden = true; writeClock(x => { x.leftAt = null; }).then(moveClock); } }),
-      el('button', { type: 'button', class: 'btn ghost', text: 'Үгүй, гарсан үеэр зогсоо', onclick: () => { box.hidden = true; writeClock(x => { closeStretch(x, leftAt); }).then(startClock); } }),
+      el('button', { type: 'button', class: 'btn', text: tr('awayYes'), onclick: () => { box.hidden = true; writeClock(x => { x.leftAt = null; }).then(moveClock); } }),
+      el('button', { type: 'button', class: 'btn ghost', text: tr('awayNo'), onclick: () => { box.hidden = true; writeClock(x => { closeStretch(x, leftAt); }).then(startClock); } }),
     ]));
 }
 function initClock() {
@@ -1435,12 +1587,12 @@ function cleanItem(v) {
 const plainError = msg => Object.assign(new Error(msg), { plain: true });
 function readImport(text) {
   text = (text || '').trim();
-  if (!text) throw plainError('Хоосон байна.');
+  if (!text) throw plainError(tr('impEmpty'));
   if (text[0] === '{' || text[0] === '[') {
-    let d; try { d = JSON.parse(text); } catch (e) { throw plainError('JSON уншигдсангүй.'); }
+    let d; try { d = JSON.parse(text); } catch (e) { throw plainError(tr('impBadJson')); }
     if (Array.isArray(d)) d = { items: d };
-    if (!d || typeof d !== 'object') throw plainError('Энэ CUBIC-ийн файл биш.');
-    if (d.app && d.app !== 'cubic') throw plainError('Энэ CUBIC-ийн файл биш.');
+    if (!d || typeof d !== 'object') throw plainError(tr('impNotCubic'));
+    if (d.app && d.app !== 'cubic') throw plainError(tr('impNotCubic'));
     const raw = (Array.isArray(d.items) ? d.items : []).filter(v => v && typeof v === 'object').map(v => ({ id: v && typeof v.id === 'string' && /^[^/\s]{1,120}$/.test(v.id) ? v.id : null, body: cleanItem(v) }));
     const items = raw.filter(x => x.body), skipped = raw.length - items.length;
     const faces = (Array.isArray(d.faces) ? d.faces : []).filter(f => f && typeof f === 'object').map((f, i) => {
@@ -1457,7 +1609,7 @@ function readImport(text) {
   const rows = parseCsv(text);
   const head = (rows.shift() || []).map(h => h.trim().toLowerCase());
   const col = name => head.indexOf(name);
-  if (col('text') < 0 || col('cell') < 0) throw plainError('CSV-д "cell", "text" багана хэрэгтэй.');
+  if (col('text') < 0 || col('cell') < 0) throw plainError(tr('impCsvCols'));
   const items = rows.map(r => {
     const g = name => (col(name) >= 0 ? (r[col(name)] || '').trim().replace(/^'(?=[=+\-@\t\r])/, '') : '');
     const id = g('id');
@@ -1465,7 +1617,7 @@ function readImport(text) {
     return { id: /^[^/\s]{1,120}$/.test(id) ? id : null, body: cleanItem({ cell: g('cell'), text: g('text'), who: g('owner'), done: g('done'), url: g('url'), at: g('at'), editedAt: g('editedat'), deps, by: g('by'), editedBy: g('editedby') }) };
   });
   const kept = items.filter(x => x.body);
-  if (!kept.length) throw plainError('Оруулах ажил олдсонгүй.');
+  if (!kept.length) throw plainError(tr('impNoTodos'));
   return { items: kept, skipped: items.length - kept.length, faces: [], people: [], clock: [] };
 }
 function planImport(d) {
@@ -1550,7 +1702,7 @@ async function applyImport(p) {
 async function download(name, text, type) {
   if (S.downloads) {
     try { await S.downloads.save({ filename: name, data: text }); return true; }
-    catch (e) { exportMsg(e && e.code === 'declined' ? 'Хадгалсангүй.' : 'Файл хадгалж чадсангүй. «Хуулах»-ыг ашиглана уу.'); return false; }
+    catch (e) { exportMsg(e && e.code === 'declined' ? tr('dlDeclined') : tr('dlFailed')); return false; }
   }
   const url = URL.createObjectURL(new Blob([text], { type }));
   const a = el('a', { href: url, download: name }); document.body.append(a); a.click(); a.remove();
@@ -1563,27 +1715,27 @@ function renderImportPlan(p) {
   const line = (label, n) => (n ? el('li', {}, [el('span', { text: label }), el('b', { text: String(n) })]) : null);
   const total = planSize(p);
   const list = el('ul', { class: 'plan' }, [
-    line('Шинэ ажил', p.add.length), line('Шинэчлэгдэх ажил', p.update.length), line('Талын нэр', p.faces.length),
-    line('Хүн', p.people.length), line('Цагийн бүртгэл', p.clock.length),
-    line('Ижил, өөрчлөхгүй', p.same), line('Энд илүү шинэ тул алгасна', p.older),
-    line('Тойрог үүсгэх тул хасах хамаарал', p.loops), line('Алгасах мөр (нүд эсвэл бичвэр буруу)', p.skipped),
+    line(tr('pNew'), p.add.length), line(tr('pUpd'), p.update.length), line(tr('pFaces'), p.faces.length),
+    line(tr('pPeople'), p.people.length), line(tr('pClock'), p.clock.length),
+    line(tr('pSame'), p.same), line(tr('pOlder'), p.older),
+    line(tr('pLoops'), p.loops), line(tr('pSkipped'), p.skipped),
   ].filter(Boolean));
   const msg = el('p', { class: 'fine', hidden: true });
-  const go = el('button', { type: 'button', class: 'btn', text: `Оруулах (${total})`, disabled: !total });
-  const cancel = el('button', { type: 'button', class: 'btn ghost', text: 'Болих', onclick: () => { box.hidden = true; box.replaceChildren(); } });
+  const go = el('button', { type: 'button', class: 'btn', text: tr('importN', total), disabled: !total });
+  const cancel = el('button', { type: 'button', class: 'btn ghost', text: tr('cancel'), onclick: () => { box.hidden = true; box.replaceChildren(); } });
   go.addEventListener('click', async () => {
     go.disabled = true; cancel.disabled = true;
     const ok = await applyImport(p);
     if (ok) { box.replaceChildren(el('p', { class: 'ok', text: tr('impDone', p.written) })); $('importText').value = ''; $('importFile').value = ''; }
-    else { go.disabled = false; cancel.disabled = false; msg.hidden = false; msg.className = 'err'; msg.textContent = 'Бүгд хадгалагдсангүй. Дахин дарвал үлдсэнийг нь нэмнэ.'; }
+    else { go.disabled = false; cancel.disabled = false; msg.hidden = false; msg.className = 'err'; msg.textContent = tr('impPartial'); }
   });
-  box.replaceChildren(...[list, total ? null : el('p', { class: 'fine', text: 'Энд бүгд байгаа. Нэмэх зүйл алга.' }), el('div', { class: 'btns', style: 'margin-top:10px' }, [go, cancel]), msg].filter(Boolean));
+  box.replaceChildren(...[list, total ? null : el('p', { class: 'fine', text: tr('impNone') }), el('div', { class: 'btns', style: 'margin-top:10px' }, [go, cancel]), msg].filter(Boolean));
 }
 function checkImport(text) {
   const err = $('importErr'); err.hidden = true; $('importPlan').hidden = true;
   if (!canWriteNow() || !dataReady()) { err.hidden = false; err.textContent = tr('impWait'); return; }
   try { renderImportPlan(planImport(readImport(text))); }
-  catch (e) { err.hidden = false; err.textContent = e && e.plain ? e.message : 'Уншиж чадсангүй.'; }
+  catch (e) { err.hidden = false; err.textContent = e && e.plain ? e.message : tr('impUnreadable'); }
 }
 function initData() {
   // Inside Claude a file can be saved only through the downloads capability; without it, copy only.
@@ -1592,12 +1744,12 @@ function initData() {
   $('importBox').hidden = !S.canWrite || !S.db;
   /* A backup or a restore taken before everything has arrived would be wrong, so both wait. */
   ['exportJson', 'exportCsv', 'exportCopy', 'importCheck', 'importFile'].forEach(id => { $(id).disabled = !dataReady(); });
-  $('exportJson').onclick = async () => { if (await download(`cubic-${todayStamp()}.json`, JSON.stringify(exportData(), null, 2), 'application/json')) exportMsg('Файл хадгалагдлаа.'); };
-  $('exportCsv').onclick = async () => { if (await download(`cubic-${todayStamp()}.csv`, exportCsv(), 'text/csv;charset=utf-8')) exportMsg('Файл хадгалагдлаа.'); };
+  $('exportJson').onclick = async () => { if (await download(`cubic-${todayStamp()}.json`, JSON.stringify(exportData(), null, 2), 'application/json')) exportMsg(tr('fileSaved')); };
+  $('exportCsv').onclick = async () => { if (await download(`cubic-${todayStamp()}.csv`, exportCsv(), 'text/csv;charset=utf-8')) exportMsg(tr('fileSaved')); };
   $('exportCopy').onclick = async () => {
     const text = JSON.stringify(exportData(), null, 2), area = $('exportText');
-    try { await navigator.clipboard.writeText(text); area.hidden = true; exportMsg('Хуулсан. Өөр газар «Оруулах» хэсэгт буулгана уу.'); }
-    catch (e) { area.hidden = false; area.value = text; area.focus(); area.select(); exportMsg('Автоматаар хуулж чадсангүй. Доорх бичвэрийг бүгдийг нь хуулна уу.'); }
+    try { await navigator.clipboard.writeText(text); area.hidden = true; exportMsg(tr('copied')); }
+    catch (e) { area.hidden = false; area.value = text; area.focus(); area.select(); exportMsg(tr('copyManual')); }
   };
   $('importCheck').onclick = () => checkImport($('importText').value);
   /* One handler (initData runs again as data arrives). The picker is cleared after every read, so
@@ -1645,7 +1797,7 @@ function drawGraph() {
   if (G.pick && !lay.pos.has(G.pick)) G.pick = null;
   const tally = { all: lay.nodes.length, done: 0, open: 0, blocked: 0, blocking: 0 };
   lay.nodes.forEach(n => { tally[fl.get(n.id).state] += 1; });
-  const filters = el('div', { class: 'gfilters', role: 'group', 'aria-label': 'Төлөвөөр шүүх' }, [['all', 'Бүгд'], ['blocking', STATE.blocking], ['blocked', STATE.blocked], ['open', STATE.open], ['done', STATE.done]].map(([k, label]) =>
+  const filters = el('div', { class: 'gfilters', role: 'group', 'aria-label': tr('filterBy') }, [['all', tr('all')], ['blocking', STATE.blocking], ['blocked', STATE.blocked], ['open', STATE.open], ['done', STATE.done]].map(([k, label]) =>
     el('button', { type: 'button', class: `gfilter s-${k}`, 'data-fkey': `f:${k}`, 'aria-pressed': String(G.filter === k), onclick: () => { G.filter = k; renderGraph(); } },
       [el('b', { text: String(tally[k]) }), el('span', { text: `${STATE_MARK[k] ? STATE_MARK[k] + ' ' : ''}${label}` })])));
 
@@ -1669,8 +1821,8 @@ function drawGraph() {
     });
   });
   const canvas = el('div', { class: 'graph-canvas', style: `width:${lay.w}px;height:${lay.h}px` }, svg);
-  const layerName = id => (P.stuck.has(id) ? 'Тойрогийн улмаас дараалалгүй' : `Давхарга ${P.layer.get(id)}`);
-  lay.layers.forEach(({ l, x }) => canvas.append(el('span', { class: 'glayer', 'aria-hidden': 'true', style: `left:${x}px;width:${G.W}px`, text: l === P.stuckLayer ? '⟲ Тойрог' : `Давхарга ${l}` })));
+  const layerName = id => (P.stuck.has(id) ? tr('noOrder') : tr('layerN', P.layer.get(id)));
+  lay.layers.forEach(({ l, x }) => canvas.append(el('span', { class: 'glayer', 'aria-hidden': 'true', style: `left:${x}px;width:${G.W}px`, text: l === P.stuckLayer ? tr('loopCol') : tr('layerN', l) })));
   lay.nodes.forEach(n => {
     const p = lay.pos.get(n.id), x = fl.get(n.id), inLoop = loops.has(n.id);
     canvas.append(el('button', { type: 'button', class: `gnode s-${x.state}${n.cell === MILESTONE_CELL ? ' ms' : ''}${inLoop ? ' loop' : ''}${dim(n) ? ' dim' : ''}${G.pick === n.id ? ' picked' : ''}`,
@@ -1679,7 +1831,7 @@ function drawGraph() {
       onclick: () => { G.pick = G.pick === n.id ? null : n.id; renderGraph(); } },
       [el('small', { text: `${inLoop ? '⟲ ' : STATE_MARK[x.state] + ' '}${STATE[x.state]}${member(n.who) ? ' · ' + member(n.who).name : ''}` }), el('span', { text: n.text })]));
   });
-  const scroll = el('div', { class: 'graph-scroll', tabindex: '0', 'aria-label': 'Хамаарлын граф. Хажуу тийш гүйлгэнэ.' }, canvas);
+  const scroll = el('div', { class: 'graph-scroll', tabindex: '0', 'aria-label': tr('graphAria') }, canvas);
 
   let detail = null;
   if (G.pick) {
@@ -1688,15 +1840,15 @@ function drawGraph() {
     detail = el('div', { class: 'note gdetail' }, [
       el('b', { text: n.text }),
       el('span', { text: `${STATE[x.state]} · ${layerName(n.id)} · ${whereIs(n.cell)}` }),
-      x.waits.length ? el('span', { text: `Хүлээж буй: ${names(x.waits)}` }) : null,
-      x.holds.length ? el('span', { text: `Гацааж буй: ${names(x.holds)}` }) : null,
-      el('div', { class: 'btns' }, [el('button', { type: 'button', class: 'btn', text: 'Нүдийг нээх', onclick: () => openKey(n.cell) }),
-        el('button', { type: 'button', class: 'btn ghost', text: 'Сонголтыг болих', onclick: () => { G.pick = null; renderGraph(); } })])]);
+      x.waits.length ? el('span', { text: tr('waitsFor', names(x.waits)) }) : null,
+      x.holds.length ? el('span', { text: tr('holdsUp', names(x.holds)) }) : null,
+      el('div', { class: 'btns' }, [el('button', { type: 'button', class: 'btn', text: tr('openSpace'), onclick: () => openKey(n.cell) }),
+        el('button', { type: 'button', class: 'btn ghost', text: tr('unpick'), onclick: () => { G.pick = null; renderGraph(); } })])]);
   }
   const shownLoop = P.loop.filter(has);
   const loopNote = shownLoop.length ? el('div', { class: 'note gdetail', role: 'alert' }, [
-    el('b', { text: `⟲ ${shownLoop.length} ажил бие биеэ хүлээж тойрог үүсгэсэн` }),
-    el('span', { text: 'Нэгнийх нь «Хүлээж буй ажил»-аас нөгөөг хасна уу. Тэр хүртэл эдгээр болон тэднийг хүлээж буй ажил барих дараалалд хамгийн сүүлд орно.' }),
+    el('b', { text: tr('loopN', shownLoop.length) }),
+    el('span', { text: tr('loopHelp') }),
     el('ul', { class: 'recent' }, shownLoop.map(id => el('li', {}, el('button', { type: 'button', onclick: () => openKey(S.items.get(id).cell) },
       [el('b', { text: S.items.get(id).text }), el('small', { text: whereIs(S.items.get(id).cell) })]))))]) : null;
   /* The same information as lists: what can start now (most blocking first), what is stuck on what,
@@ -1708,7 +1860,7 @@ function drawGraph() {
   const line = (i, sub) => el('li', {}, el('button', { type: 'button', onclick: () => openKey(i.cell) }, [el('b', { text: i.text }), el('small', { text: sub })]));
   const layersShown = lay.layers.filter(z => z.l !== P.stuckLayer).length;
   const build = lay.nodes.length ? el('details', { class: 'card build', open: !!G.buildOpen, ontoggle: e => { G.buildOpen = e.target.open; } }, [
-    el('summary', { class: 'label', 'data-n': '↦', text: `Барих дараалал · ${lay.nodes.length} ажил, ${layersShown} давхарга` }),
+    el('summary', { class: 'label', 'data-n': '↦', text: tr('buildOrder', lay.nodes.length, layersShown) }),
     el('ol', { class: 'recent build-list' }, lay.nodes.map(n => {
       const x = fl.get(n.id);
       return el('li', {}, el('button', { type: 'button', onclick: () => openKey(n.cell) }, [
@@ -1718,13 +1870,13 @@ function drawGraph() {
   const loose = S.items.size - P.ids.length;
   host.replaceChildren(...[
     groupChips(P, picked, renderGraph), filters, loopNote, detail,
-    lay.nodes.length ? scroll : el('p', { class: 'empty', text: 'Одоогоор хамаарал алга. Ажлыг засахдаа «Хүлээж буй ажил» нэмнэ үү.' }),
-    el('p', { class: 'fine', text: `Зүүн талын ажил дуусаж байж баруун талынх эхэлнэ. Багана бүр нэг давхарга. Зузаан шугам: одоо гацааж буй холбоос. Ажил дээр дарвал түүний гинжийг тодруулна.${implied ? ` Өөр холбоосоор илэрхийлэгдсэн ${implied} шууд бус холбоосыг зураагүй.` : ''}${loose ? ` Хамааралгүй ${loose} ажил графт ороогүй.` : ''}` }),
+    lay.nodes.length ? scroll : el('p', { class: 'empty', text: tr('noDeps') }),
+    el('p', { class: 'fine', text: tr('graphHelp', implied, loose) }),
     build,
-    el('section', { class: 'card' }, [el('h2', { class: 'label', 'data-n': '▶', text: 'Одоо эхлэх боломжтой' }),
-      el('ul', { class: 'recent' }, ready.length ? ready.map(({ i, n }) => line(i, `${whereIs(i.cell)}${n ? ` · ${n} ажлыг нээнэ` : ''}${member(i.who) ? ' · ' + member(i.who).name : ''}`)) : [el('li', {}, el('p', { class: 'empty', text: 'Алга.' }))])]),
-    el('section', { class: 'card' }, [el('h2', { class: 'label', 'data-n': '■', text: 'Гацсан' }),
-      el('ul', { class: 'recent' }, stuck.length ? stuck.map(i => line(i, `Хүлээж буй: ${fl.get(i.id).waits.map(d => short(S.items.get(d).text, 30)).join(' · ')}`)) : [el('li', {}, el('p', { class: 'empty', text: 'Алга.' }))])])].filter(Boolean));
+    el('section', { class: 'card' }, [el('h2', { class: 'label', 'data-n': '▶', text: tr('canStart') }),
+      el('ul', { class: 'recent' }, ready.length ? ready.map(({ i, n }) => line(i, `${whereIs(i.cell)}${n ? tr('opensN', n) : ''}${member(i.who) ? ' · ' + member(i.who).name : ''}`)) : [el('li', {}, el('p', { class: 'empty', text: tr('none') }))])]),
+    el('section', { class: 'card' }, [el('h2', { class: 'label', 'data-n': '■', text: STATE.blocked }),
+      el('ul', { class: 'recent' }, stuck.length ? stuck.map(i => line(i, tr('waitsFor', fl.get(i.id).waits.map(d => short(S.items.get(d).text, 30)).join(' · ')))) : [el('li', {}, el('p', { class: 'empty', text: tr('none') }))])])].filter(Boolean));
   if (keep) { const now = host.querySelector('.graph-scroll'); if (now) { now.scrollLeft = keep.x; now.scrollTop = keep.y; } }
 }
 
@@ -1743,39 +1895,158 @@ function milestoneDate(text) {
   return options.reduce((best, d) => (Math.abs(d - now) < Math.abs(best - now) ? d : best));
 }
 function renderTimeline() { keepFocus(drawTimeline); }
-function drawTimeline() {
-  const fl = flow(), today = new Date(); today.setHours(0, 0, 0, 0);
-  const P = plan(), picked = pickedGroup(P);
-  const all = [...S.items.values()].filter(i => i.cell === MILESTONE_CELL);
-  /* Milestones of the picked plan, plus any milestone that belongs to no big plan (linked to nothing,
-     or in a small one): those are dates too and must not vanish. */
+/* ── Timeline and milestones: a HUD panel in SVG, then one card per milestone ──
+   Everything drawn comes from the data: each milestone's date (leading MM/DD) and the tasks it
+   waits for. "Planned" is how many tasks the milestones up to a date need; "done" is how many of
+   them are ticked now. Nothing records when a to-do was ticked, so there is no invented history:
+   only today's dot. Status is also written in words, never colour alone. */
+const SVGNS = 'http://www.w3.org/2000/svg';
+const svgEl = (tag, attrs = {}, kids = []) => {
+  const n = document.createElementNS(SVGNS, tag);
+  Object.entries(attrs).forEach(([k, v]) => { if (v != null && v !== false) n.setAttribute(k, v); });
+  (Array.isArray(kids) ? kids : [kids]).forEach(c => c != null && n.append(typeof c === 'string' ? document.createTextNode(c) : c));
+  return n;
+};
+let hudSeq = 0;
+const startOfToday = () => { const t = new Date(); t.setHours(0, 0, 0, 0); return t; };
+/* The milestones to show (the picked plan's, plus any in no big plan) with what each needs. */
+function milestoneData(P, picked, fl) {
+  const today = startOfToday();
   const inBig = id => P.groups.some(g => g.size >= GROUP_MIN && g.members.has(id));
+  const all = [...S.items.values()].filter(i => i.cell === MILESTONE_CELL);
   const stones = all.filter(i => !picked || picked.has(i.id) || !inBig(i.id))
-    .map(i => ({ i, date: milestoneDate(i.text) })).sort((a, b) => (a.date ? a.date.getTime() : 9e15) - (b.date ? b.date.getTime() : 9e15) || (b.i.at || 0) - (a.i.at || 0));
+    .map(i => ({ i, date: milestoneDate(i.text) }))
+    .sort((a, b) => (a.date ? a.date.getTime() : 9e15) - (b.date ? b.date.getTime() : 9e15) || (b.i.at || 0) - (a.i.at || 0));
+  stones.forEach(st => {
+    /* What a milestone needs: everything it waits for, directly or through others, except other milestones. */
+    st.need = [...upstream(st.i.id)].map(d => S.items.get(d)).filter(n => n.cell !== MILESTONE_CELL);
+    st.done = st.need.filter(n => n.done).length;
+    st.blocked = st.need.filter(n => fl.get(n.id).state === 'blocked').length;
+    st.ready = st.need.filter(n => !n.done && fl.get(n.id).state !== 'blocked');
+    st.days = st.date ? Math.round((st.date - today) / 86400000) : null;
+    st.complete = st.i.done || (st.need.length > 0 && st.done === st.need.length);
+    st.state = st.i.done ? 'done' : st.days !== null && st.days < 0 ? 'late' : st.days !== null && st.days <= 2 ? 'soon' : 'ahead';
+    st.pct = st.need.length ? Math.round(st.done / st.need.length * 100) : (st.i.done ? 100 : 0);
+    /* Chart label: a short code after the date (M1, M12) when there is one, else the date itself. */
+    const head = st.i.text.match(/^\s*(\d{1,2}\/\d{1,2})(?:\/\d{2,4})?\s*·?\s*(\S+)?/) || [];
+    st.short = head[2] && /^[MmМм]\d{1,2}$/.test(head[2]) ? head[2] : head[1] || '';
+  });
+  return { all, stones, today };
+}
+const whenText = st => (st.i.done ? tr('reached') : st.days === null ? tr('noDate') : st.days < 0 ? tr('lateN', -st.days) : st.days === 0 ? tr('todayW') : tr('daysLeft', st.days));
+const MARK = { done: '◆', late: '▲', soon: '◇', ahead: '◇' };
+/* The HUD: planned tasks by date (step line), today, what is done now, a marker per milestone. */
+function hudChart(stones, today, compact) {
+  const dated = stones.filter(st => st.date);
+  const W = 360, H = compact ? 158 : 246, L = 34, R = 346, T = compact ? 34 : 46, B = compact ? 98 : 172;
+  const uid = `hud${++hudSeq}`;
+  const tasks = new Map();
+  stones.forEach(st => st.need.forEach(n => tasks.set(n.id, n)));
+  const total = tasks.size, doneNow = [...tasks.values()].filter(n => n.done).length;
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, class: `hud${compact ? ' compact' : ''}`, role: 'img', preserveAspectRatio: 'xMidYMid meet' });
+  const defs = svgEl('defs', {}, [
+    svgEl('pattern', { id: `${uid}g`, width: 12, height: 12, patternUnits: 'userSpaceOnUse' }, svgEl('path', { d: 'M12 0H0V12', class: 'hud-gridline' })),
+    svgEl('filter', { id: `${uid}f`, x: '-30%', y: '-30%', width: '160%', height: '160%' }, [
+      svgEl('feGaussianBlur', { stdDeviation: 2.4, result: 'b' }), svgEl('feMerge', {}, [svgEl('feMergeNode', { in: 'b' }), svgEl('feMergeNode', { in: 'SourceGraphic' })])]),
+    svgEl('linearGradient', { id: `${uid}a`, x1: 0, y1: 0, x2: 0, y2: 1 }, [
+      svgEl('stop', { offset: '0', class: 'hud-area-top' }), svgEl('stop', { offset: '1', class: 'hud-area-bottom' })]),
+  ]);
+  svg.append(defs, svgEl('rect', { x: 0, y: 0, width: W, height: H, class: 'hud-bg' }), svgEl('rect', { x: 0, y: 0, width: W, height: H, fill: `url(#${uid}g)` }));
+  /* corner brackets */
+  [[6, 6, 1, 1], [W - 6, 6, -1, 1], [6, H - 6, 1, -1], [W - 6, H - 6, -1, -1]].forEach(([x, y, sx, sy]) =>
+    svg.append(svgEl('path', { d: `M${x} ${y + 12 * sy}V${y}H${x + 12 * sx}`, class: 'hud-corner' })));
+  const pct = total ? Math.round(doneNow / total * 100) : 0;
+  svg.append(svgEl('text', { x: 14, y: 22, class: 'hud-title' }, tr('hudTitle', stones.length)),
+    svgEl('text', { x: W - 14, y: 22, class: 'hud-stat', 'text-anchor': 'end' }, tr('hudDone', doneNow, total, pct)));
+  let desc = tr('hudDesc', stones.length, doneNow, total);
+  if (!dated.length) {
+    svg.append(svgEl('text', { x: W / 2, y: (T + B) / 2, class: 'hud-dim', 'text-anchor': 'middle' }, tr('hudNoDates')));
+  } else {
+    const day = 86400000;
+    const t0 = Math.min(dated[0].date.getTime(), today.getTime()) - day, t1 = Math.max(dated[dated.length - 1].date.getTime(), today.getTime()) + day;
+    const X = t => L + (R - L) * (t - t0) / (t1 - t0), Y = n => B - (B - T) * (total ? n / total : 0);
+    /* horizontal guides */
+    [0, .5, 1].forEach(f => {
+      const y = B - (B - T) * f;
+      svg.append(svgEl('line', { x1: L, x2: R, y1: y, y2: y, class: 'hud-guide' }), svgEl('text', { x: L - 6, y: y + 3, class: 'hud-tick', 'text-anchor': 'end' }, String(Math.round(total * f))));
+    });
+    /* planned: cumulative tasks needed by each milestone date */
+    const seen = new Set();
+    let d = `M${X(t0).toFixed(1)} ${Y(0).toFixed(1)}`, cum = 0, plannedToday = 0;
+    dated.forEach(st => {
+      st.need.forEach(n => seen.add(n.id)); const next = seen.size;
+      const x = X(st.date.getTime()).toFixed(1);
+      d += ` H${x} V${Y(next).toFixed(1)}`; cum = next;
+      if (st.date.getTime() <= today.getTime()) plannedToday = next;
+    });
+    d += ` H${R}`;
+    svg.append(svgEl('path', { d: `${d} V${B} H${L} Z`, fill: `url(#${uid}a)`, class: 'hud-area' }),
+      svgEl('path', { d, class: 'hud-plan', filter: `url(#${uid}f)` }));
+    /* today and what is done now */
+    const tx = X(today.getTime());
+    svg.append(svgEl('line', { x1: tx, x2: tx, y1: T - 6, y2: B + 4, class: 'hud-today' }),
+      compact ? null : svgEl('text', { x: tx, y: T - 10, class: 'hud-today-label', 'text-anchor': tx > R - 30 ? 'end' : tx < L + 30 ? 'start' : 'middle' }, tr('hudToday')),
+      svgEl('circle', { cx: tx, cy: Y(doneNow), r: 9, class: 'hud-pulse' }),
+      svgEl('circle', { cx: tx, cy: Y(doneNow), r: 4.5, class: 'hud-dot', filter: `url(#${uid}f)` }));
+    /* milestone markers along the axis, labels on two rows so near dates do not collide */
+    svg.append(svgEl('line', { x1: L, x2: R, y1: B + 10, y2: B + 10, class: 'hud-axis' }));
+    let lastX = -99, row = 0;
+    dated.forEach(st => {
+      const x = X(st.date.getTime());
+      row = x - lastX < 30 ? (row + 1) % 3 : 0; lastX = x;   /* close dates take the next of three rows */
+      const y = B + 10, size = 5.5;
+      const shape = st.state === 'late' ? `M${x} ${y - size}L${x + size} ${y + size * .8}L${x - size} ${y + size * .8}Z` : `M${x} ${y - size}L${x + size} ${y}L${x} ${y + size}L${x - size} ${y}Z`;
+      svg.append(svgEl('path', { d: shape, class: `hud-ms s-${st.state}`, filter: st.state === 'ahead' ? null : `url(#${uid}f)` }));
+      svg.append(svgEl('text', { x, y: y + 18 + row * 10, class: `hud-ms-label s-${st.state}`, 'text-anchor': 'middle' }, `${st.short || ''}`.slice(0, 5)));
+    });
+    if (!compact) {
+      const behind = plannedToday - doneNow;
+      svg.append(svgEl('text', { x: 14, y: H - 12, class: behind > 0 ? 'hud-warn' : 'hud-ok' }, behind > 0 ? tr('hudBehind', plannedToday, doneNow) : tr('hudOnTrack', plannedToday, doneNow)));
+      desc += ' ' + (behind > 0 ? tr('hudBehind', plannedToday, doneNow) : tr('hudOnTrack', plannedToday, doneNow));
+    }
+    desc += ' ' + dated.map(st => `${st.i.text}: ${whenText(st)}`).join('; ');
+  }
+  svg.setAttribute('aria-label', desc);
+  return el('figure', { class: 'hud-wrap' }, svg);
+}
+/* A neon ring: share of what the milestone needs that is done. */
+function ring(pct, state) {
+  const r = 22, c = 2 * Math.PI * r, uid = `rg${++hudSeq}`;
+  return svgEl('svg', { viewBox: '0 0 60 60', class: `ring s-${state}`, 'aria-hidden': 'true' }, [
+    svgEl('defs', {}, svgEl('filter', { id: uid, x: '-40%', y: '-40%', width: '180%', height: '180%' }, [svgEl('feGaussianBlur', { stdDeviation: 1.6, result: 'b' }), svgEl('feMerge', {}, [svgEl('feMergeNode', { in: 'b' }), svgEl('feMergeNode', { in: 'SourceGraphic' })])])),
+    svgEl('circle', { cx: 30, cy: 30, r, class: 'ring-track' }),
+    svgEl('circle', { cx: 30, cy: 30, r, class: 'ring-arc', 'stroke-dasharray': `${(c * pct / 100).toFixed(1)} ${c.toFixed(1)}`, transform: 'rotate(-90 30 30)', filter: `url(#${uid})` }),
+    svgEl('text', { x: 30, y: 34, 'text-anchor': 'middle', class: 'ring-text' }, `${pct}%`)]);
+}
+function drawTimeline() {
+  const fl = flow(), P = plan(), picked = pickedGroup(P);
+  const { all, stones, today } = milestoneData(P, picked, fl);
   const host = $('planView');
-  if (!all.length) { host.replaceChildren(el('p', { class: 'empty', text: 'Milestones нүдэнд шалгуур нэмбэл энд цагийн дарааллаар харагдана. Эхэнд нь огноо бичнэ: 11/22 · …' })); return; }
+  if (!all.length) { host.replaceChildren(el('p', { class: 'empty', text: tr('tlEmpty') })); return; }
   const chips = groupChips(P, picked, renderTimeline);
-  if (!stones.length) { host.replaceChildren(...[chips, el('p', { class: 'empty', text: 'Энэ төлөвлөгөөнд шалгуур алга.' })].filter(Boolean)); return; }
+  if (!stones.length) { host.replaceChildren(...[chips, el('p', { class: 'empty', text: tr('tlNoneInPlan') })].filter(Boolean)); return; }
+  const rank = new Map(P.order.map((id, k) => [id, k]));
   const shown = new Set();   /* a to-do is listed under the first milestone that needs it */
-  host.replaceChildren(...[chips, el('ol', { class: 'tl' }, stones.map(({ i, date }) => {
-    const need = [...upstream(i.id)].map(d => S.items.get(d));
-    const done = need.filter(n => n.done).length, blocked = need.filter(n => fl.get(n.id).state === 'blocked').length;
-    const ready = need.filter(n => !n.done && fl.get(n.id).state !== 'blocked');
-    const rank = new Map(P.order.map((id, k) => [id, k]));
-    const fresh = ready.filter(n => !shown.has(n.id)).sort((a, b) => (rank.get(a.id) ?? 1e9) - (rank.get(b.id) ?? 1e9)); ready.forEach(n => shown.add(n.id));
-    const days = date ? Math.round((date - today) / 86400000) : null;
-    const complete = i.done || (need.length > 0 && done === need.length);
-    const when = i.done ? '✓ Хүрсэн' : days === null ? 'Огноогүй' : days < 0 ? `${-days} хоног хэтэрсэн` : days === 0 ? 'Өнөөдөр' : `${days} хоног үлдсэн`;
-    const pct = need.length ? Math.round(done / need.length * 100) : (i.done ? 100 : 0);
-    return el('li', { class: `tl-stone${i.done ? ' done' : ''}${!i.done && days !== null && days < 0 ? ' late' : ''}` }, [
-      el('div', { class: 'tl-head' }, [el('b', { text: i.text }), el('span', { class: 'tl-when', text: when })]),
-      el('div', { class: 'tl-bar', role: 'img', 'aria-label': `${need.length}-аас ${done} дууссан` }, el('span', { style: `width:${pct}%` })),
-      el('p', { class: 'fine', text: need.length ? `${need.length}-аас ${done} дууссан · ${blocked} гацсан · ${ready.length} эхлэх боломжтой${complete && !i.done ? ' · бүх ажил дууссан, шалгуураа тэмдэглэнэ үү' : ''}` : 'Энэ шалгуурт ажил холбоогүй байна.' }),
-      fresh.length ? el('ul', { class: 'recent' }, fresh.slice(0, 6).map(n => el('li', {}, el('button', { type: 'button', onclick: () => openKey(n.cell) },
+  host.replaceChildren(...[chips, hudChart(stones, today, false), el('ol', { class: 'tl' }, stones.map(st => {
+    const fresh = st.ready.filter(n => !shown.has(n.id)).sort((a, b) => (rank.get(a.id) ?? 1e9) - (rank.get(b.id) ?? 1e9)); st.ready.forEach(n => shown.add(n.id));
+    return el('li', { class: `ms-card s-${st.state}` }, [
+      el('div', { class: 'ms-top' }, [ring(st.pct, st.state),
+        el('div', { class: 'ms-head' }, [el('b', { text: st.i.text }), el('span', { class: 'ms-when', text: `${MARK[st.state]} ${whenText(st)}` })])]),
+      el('p', { class: 'ms-stats', text: st.need.length ? tr('msStats', st.need.length, st.done, st.blocked, st.ready.length) + (st.complete && !st.i.done ? tr('msTick') : '') : tr('msNoTasks') }),
+      fresh.length ? el('ul', { class: 'ms-ready' }, fresh.slice(0, 6).map(n => el('li', {}, el('button', { type: 'button', onclick: () => openKey(n.cell) },
         [el('b', { text: n.text }), el('small', { text: `${whereIs(n.cell)}${member(n.who) ? ' · ' + member(n.who).name : ''}` })])))) : null,
-      fresh.length > 6 ? el('p', { class: 'fine', text: `Бас ${fresh.length - 6} ажил эхлэх боломжтой. Бүгдийг «Dependency graph»-ийн «Барих дараалал»-аас харна.` }) : null,
+      fresh.length > 6 ? el('p', { class: 'ms-more', text: tr('moreReady', fresh.length - 6) }) : null,
     ]);
   }))].filter(Boolean));
+}
+/* The same HUD on top of the Milestones list. */
+function drawMilestoneHud() {
+  const box = $('hudTop'); if (!box) return;
+  if (S.cell !== MILESTONE_CELL || !S.loaded) { box.hidden = true; box.replaceChildren(); return; }
+  const fl = flow(), P = plan(), picked = pickedGroup(P);
+  const { stones, today } = milestoneData(P, picked, fl);
+  box.hidden = !stones.length;
+  box.replaceChildren(...(stones.length ? [hudChart(stones, today, true)] : []));
 }
 
 /* ── Чиглүүлэлт: #f2 бол тал, #f2-c1 бол нүд ── */
@@ -1819,6 +2090,27 @@ function keepFocus(draw) {
   }
 }
 function renderAll() { keepFocus(() => { if (S.cell) renderArea(); else renderHome(); }); }
+
+/* ── Language and theme: per-viewer choices, kept in this browser only ── */
+const store = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* preference only */ } } };
+function applyStatic() {
+  document.documentElement.lang = S.lang;
+  document.querySelectorAll('[data-t]').forEach(n => { n.textContent = tr(n.dataset.t); });
+  document.querySelectorAll('[data-t-ph]').forEach(n => { n.placeholder = tr(n.dataset.tPh); });
+  document.querySelectorAll('[data-t-al]').forEach(n => { n.setAttribute('aria-label', tr(n.dataset.tAl)); });
+  document.querySelectorAll('[data-t-ti]').forEach(n => { n.title = tr(n.dataset.tTi); });
+  const lb = $('langBtn'); lb.textContent = tr('langBtn'); lb.setAttribute('aria-label', tr('langAria')); lb.lang = S.lang === 'mn' ? 'en' : 'mn';
+}
+function setLang(lang) {
+  S.lang = lang === 'en' ? 'en' : 'mn'; store.set('cubic-lang', S.lang);
+  applyStatic(); refreshNotice(); initData(); renderAll(); renderClock();
+  if (!S.cell) renderTeam(); else renderSpaceTime();
+  if (S.pending === 0 && $('sync').dataset.state === 'saved') setSync('saved', tr('saved'));
+}
+/* Theme: follows the phone until the person picks one; the button switches light and dark. */
+const isDark = () => (document.documentElement.dataset.theme ? document.documentElement.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches);
+function showThemeBtn() { const b = $('themeBtn'), dark = isDark(); b.textContent = dark ? '☀' : '☾'; b.setAttribute('aria-label', tr(dark ? 'themeToLight' : 'themeToDark')); b.setAttribute('aria-pressed', String(dark)); }
+function setTheme(t) { if (t === 'light' || t === 'dark') { document.documentElement.dataset.theme = t; store.set('cubic-theme', t); } showThemeBtn(); }
 function queueRender(force) {
   if (isEditing() && !force) { S.renderQueued = true; return; }
   if (isEditing() || document.querySelector('.todo.swiping')) { S.renderQueued = true; return; }
@@ -1926,6 +2218,12 @@ async function connect() {
 (function start() {
   /* The font stylesheet loads as "print" so a stalled request never holds the page; switch it on now. */
   try { $('fonts').media = 'all'; } catch (e) { /* fonts are optional */ }
+  S.lang = store.get('cubic-lang') === 'en' ? 'en' : 'mn';
+  const theme = store.get('cubic-theme'); if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+  applyStatic(); showThemeBtn();
+  $('langBtn').addEventListener('click', () => setLang(S.lang === 'mn' ? 'en' : 'mn'));
+  $('themeBtn').addEventListener('click', () => setTheme(isDark() ? 'light' : 'dark'));
+  try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', showThemeBtn); } catch (e) { /* older browsers */ }
   let mode = 'cube';
   try { mode = localStorage.getItem('cubic-mode') || (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'grid' : 'cube'); } catch (e) { /* default */ }
   readHash(); initCubeInput(); initCapture(); initClock(); setMode(mode === 'grid' ? 'grid' : 'cube'); route();
@@ -1939,7 +2237,7 @@ async function connect() {
   $('renameFace').addEventListener('click', () => {
     const host = $('faceEdit'); host.hidden = false;
     const f = S.face;
-    inlineEdit(host, { value: S.faces[f].title, label: 'Талын нэр', onSave: v => renameFace(f, v) });
+    inlineEdit(host, { value: S.faces[f].title, label: tr('sideName'), onSave: v => renameFace(f, v) });
     new MutationObserver((_, o) => { if (!host.querySelector('[data-editing]')) { host.hidden = true; host.replaceChildren(); o.disconnect(); } }).observe(host, { childList: true });
   });
   window.addEventListener('hashchange', () => { readHash(); route(); });
