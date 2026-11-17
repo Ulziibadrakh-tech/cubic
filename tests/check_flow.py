@@ -1231,6 +1231,14 @@ async def main():
                 bad[name] = found
             await close_sheet(g)
         check("nothing on screen is in Mongolian", not bad, str(bad)[:160])
+        # An old milestone tag written with the Cyrillic letter that looks like M (U+041C) shows with the
+        # Latin M, as does a lower-case one ("Do next" and the timeline say it).
+        tags = await g.evaluate("""(() => { const ids = ['zz-tag-1', 'zz-tag-2'], now = Date.now();
+          S.items.set(ids[0], { id: ids[0], cell: MILESTONE_CELL, text: '12/24 \\u00b7 \\u041c9 Made-up tag', deps: [], at: now, editedAt: now });
+          S.items.set(ids[1], { id: ids[1], cell: MILESTONE_CELL, text: '12/25 \\u00b7 m12 Made-up tag', deps: [], at: now, editedAt: now });
+          try { const md = milestoneData(plan(), null, flow()); return ids.map(id => { const st = md.stones.find(s => s.i.id === id); return st ? st.short : null; }); }
+          finally { ids.forEach(id => S.items.delete(id)); } })()""")
+        check("an old milestone tag written with a Cyrillic letter shows with the Latin M", tags == ["M9", "M12"], str(tags))
         await b6.close()
 
     # Sheets, full screen, navigation and contrast (from the PR #3 review), on a touch phone: the back
@@ -2539,7 +2547,7 @@ async def main():
                    "items/wd1": tick(1, "wda", now + DAY, done=True, act="done", at=now - 7200000),
                    "chat/wdm1": {"by": "wda", "text": "A made-up line from a phone a day ahead", "at": now + DAY}}, fresh=True)
         v = await reader("wdv")
-        a = [await v.evaluate(counts)]
+        ahead_counts = [await v.evaluate(counts)]
         await v.click("#chatBtn")
         await v.wait_for_timeout(300)
         await v.evaluate("""(() => { window.__marks = 0; const w = window.dbWrite; window.dbWrite = (p, ...x) => { if (p.startsWith('seen/')) window.__marks += 1; return w(p, ...x); }; })()""")
@@ -2548,19 +2556,19 @@ async def main():
         marks = await v.evaluate("window.__marks")
         await v.click("#chatSheet [data-close]")
         await v.wait_for_timeout(200)
-        a.append(await v.evaluate(counts))
+        ahead_counts.append(await v.evaluate(counts))
         await v.click("#bellBtn")
         await v.wait_for_timeout(300)
         row = await v.inner_text("#updList")
         await v.click("#updatesSheet [data-close]")
         await v.wait_for_timeout(200)
-        a.append(await v.evaluate(counts))
+        ahead_counts.append(await v.evaluate(counts))
         await v.reload()
         await until(v, "S.loaded && S.seenReady && S.chatReady", 6000)
         await v.wait_for_timeout(300)
-        a.append(await v.evaluate(counts))
+        ahead_counts.append(await v.evaluate(counts))
         check("a message and a change dated a day ahead count until read, then no more (chat, bell, title), also after a reload; the open chat writes no marks again and again",
-              a == [["1", "1", True], ["1", None, True], [None, None, False], [None, None, False]] and "New" in row and marks <= 1, f"{a} {marks} {row[:60]!r}")
+              ahead_counts == [["1", "1", True], ["1", None, True], [None, None, False], [None, None, False]] and "New" in row and marks <= 1, f"{ahead_counts} {marks} {row[:60]!r}")
         # 20 s ahead, read in the open chat.
         await v.click("#chatBtn")
         await v.wait_for_timeout(300)

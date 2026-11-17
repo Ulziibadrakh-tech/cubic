@@ -2409,9 +2409,10 @@ function milestoneData(P, picked, fl) {
     st.complete = st.i.done || (st.need.length > 0 && st.done === st.need.length);
     st.state = st.i.done ? 'done' : st.days !== null && st.days < 0 ? 'late' : st.days !== null && st.days <= 2 ? 'soon' : 'ahead';
     st.pct = st.need.length ? Math.round(st.done / st.need.length * 100) : (st.i.done ? 100 : 0);
-    /* Short label: a code after the date (M1, M12) when there is one, else the date itself. */
+    /* Short label: a code after the date (M1, M12) when there is one, else the date itself. An old
+       tag written with the Cyrillic letter that looks like M is shown with the Latin M (English only). */
     const head = st.i.text.match(/^\s*(\d{1,2}\/\d{1,2})(?:\/\d{2,4})?\s*·?\s*(\S+)?/) || [];
-    st.short = head[2] && /^[MmМм]\d{1,2}$/.test(head[2]) ? head[2] : head[1] || '';
+    st.short = head[2] && /^[MmМм]\d{1,2}$/.test(head[2]) ? `M${head[2].slice(1)}` : head[1] || '';
   });
   return { all, stones, today };
 }
