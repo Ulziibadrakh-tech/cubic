@@ -54,9 +54,10 @@ search, all spaces, the team with its world clock, data and backup, theme).
   while one is open, the sheet says who is waiting, and only the one who made it
   can take it back or ask someone else. Ticking a to-do ends its request. Before
   a tap there (or an Accept or Decline) writes, the page reads the to-do again
-  from the team's data: if it changed meanwhile, here or a moment ago on a
-  teammate's phone, nothing is saved and the page says so (a typed note
-  stays). The sheet suggests whom to
+  from the team's data, so a change made a moment earlier, here or on a
+  teammate's phone, is not written over: nothing is saved and the page says so
+  (a typed note stays). While the page checks and saves, the buttons wait and
+  the owner sheet says so. The sheet suggests whom to
   ask and says why (whose side it is, the kind of work, whether it is daytime
   there, open to-dos). No answer for 12 hours offers the other person; when
   both decline, the page offers to decide in the chat. "Do next" lists
@@ -186,7 +187,7 @@ archived. The documents are the same in both:
 | `clock/<person id>` | signed-in person | `days` (`{date: {ms, bySpace}}`), `openSince`, `openCell`, `leftAt`, `paused` |
 | `chat/<id>` | chat message | `by` (account id), `text`, `at` |
 | `team/<vida\|anand\|obama>` | team member | `city`, `tz` (for the world clock) |
-| `seen/<person id>` | signed-in person | `updates`, `chat` (when they last looked) |
+| `seen/<person id>` | signed-in person | `updates`, `chat` (up to when they last looked: the time of the newest change or message they saw, or where a first visit began); `ahead` (`{updates: ['<time>:<to-do id>'], chat: ['<message id>']}`, at most 300 each: what they saw although it is dated after the mark) |
 | `meta/home` | (one) | `url`: where the team works now; `at` (optional): when it moved. The owner writes it after the move; the Claude copy then turns read-only (no writes, no timer, no chat box) and counts a timer left running only up to `at` (else up to when the page saw the note). The page never writes `meta`. |
 
 A side that has never been renamed has no document; the page falls back to the

@@ -17,10 +17,12 @@ dependencies beyond the two Google Fonts (no supabase-js either).
 - Collections: `faces`, `items`, `people`, `clock`, `chat` (messages:
   `{by: account id, text, at}`), `team` (`team/<vida|anand|obama>`: `{city, tz}`
   for the world clock), `seen` (`seen/<account id>`: `{updates, chat, ahead}`,
-  up to when that person has looked, taken from the newest change or message
-  on screen, never from the reader's clock; `ahead` lists what was on screen
-  but dated after the mark, from a phone with a wrong date; a mark more than
-  2 minutes ahead of now is not trusted), `meta` (`meta/home`: `{url, at?}`, written by
+  up to when that person has looked. A look's mark is the newest change or
+  message on screen that is not dated after now; a first visit's mark, and one
+  that replaces a mark this phone cannot trust (more than 2 minutes ahead of
+  its now), is where that visit began, by that phone's clock. `ahead` lists
+  what was seen although dated after the mark: on screen from a phone with a
+  wrong date, or covered by the mark it replaced), `meta` (`meta/home`: `{url, at?}`, written by
   the owner once the team has moved; the Claude copy then turns read-only and
   links there. The page never writes `meta`).
 - Archive rules (Claude copy only): nothing is written and nobody is asked who
@@ -179,11 +181,16 @@ strings, so routing uses `#f2` and `#f2-c1`.
 - Sheets (`openSheet`/`closeSheets`) make the page under them inert; Escape
   closes them. Only one is open at a time. Where the page owns its history
   (Vercel, top level), an open sheet holds one history step, so the phone's
-  back gesture closes it and the next one leaves; closing it any other way
-  takes the step back off. Inside Claude's frame no step is added. A space
-  opened from a sheet opens only after that step is off (`sheetNext`).
-- A toast with Undo belongs to the page and stays under the sheets; only a
-  toast said inside a sheet (no Undo) shows over it, and lets taps through.
+  back gesture closes it and the next one goes where Back would have gone
+  without the sheet (from a space, the cube; from home, out of the site);
+  closing it any other way takes the step back off. Inside Claude's frame no
+  step is added. A space opened from a sheet opens only after that step is
+  off (`sheetNext`).
+- A toast belongs to the page: under a sheet or the login it is inert with
+  the page (`toastUnder()`), so a hidden Undo is never reached with Tab. Only
+  an answer given in For you, said while For you is still open, shows over
+  it (`toast(text, null, raise)`); a tap on a toast without Undo puts it
+  away and reaches nothing under it. A toast with Undo is never raised.
 
 ## Product stance
 
@@ -202,7 +209,10 @@ strings, so routing uses `#f2` and `#f2-c1`.
   someone else (`mayAsk`). A new owner or a tick ends a request (`tickOf`,
   also on import). A hand-off tap acts on what was drawn: it checks the to-do
   as this page has it, then as the store has it now (`freshItem()`, a server
-  read on Vercel), and writes nothing if it changed meanwhile.
+  read on Vercel), and writes nothing if it changed before that read
+  (`doc_update` has no version check, so a change in the moment between the
+  read and the write can still be written over). One tap at a time per
+  to-do (`handBusy`): its buttons wait, and the owner sheet says so.
 - Deciding fast: the sheet suggests whom to ask and writes why (`rankFor`:
   the side's person, the kind of work, awake now by their local time, open
   to-dos; whoever declined goes last). No answer for 12 hours offers the other

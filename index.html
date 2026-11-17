@@ -209,9 +209,9 @@ select.field { padding: 8px 10px; font-size: 16px; }
 .recent b { font-weight: 500; overflow-wrap: anywhere; }
 .recent small { color: var(--ink-2); font-size: 13px; }
 .toast { position: fixed; left: 16px; right: 16px; bottom: 18px; margin: 0 auto; max-width: 480px; background: var(--ink); color: var(--bg); border-left: 6px solid var(--accent); padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 15px; z-index: 10; }
-/* Said inside a sheet (an answer in For you): shown over it, under the login, and never in the way of
-   the sheet's own controls (a tap goes through). A toast with Undo is never raised: it belongs to the page. */
-.toast.over { z-index: 22; pointer-events: none; }
+/* An answer given in For you, said while For you is still open: shown over it, under the login. A tap
+   on it puts it away and reaches nothing under it. A toast with Undo is never raised: it is the page's. */
+.toast.over { z-index: 22; }
 .toast button { border: 0; background: transparent; color: inherit; font-weight: 700; text-decoration: underline; padding: 6px; }
 @media (prefers-reduced-motion: reduce) { .cube, .todo { transition: none; } }
 
@@ -637,6 +637,8 @@ button.flow-tag { border: 0; background: transparent; padding: 2px 0; text-align
 .tag-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .mini { border: 0; border-radius: 999px; min-height: 32px; padding: 6px 12px; font: 700 13px/1.2 var(--body); background: var(--accent-fill); color: var(--on-accent); }
 .mini.ghost { background: color-mix(in srgb, var(--ink) 9%, transparent); color: var(--ink); }
+/* A hand-off tap being checked and saved: the buttons wait (aria-disabled keeps focus where it is). */
+.tag-row [aria-disabled="true"], #handBody button[aria-disabled="true"] { opacity: .45; cursor: progress; }
 .upd ul { margin: 4px 0 0; padding: 0 0 0 16px; color: var(--ink-2); font-size: 13px; }
 @media (prefers-reduced-motion: reduce) { .sheet, .sheet-back, .ping, .badge { animation: none; } .login-card { transition: none; } }
 
@@ -927,7 +929,7 @@ Object.assign(L.en, {
   askSent: n => `Request sent to ${n}.`, tookIt: 'It is yours now.', saidNoDone: 'Declined.', handFailed: 'Not saved. Please try again.',
   offerBy: (n, to, t) => `→ ${n} offered: ${to} decides · ${t}`, askBusy: n => `${n} is already waiting for an answer.`, askedTag: 'Already asked',
   gotIt: 'OK', keptIt: 'It stays with you.', tookBack: 'Request taken back.', droppedOwner: 'It has no owner now.', gaveTo: n => `Given to ${n}.`,
-  handChanged: 'This to-do changed meanwhile, so nothing was saved. Check it and tap again.',
+  handChanged: 'This to-do changed meanwhile, so nothing was saved. Check it and tap again.', handBusy: 'Checking and saving…',
   reqIn: n => `Requests for you · ${n}`, reqOut: n => `Your requests · ${n}`, doNext: 'Do next', noNext: 'Nothing of yours can start right now.', unblocksN: n => `unblocks ${n}`,
   fromNote: t => `Note: ${t}`,
   u_ask: (n, to, t) => `${n} asked ${to} to take “${t}”`, u_askYou: (n, t) => `${n} asks you to take “${t}”`, u_offer: (n, t) => `${n} offered to take “${t}”`, u_offerYou: (n, t) => `${n} offers to take your “${t}”`,
@@ -1059,6 +1061,7 @@ function sayInFull(fresh) {
   if (fresh) fullErr.setAttribute('role', 'alert'); else if (!fullErr.isConnected) fullErr.removeAttribute('role');
   if (fresh || fullErr.textContent !== S.failWords) fullErr.textContent = S.failWords;
   if (bar.nextElementSibling !== fullErr) bar.after(fullErr);
+  rePing();
 }
 async function save(fn) {
   /* A copy that turned read-only (archived, or writes refused) takes nothing, not even from an edit
@@ -1133,16 +1136,22 @@ function sayReadOnly(node) {
   if (ro) withLink(node, S.homeUrl ? tr('nMoved') : tr('nReadOnly'), S.homeUrl); else node.textContent = '';
 }
 let undoTimer = null;
-/* The message (and its undo) stays while focus or a finger is on it, then 7 s. */
-function toast(text, undo) {
+/* The toast is the page's: under an open sheet or the login it is inert like the page, so a hidden
+   Undo is never reached with Tab. One raised over the sheet it was said in stays readable there. */
+const toastUnder = () => { const t = $('toast'); t.inert = loginOpen() || (!!S.sheet && !t.classList.contains('over')); };
+/* The message (and its undo) stays while focus or a finger is on it, then 7 s. `raise`: said in the
+   sheet that is open now (an answer in For you), so it shows over that sheet. A toast with Undo (a
+   delete, a move) is never raised, even when its write answers after a sheet has opened: it stays
+   under the sheets, so a tap on a sheet's Send or bottom row never lands on it, and it is still there
+   once the sheet closes. A tap on a toast without Undo puts it away. */
+function toast(text, undo, raise) {
   const t = $('toast');
   $('toastText').textContent = text; t.hidden = false;
-  /* Over the open sheet only when said in it and without Undo. An Undo (a delete, a move) is the
-     page's, even when its write answers after a sheet has opened: it stays under the sheets, so a tap
-     on a sheet's Send or bottom row never lands on it, and it is still there once the sheet closes. */
-  t.classList.toggle('over', !!S.sheet && !undo);
+  t.classList.toggle('over', !!raise && !undo && !!S.sheet);
   $('toastUndo').hidden = !undo;
   $('toastUndo').onclick = () => { t.hidden = true; if (undo) undo(); };
+  t.onclick = undo ? null : () => { t.hidden = true; };
+  toastUnder();
   const later = ms => { clearTimeout(undoTimer); undoTimer = setTimeout(() => { if (!t.matches(':focus-within, :hover')) t.hidden = true; else later(2000); }, ms); };
   later(7000);
 }
@@ -1161,7 +1170,7 @@ const loginOpen = () => !$('login').hidden;
 let loginOpener = null;
 function hideLogin() {
   const box = $('login'); if (box.hidden || S.authOpen) return;
-  box.hidden = true; box.replaceChildren(); $('page').inert = !!S.sheet;
+  box.hidden = true; box.replaceChildren(); $('page').inert = !!S.sheet; toastUnder();
   document.querySelectorAll('.sheet').forEach(s => { s.inert = false; });
   const back = loginOpener; loginOpener = null;
   if (S.sheet) (back && back.isConnected && $(S.sheet).contains(back) ? back : $(S.sheet).querySelector('[data-close]')).focus({ preventScroll: true });
@@ -1173,7 +1182,7 @@ function showLogin(force, why) {
   S.loginForced = !!force;
   const box = $('login');
   if (box.hidden) loginOpener = document.activeElement;
-  box.hidden = false; $('page').inert = true;
+  box.hidden = false; $('page').inert = true; toastUnder();
   document.querySelectorAll('.sheet').forEach(s => { s.inert = true; });
   const pick = async m => {
     const prev = S.people.get(S.me);
@@ -2015,6 +2024,7 @@ function renderAway(leftAt) {
       el('button', { type: 'button', class: 'btn', 'data-fkey': 'aw:yes', text: tr('awayYes'), onclick: () => { if (!still()) return; box.hidden = true; writeClock(x => { x.leftAt = null; }).then(() => { S.myOpenSince = (myClock() || {}).openSince || null; moveClock(); }); } }),
       el('button', { type: 'button', class: 'btn ghost', 'data-fkey': 'aw:no', text: tr('awayNo'), onclick: () => { if (!still()) return; box.hidden = true; writeClock(x => { closeStretch(x, leftAt); }).then(startClock); } }),
     ]));
+  rePing();
 }
 /* A gap between ticks (a laptop asleep with the page in front): read the stored clock fresh and
    write leftAt only onto the stretch this device is part of, never over another device's. The person
@@ -2700,7 +2710,7 @@ function syncFull() {
      and the away question, which moves there while full screen is on and back after. */
   const bar = box && box.querySelector(':scope > .flow-bar');
   if (bar) { const away = $('awayBox'); if (away.parentNode !== box) bar.after(away); } else parkAway();
-  sayInFull(false);
+  sayInFull(false); rePing();
   for (let n = box; n && n !== $('page'); n = n.parentElement)
     [...n.parentElement.children].forEach(s => { if (s !== n && !s.inert) { s.inert = true; s.setAttribute('data-full-inert', ''); } });
 }
@@ -2787,7 +2797,7 @@ function openSheet(id) {
   if (!S.sheet) { sheetOpener = document.activeElement; sheetKey = sheetOpener && sheetOpener.dataset ? sheetOpener.dataset.fkey || null : null; }
   closeSheets(true);
   $('toast').classList.remove('over');   /* a toast said in an earlier sheet goes under this one, with the page */
-  S.sheet = id; $(id).hidden = false; $('sheetBack').hidden = false; $('page').inert = true;
+  S.sheet = id; $(id).hidden = false; $('sheetBack').hidden = false; $('page').inert = true; toastUnder();
   document.body.classList.add('locked');
   sheetStepOn();
   if (id === 'menuSheet') renderMenu();
@@ -2805,6 +2815,7 @@ function closeSheets(quiet) {
   if (was === 'chatSheet') markSeen('chat', lastChatAt());
   else if (was === 'updatesSheet') markSeen('updates', S.updTop);   /* a change that came in while it was open was on screen */
   $(was).hidden = true; $('sheetBack').hidden = true; $('page').inert = loginOpen(); S.sheet = null;
+  $('toast').classList.remove('over'); toastUnder();   /* one said in the sheet stays a moment, on the page */
   document.body.classList.toggle('locked', G.full);
   $(was).querySelectorAll('.save-err').forEach(n => n.remove());   /* the status line says it now */
   sheetStepOff();
@@ -2833,7 +2844,9 @@ const WEEK = 7 * 86400000;
    tomorrow"). It counts as seen, here, after a reload and on the person's other phone, although its
    time is still to come. A stored mark is trusted up to SEEN_TOL after now (a phone a minute or two
    fast). One further ahead would hide everything written after it: the page then counts from where
-   this visit began (S.seenBase) and stores a mark it can trust (seenStart, or the next look). */
+   this visit began (S.seenBase, this phone's clock) and stores a mark it can trust (seenStart, or
+   the next look). What that mark covered stays seen (ahead): on a phone whose clock is behind, a
+   real time also looks still to come. */
 const SEEN_TOL = 120000, SEEN_KINDS = ['updates', 'chat'];
 const markOk = v => Number.isFinite(v) && v > 0 && v <= Date.now() + SEEN_TOL;
 function seenAt(kind) {
@@ -2864,9 +2877,9 @@ function seenStart() {
 /* This person has looked at `kind` (updates or chat) up to `at`, the newest thing on screen. The mark
    is the newest change or message there that is not dated after now: a time from the data, so it
    does not move on with the clock, and nothing is written again while nothing new came in. What is
-   on screen dated after the mark is seen too (ahead). `first`: a kind with no mark that can be
-   trusted starts at S.seenBase, with everything there now seen. A mark is not the person's work: it
-   goes through dbWrite() alone, and a lost one only brings a count back. */
+   on screen dated after the mark is seen too (ahead). `first` (seenStart): a kind with no mark that
+   can be trusted starts at S.seenBase, this phone's clock. A mark is not the person's work: it goes
+   through dbWrite() alone, and a lost one only brings a count back. */
 function markSeen(kind, at, first) {
   if (!S.me || !S.db || !S.seenReady || !at) return;
   const next = { ahead: {} }, upTo = Math.min(at, Date.now());
@@ -2874,11 +2887,16 @@ function markSeen(kind, at, first) {
   SEEN_KINDS.forEach(k => {
     const stored = S.seen ? +S.seen[k] : NaN, had = aheadOf(k), was = seenAt(k);
     const mark = k === kind ? Math.max(was, ...seenList(k).map(x => seenTime(k, x)).filter(t => t <= upTo)) : was;
-    /* Dated after the mark, and on screen now (the kind looked at, or all of it for a kind that starts
-       afresh), or seen before and still there. A kind whose data is not here yet keeps its list. */
+    /* Seen although dated after the mark: what is on screen now of the kind looked at, or what was
+       seen before and is still there. A kind that starts afresh with no mark at all takes all of it;
+       one whose stored mark cannot be trusted here only what that mark covered (dated up to it), so
+       the rest still counts. A kind whose data is not here yet keeps its list. */
     const ready = k === 'chat' ? S.chatReady : S.loaded;
-    const later = ready ? seenList(k).filter(x => seenTime(k, x) > mark).map(x => seenKey(k, x)) : null;
-    const keys = (!later ? [...had] : (k === kind && !first) || (first && !markOk(stored)) ? later : later.filter(x => had.has(x))).slice(0, 300);
+    const later = ready ? seenList(k).filter(x => seenTime(k, x) > mark) : null;
+    const raw = first && !markOk(stored) && S.seenRaw ? +S.seenRaw[k] : NaN;
+    const seen = Number.isFinite(raw) && raw > 0 ? x => had.has(seenKey(k, x)) || seenTime(k, x) <= raw
+      : (k === kind && !first) || (first && !markOk(stored)) ? () => true : x => had.has(seenKey(k, x));
+    const keys = (!later ? [...had] : later.filter(seen).map(x => seenKey(k, x))).slice(0, 300);
     next[k] = mark; next.ahead[k] = keys;
     if (mark !== stored || keys.length !== had.size || keys.some(x => !had.has(x))) moved = true;
   });
@@ -2968,14 +2986,20 @@ function renderBadges() {
 }
 /* A short note at the top when someone else changes something while the page is open. */
 let pingTimer = null;
-function ping(who, text, open) {
-  const b = $('ping'); if (S.sheet || loginOpen()) return;
-  /* Under the top bar, but below the row that leads away (a space's Back, the full-screen graph's own
-     bar, and what is said under that bar: a failed save, the away question) while that row is on
-     screen, so a tap meant for it never opens Updates instead. */
+/* Under the top bar, but below the row that leads away (a space's Back, the full-screen graph's own
+   bar, and what is said under that bar: a failed save, the away question) while that row is on
+   screen, so a tap meant for it never opens Updates instead. Placed again while the note shows when
+   what is under that bar changes (sayInFull, renderAway, syncFull), so it never covers what came
+   after it. */
+function placePing() {
   const row = !S.cell ? null : G.full ? [...document.querySelectorAll('#planView .flow.full > :is(.flow-bar, .save-err, .away-box:not([hidden]))')].pop() : document.querySelector('#area .crumb');
   const r = row ? row.getBoundingClientRect() : null;
-  b.parentNode.style.top = r && r.bottom > 58 ? `${Math.round(r.bottom + 8)}px` : '';
+  $('ping').parentNode.style.top = r && r.bottom > 58 ? `${Math.round(r.bottom + 8)}px` : '';
+}
+const rePing = () => { if (!$('ping').hidden) placePing(); };
+function ping(who, text, open) {
+  const b = $('ping'); if (S.sheet || loginOpen()) return;
+  placePing();
   b.hidden = false;
   b.replaceChildren(el('span', { class: 'who', 'data-who': who ? who.id : '', 'aria-hidden': 'true', text: who ? who.name[0] : '·' }), el('span', { text }));
   b.onclick = () => { b.hidden = true; openSheet(open); };
@@ -3207,9 +3231,10 @@ function handTag(i) {
     const line = el('span', { class: 'flow-tag ask-in', text: offerOf(a) ? tr('offerYou', n) : tr('askedYou', n) });
     if (!S.canWrite) return line;   /* read-only: the request in words, no buttons that would do nothing */
     /* data-at names the request they answer: a newer one is a new button, never an old one kept (putKids). */
-    return el('div', { class: 'tag-row' }, [line,
-      el('button', { type: 'button', class: 'mini', 'data-fkey': `ya:${i.id}`, 'data-at': String(a.at), 'aria-label': tr('acceptX', txt(i)), text: tr('accept'), onclick: () => answer(i.id, true, a.at) }),
-      el('button', { type: 'button', class: 'mini ghost', 'data-fkey': `na:${i.id}`, 'data-at': String(a.at), 'aria-label': tr('declineX', txt(i)), text: tr('decline'), onclick: () => answer(i.id, false, a.at) })]);
+    const wait = handBusy.has(i.id) ? 'true' : null;
+    return el('div', { class: 'tag-row', 'aria-busy': wait }, [line,
+      el('button', { type: 'button', class: 'mini', 'data-fkey': `ya:${i.id}`, 'data-at': String(a.at), 'aria-disabled': wait, 'aria-label': tr('acceptX', txt(i)), text: tr('accept'), onclick: () => answer(i.id, true, a.at) }),
+      el('button', { type: 'button', class: 'mini ghost', 'data-fkey': `na:${i.id}`, 'data-at': String(a.at), 'aria-disabled': wait, 'aria-label': tr('declineX', txt(i)), text: tr('decline'), onclick: () => answer(i.id, false, a.at) })]);
   }
   if (a) {
     const to = member(a.to), stale = Date.now() - a.at > ASK_STALE_MS, from = askerOf(a), t = ageOf(a.at);
@@ -3236,22 +3261,35 @@ async function freshItem(id) {
     return v && typeof v.text === 'string' ? { id, ...v } : null;
   } catch (e) { return undefined; }
 }
-/* From a row or For you. Accepting an offer gives the to-do to the one who offered, and says so. A
-   second tap while the first is being checked or saved does nothing. */
-const answering = new Set();
+/* A hand-off tap being checked and saved, by to-do id (from the owner sheet or a row): one at a time,
+   and shown while it lasts (its buttons wait, aria-disabled, so focus stays where it is), so a second
+   tap is never dropped without a word. handTag() and renderHand() draw it on every redraw. */
+const handBusy = new Set();
+function handWait(box) {
+  box.setAttribute('aria-busy', 'true');
+  box.querySelectorAll('button').forEach(b => b.setAttribute('aria-disabled', 'true'));
+  const t = box.querySelector(':scope > .hand-task');
+  if (t && !box.querySelector('.hand-wait')) t.after(el('p', { class: 'fine hand-wait', role: 'status', text: tr('handBusy') }));
+}
+/* From a row or For you. Accepting an offer gives the to-do to the one who offered, and says so: over
+   For you while the answer was given there and it is still open, else on the page. */
 async function answer(id, yes, at) {
   const cur = S.items.get(id), a = askOf(cur), drawn = cur ? handKey(cur) : '';
-  const gone = () => { toast(tr('handChanged')); queueRender(); };   /* drawn before a change: nothing written */
+  const from = S.sheet, say = text => toast(text, null, !!from && S.sheet === from);
+  const gone = () => { say(tr('handChanged')); queueRender(); };   /* drawn before a change: nothing written */
   if (!a || a.to !== myWho() || (at && a.at !== at)) { gone(); return; }
-  if (answering.has(id)) return;
-  answering.add(id);
-  let ok = false;
+  if (handBusy.has(id)) return;
+  handBusy.add(id);
+  document.querySelectorAll(`[data-fkey="ya:${CSS.escape(id)}"], [data-fkey="na:${CSS.escape(id)}"]`).forEach(b => handWait(b.parentNode));
+  let ok = false, same = true;
   try {
     const fresh = await freshItem(id), now = S.items.get(id);
-    if (fresh === null || (fresh && handKey(fresh) !== drawn) || !now || handKey(now) !== drawn) { gone(); return; }
-    ok = await answerHand(id, yes, at);
-  } finally { answering.delete(id); }
-  if (ok) toast(!yes ? tr('saidNoDone') : offerOf(a) ? tr('gaveTo', member(a.give).name) : tr('tookIt'));
+    same = !(fresh === null || (fresh && handKey(fresh) !== drawn) || !now || handKey(now) !== drawn);
+    if (same) ok = await answerHand(id, yes, at);
+  } finally { handBusy.delete(id); }
+  if (!same) { gone(); return; }
+  queueRender();   /* the row's buttons work again (or the request has left) */
+  if (ok) say(!yes ? tr('saidNoDone') : offerOf(a) ? tr('gaveTo', member(a.give).name) : tr('tookIt'));
   /* Answered in For you: the request leaves the list, so focus moves to the next one (or the close button). */
   if (S.sheet === 'updatesSheet' && (!document.activeElement || document.activeElement === document.body)) {
     const n = $('forYou').querySelector('.mini') || $('updatesSheet').querySelector('[data-close]'); if (n) n.focus({ preventScroll: true });
@@ -3286,27 +3324,35 @@ function renderHand() {
   const kids = [el('div', { class: 'hand-task' }, [el('b', { text: txt(i) }), el('small', { text: `${whereIs(i.cell)} · ${tr('owner')}: ${om ? om.name : tr('nobody')}` })])];
   if (H.changed) kids.push(el('p', { class: 'err', tabindex: '-1', 'data-fkey': 'hb:changed', text: tr('handChanged') }));
   /* The to-do is checked as this page has it, then as the store has it now (freshItem: a teammate's
-     change that has not reached this page yet); only then is anything written. One tap at a time. */
+     change that has not reached this page yet); only then is anything written. One tap at a time per
+     to-do, shown while it is checked and saved (handWait). The line goes on the sheet open on this
+     to-do now, also one opened again meanwhile; with none, on the page. */
   const changed = () => {
     if (S.sheet !== 'handSheet' || S.handId !== i.id) { toast(tr('handChanged')); return; }   /* the sheet was closed meanwhile */
-    H.changed = true; renderHand(); const m = body.querySelector('[data-fkey="hb:changed"]'); if (m) m.focus();
+    (S.hand && S.hand.id === i.id ? S.hand : H).changed = true;
+    renderHand(); const m = body.querySelector('[data-fkey="hb:changed"]'); if (m) m.focus();
   };
   const run = async (fn, okText) => {
-    if (H.busy) return;
+    if (handBusy.has(i.id)) return;
     const now = S.items.get(i.id);
     if (!now || handKey(now) !== drawn) { changed(); return; }
-    H.busy = true;
-    let ok = false;
+    H.changed = false; body.querySelectorAll('[data-fkey="hb:changed"]').forEach(n => n.remove());
+    handBusy.add(i.id); handWait(body);
+    let ok = false, same = true;
     try {
       const fresh = await freshItem(i.id), cur = S.items.get(i.id);
-      if (fresh === null || (fresh && handKey(fresh) !== drawn) || !cur || handKey(cur) !== drawn) { changed(); return; }
-      ok = await fn();
-    } finally { H.busy = false; }
-    if (ok) { H.note = null; H.changed = false; if (S.sheet === 'handSheet' && S.handId === i.id) closeSheets(); if (okText) toast(okText); }
+      same = !(fresh === null || (fresh && handKey(fresh) !== drawn) || !cur || handKey(cur) !== drawn);
+      if (same) ok = await fn();
+    } finally { handBusy.delete(i.id); }
+    const here = S.sheet === 'handSheet' && S.handId === i.id;
+    queueRender();   /* a row drawn while it lasted waits no more */
+    if (!same) { changed(); return; }
+    if (ok) { H.note = null; H.changed = false; if (here) closeSheets(); if (okText) toast(okText); return; }
+    if (here) keepFocus(renderHand);   /* its buttons work again */
     /* Said once, at the top of the sheet, where it stays on screen: when the write itself failed,
        save() has said it there already (sayFailed); a tap refused before any write says it the same
        way, and on a copy that turned read-only meanwhile it says that, never "try again". */
-    else if (!$('handSheet').querySelector('.save-err')) sayFailed(tr(S.canWrite ? 'handFailed' : 'saveReadOnly'));
+    if (!$('handSheet').querySelector('.save-err')) sayFailed(tr(S.canWrite ? 'handFailed' : 'saveReadOnly'));
   };
   /* The note: what was typed here, else the note of this person's own open request. */
   const asking = can && (!owner || owner === mine) && mayAsk(i);
@@ -3362,6 +3408,7 @@ function renderHand() {
         owner === mine ? el('button', { type: 'button', class: 'btn ghost', 'data-fkey': 'hb:drop', text: tr('dropOwner'), onclick: () => run(() => dropOwner(i.id), tr('droppedOwner')) }) : null].filter(Boolean)));
   }
   body.replaceChildren(...kids.filter(Boolean));
+  if (handBusy.has(i.id)) handWait(body); else body.removeAttribute('aria-busy');
 }
 
 /* ── Language and theme: per-viewer choices, kept in this browser only ── */
@@ -3828,7 +3875,7 @@ function openAuth() {
   const a = document.activeElement;
   if (!S.authOpen) authOpener = a && a !== document.body && !a.closest('#login') ? a : null;
   S.authOpen = true;
-  const box = $('login'); box.hidden = false; $('page').inert = true;
+  const box = $('login'); box.hidden = false; $('page').inert = true; toastUnder();
   document.querySelectorAll('.sheet').forEach(s => { s.inert = true; });
   return box;
 }
@@ -4087,6 +4134,7 @@ async function connect() {
       const mark = k => Math.max(...[+v[k], S.seen ? +S.seen[k] : NaN].map(x => (markOk(x) ? x : 0))) || null;
       const keys = k => { const a = v.ahead && Array.isArray(v.ahead[k]) ? v.ahead[k].filter(x => typeof x === 'string') : []; return [...new Set([...aheadOf(k), ...a])].slice(0, 300); };
       S.seen = { updates: mark('updates'), chat: mark('chat'), ahead: { updates: keys('updates'), chat: keys('chat') } };
+      S.seenRaw = { updates: +v.updates, chat: +v.chat };   /* as stored: what a mark not trusted here covered (markSeen) */
     }
     if (!snap.metadata.fromCache) { S.seenReady = true; seenStart(); }
     renderBadges();

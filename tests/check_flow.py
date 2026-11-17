@@ -1232,7 +1232,8 @@ async def main():
             await close_sheet(g)
         check("nothing on screen is in Mongolian", not bad, str(bad)[:160])
         # An old milestone tag written with the Cyrillic letter that looks like M (U+041C) shows with the
-        # Latin M, as does a lower-case one ("Do next" and the timeline say it).
+        # Latin M in milestoneData's short label, as does a lower-case one ("Do next" says it; the Timeline
+        # and the Milestones list show the milestone's own words, as written).
         tags = await g.evaluate("""(() => { const ids = ['zz-tag-1', 'zz-tag-2'], now = Date.now();
           S.items.set(ids[0], { id: ids[0], cell: MILESTONE_CELL, text: '12/24 \\u00b7 \\u041c9 Made-up tag', deps: [], at: now, editedAt: now });
           S.items.set(ids[1], { id: ids[1], cell: MILESTONE_CELL, text: '12/25 \\u00b7 m12 Made-up tag', deps: [], at: now, editedAt: now });
@@ -1524,59 +1525,162 @@ async def main():
         check("a teammate's note never covers a space's Back or side chip (390 and 320 wide) nor the full-screen graph's bar; its initial is centred",
               all(v in ("back", "areaChip", "flow-btn", "grid") for v in cover.values()), str(cover))
 
-        # A toast said in a sheet (no Undo) shows over it, lets a tap through to the sheet, and never shows
-        # over the login. Hit-testing skips what takes no taps, so for "drawn on top" the toast takes them
-        # for a moment. Escape on "Switch person" is its Cancel.
-        await fresh("f0")
+        # An answer given in For you is said over it while it is open. A tap on it puts it away and reaches
+        # nothing under it (here an update's row, which would open its space). Once For you closes it is on
+        # the page, under no sheet and not raised, and a tap on it there changes no row (real taps). It is
+        # never over the login. Hit-testing skips an inert toast, so "drawn on top" lifts that for a moment.
+        # Escape on "Switch person" is its Cancel.
+        await t.evaluate("""(async () => { const c = S.db.collection('items'), now = Date.now();
+          await S.db.doc('people/nva').set({ who: 'anand', at: 1 });
+          for (const k of [0, 1, 2, 3]) await c.doc('rq' + k).set({ cell: 'f2-c2', text: 'A made-up request ' + k, deps: [], done: false, who: 'obama', url: '', at: 400 + k,
+            ask: { to: 'vida', give: 'vida', from: 'obama', by: 'someone', at: now - 60000 - k, note: '' } });
+          const cells = ['f0-c0', 'f0-c1', 'f0-c2', 'f0-c3', 'f3-c0', 'f3-c1', 'f3-c2', 'f3-c3', 'f4-c0', 'f4-c1', 'f4-c2', 'f4-c3'];
+          for (const [k, cell] of cells.entries()) await c.doc('up' + k).set({ cell, text: 'A made-up update ' + k, deps: [], done: false, who: '', url: '',
+            by: 'nva', at: now - 3600000, editedBy: 'nva', editedAt: now - 60000 * (k + 1), act: 'add' }); })()""")
+        mid = "(() => { const r = document.getElementById('toast').getBoundingClientRect(), e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return e ? (e.closest('#toast') ? 'toast' : e.closest('#login') ? 'login' : e.closest('.sheet') ? 'sheet' : e.className) : null; })()"
+        lift = "(at => { const t = document.getElementById('toast'), was = [t.inert, t.style.pointerEvents]; t.inert = false; t.style.pointerEvents = 'auto'; const got = at(); [t.inert, t.style.pointerEvents] = was; return got; })"
+        drawn = f"{lift}(() => {mid})"
+        said = "(() => { const t = document.getElementById('toast'); return t.hidden ? null : document.getElementById('toastText').textContent; })()"
+        rows = "JSON.stringify([...S.items.values()].map(i => [i.id, !!i.done, i.who || '', i.ask ? i.ask.to : null]).sort())"
+        await fresh("f2-c1")
+        await tap(t, "#bellBtn")
+        await until(t, "S.sheet === 'updatesSheet' && !!document.querySelector(\"[data-fkey='ya:rq0']\")", 3000)
+        await t.wait_for_timeout(300)
+        await tap(t, "[data-fkey='ya:rq0']")
+        await until(t, f"{said} === 'It is yours now.'", 4000)
+        fy = [await t.evaluate("document.getElementById('toast').className"), await t.evaluate(drawn)]
+        # The last update's row under the toast's middle (the list scrolled to put it there).
+        fy.append(await t.evaluate("""(() => { const body = document.querySelector('#updatesSheet .sheet-body'), r = document.getElementById('toast').getBoundingClientRect();
+            const y = r.top + r.height / 2, x = r.left + r.width / 2, n = [...document.querySelectorAll('#updList button')].pop(); if (!n) return false;
+            const a = n.getBoundingClientRect(); body.scrollTop += (a.top + a.height / 2) - y; const b = n.getBoundingClientRect();
+            return b.top < y && b.bottom > y && b.left < x && b.right > x; })()"""))
+        box = await t.locator("#toast").bounding_box()
+        await t.touchscreen.tap(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+        await t.wait_for_timeout(500)
+        fy += [await t.evaluate(said), await t.evaluate(here)]
+        if not await t.evaluate("S.sheet === 'updatesSheet' && S.cell === 'f2-c1'"):
+            await fresh("f2-c1")
+            await tap(t, "#bellBtn")
+            await until(t, "S.sheet === 'updatesSheet'", 3000)
+            await t.wait_for_timeout(300)
+        await t.evaluate("document.querySelector(\"#forYou [data-fkey='ya:rq1']\").scrollIntoView({ block: 'center' })")
+        await t.wait_for_timeout(200)
+        await tap(t, "[data-fkey='ya:rq1']")
+        await until(t, f"{said} === 'It is yours now.'", 4000)
+        await tap(t, "#updatesSheet [data-close]")
+        await until(t, "!S.sheet", 2000)
+        await t.wait_for_timeout(200)
+        before = await t.evaluate(rows)
+        page = [await t.evaluate("document.getElementById('toast').className"), await t.evaluate("document.getElementById('toast').inert"), await t.evaluate(drawn)]
+        box = await t.locator("#toast").bounding_box()
+        await t.touchscreen.tap(box["x"] + 30, box["y"] + box["height"] / 2)   # over a row's tick box
+        await t.wait_for_timeout(500)
+        page += [await t.evaluate(said), await t.evaluate(rows) == before, await t.evaluate("!!document.querySelector('[data-editing]')"), await t.evaluate(here)]
         await press(t, "#bellBtn")
         await t.wait_for_timeout(300)
-        await t.evaluate("toast('A made-up confirmation')")
-        await t.wait_for_timeout(200)
-        mid = "(() => { const r = document.getElementById('toast').getBoundingClientRect(), e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return e ? (e.closest('#toast') ? 'toast' : e.closest('#login') ? 'login' : e.closest('.sheet') ? 'sheet' : e.className) : null; })()"
-        drawn = "(() => { const t = document.getElementById('toast'); t.style.pointerEvents = 'auto'; const at = " + mid + "; t.style.pointerEvents = ''; return at; })()"
-        over = [await t.evaluate(drawn), await t.evaluate(mid)]
-        await t.evaluate("closeSheets(true); askWho()")
+        await t.evaluate("toast('A made-up confirmation', null, true)")
+        over = [await t.evaluate(drawn)]
+        await t.evaluate("askWho()")
         await t.wait_for_timeout(300)
-        over.append(await t.evaluate(drawn))
+        over += [await t.evaluate(drawn), await t.evaluate("document.getElementById('toast').inert")]
+        await t.evaluate("closeSheets(true)")
         cancel = await t.evaluate("(document.querySelector('#login .login-foot .btn') || {}).textContent || null")
         await t.keyboard.press("Escape")
         await t.wait_for_timeout(300)
         esc = await t.evaluate("[document.getElementById('login').hidden, document.activeElement && document.activeElement.id]")
         await t.evaluate("document.getElementById('toast').hidden = true")
-        check("a toast said in a sheet shows over it, lets a tap through to the sheet, and never shows over the login", over == ["toast", "sheet", "login"], str(over))
+        check("an answer in For you is said over it; a tap on it puts it away and reaches nothing under it; once For you closes it is on the page, and a tap on it there changes no row",
+              fy == ["toast over", "toast", True, None, {"sheet": "updatesSheet", "cell": "f2-c1", "hash": "#f2-c1"}]
+              and page == ["toast", False, "toast", None, True, False, {"sheet": None, "cell": "f2-c1", "hash": "#f2-c1"}], f"{fy} {page}")
+        check("a toast said over For you never shows over the login (it is inert under it)", over == ["toast", "login", True], str(over))
         check("Escape on the Switch person page is its Cancel: it closes, back on the menu button", cancel == "Cancel" and esc == [True, "meBtn"], f"{cancel} {esc}")
 
+        # A confirmation is raised only over the sheet it was said in. Said in For you, it goes under the
+        # chat opened from there. One that answers late (the write takes 1.5 s) never shows over another
+        # sheet: Accept in For you, then the chat; a request from one to-do's owner sheet, then another
+        # to-do's owner sheet, whose "Leave it with nobody" stays on top.
+        slow = """ms => { const d = S.db.doc; window.__dd = d; S.db.doc = p => { const x = d(p); if (!p.startsWith('items/')) return x;
+            const late = f => v => new Promise(r => setTimeout(r, ms)).then(() => f(v)); return { ...x, set: late(x.set), update: late(x.update) }; }; }"""
+        at_on = "(sel => { const n = document.querySelector(sel); if (!n) return null; const r = n.getBoundingClientRect(), e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return e ? (e.closest('#toast') ? 'toast' : (e.closest('button') || e).dataset.fkey || (e.closest('button') || e).id || e.className) : null; })"
+        late = {}
+        await fresh("f2-c1")
+        await tap(t, "#bellBtn")
+        await until(t, "S.sheet === 'updatesSheet' && !!document.querySelector(\"[data-fkey='ya:rq3']\")", 3000)
+        await t.wait_for_timeout(300)
+        await tap(t, "[data-fkey='ya:rq3']")
+        await until(t, f"{said} === 'It is yours now.'", 4000)
+        await t.evaluate("openSheet('chatSheet')")
+        await t.wait_for_timeout(300)
+        late["chat"] = [await t.evaluate("document.getElementById('toast').className"), await t.evaluate("document.getElementById('toast').inert"), await t.evaluate(f"{lift}(() => {at_on}('#chatSend'))")]
+        await t.evaluate("closeSheets(true); document.getElementById('toast').hidden = true")
+        await tap(t, "#bellBtn")
+        await until(t, "S.sheet === 'updatesSheet' && !!document.querySelector(\"[data-fkey='ya:rq2']\")", 3000)
+        await t.wait_for_timeout(300)
+        await t.evaluate(slow, 1500)
+        await tap(t, "[data-fkey='ya:rq2']")
+        await t.wait_for_timeout(200)
+        await tap(t, "#updatesSheet [data-close]")
+        await until(t, "!S.sheet", 2000)
+        await tap(t, "#chatBtn")
+        await until(t, "S.sheet === 'chatSheet'", 2000)
+        await until(t, f"{said} === 'It is yours now.'", 4000)
+        late["late chat"] = [await t.evaluate("document.getElementById('toast').className"), await t.evaluate("document.getElementById('toast').inert"), await t.evaluate(f"{lift}(() => {at_on}('#chatSend'))")]
+        await tap(t, "#chatSheet [data-close]")
+        await until(t, "!S.sheet", 2000)
+        await t.evaluate("document.getElementById('toast').hidden = true; openHand('rq0')")
+        await until(t, "S.sheet === 'handSheet' && !!document.querySelector(\"#handBody [data-fkey='hc:obama']\")", 3000)
+        await t.wait_for_timeout(300)
+        await tap(t, "#handBody [data-fkey='hc:obama']")
+        await t.wait_for_timeout(200)
+        await tap(t, "#handSheet [data-close]")
+        await until(t, "!S.sheet", 2000)
+        await t.evaluate("openHand('rq1')")
+        await until(t, "S.sheet === 'handSheet' && S.handId === 'rq1'", 3000)
+        await until(t, f"{said} === 'Request sent to Obama.'", 4000)
+        late["late owner"] = [await t.evaluate("document.getElementById('toast').className"), await t.evaluate("document.getElementById('toast').inert"), await t.evaluate(f"{lift}(() => {at_on}(\"#handBody [data-fkey='hb:drop']\"))")]
+        await t.evaluate("(() => { S.db.doc = window.__dd; closeSheets(true); document.getElementById('toast').hidden = true; })()")
+        check("a confirmation is raised only over the sheet it was said in: not over the chat opened after it, nor, when it answers late, over the chat or another to-do's owner sheet",
+              late == {"chat": ["toast", True, "chatSend"], "late chat": ["toast", True, "chatSend"], "late owner": ["toast", True, "hb:drop"]}, str(late))
+
         # An Undo toast is the page's: it stays under every sheet, so a tap on the chat's Send never lands on
-        # it. Delete a row with its ✕, open the chat, tap the box, write, tap Send (real taps): the message
-        # goes, the to-do stays deleted, and Undo is still there once the chat closes. Then the same with
-        # the delete answering late, its toast said while the chat is open.
+        # it, and Tab from Send never reaches its hidden Undo. Delete a row with its ✕, open the chat, tap
+        # the box, write, Tab from Send, tap Send (real taps): the message goes, the to-do stays deleted,
+        # and once the chat closes Undo is there and brings the to-do back. Then the same with the delete
+        # answering late, its toast said while the chat is open.
         await t.evaluate("""(async () => { for (const k of [0, 1]) await S.db.doc('items/ud' + k).set({ cell: 'f2-c2', text: 'A made-up row to delete ' + k, deps: [], done: false, who: '', url: '', at: 300 + k }); })()""")
         on_send = "(() => { const r = document.getElementById('chatSend').getBoundingClientRect(), e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return e ? (e.closest('button') || e).id || e.className : null; })()"
         sent = {}
-        for k, late in ((0, 0), (1, 1500)):
+        for k, ms in ((0, 0), (1, 1500)):
             await fresh("f2-c2")
-            if late:
+            if ms:
                 await t.evaluate("""ms => { const d = S.db.doc; S.db.doc = p => { const x = d(p);
-                    return p.startsWith('items/') ? { ...x, delete: () => new Promise(r => setTimeout(r, ms)).then(() => x.delete()) } : x; }; }""", late)
+                    return p.startsWith('items/') ? { ...x, delete: () => new Promise(r => setTimeout(r, ms)).then(() => x.delete()) } : x; }; }""", ms)
             await tap(t, f"[data-fkey='x:ud{k}']")
-            if not late:
+            if not ms:
                 await until(t, "!document.getElementById('toast').hidden", 3000)
             await tap(t, "#chatBtn")
             await until(t, "S.sheet === 'chatSheet'", 3000)
             await t.wait_for_timeout(300)
             await tap(t, "#chatText")
             await t.keyboard.type(f"A made-up line {k}")
-            if late:
+            if ms:
                 await until(t, "!document.getElementById('toast').hidden", 4000)
             got = [await t.evaluate(on_send), await t.evaluate("S.sheet")]
+            await press(t, "#chatSend", "focus")
+            await t.keyboard.press("Tab")
+            got.append(await t.evaluate("!!document.activeElement && !!document.activeElement.closest('#toast')"))
             await tap(t, "#chatSend")
             await t.wait_for_timeout(600)
             got += [await t.evaluate(f"S.chat.some(m => m.text === 'A made-up line {k}')"), await t.evaluate(f"S.items.has('ud{k}')")]
             await tap(t, "#chatSheet [data-close]")
             await t.wait_for_timeout(300)
-            sent[late] = got + [await t.locator("#toastUndo").is_visible()]
-        check("on a phone an Undo toast stays under the sheets: the chat's Send sends and the deleted to-do stays deleted, also when the delete answers late; Undo is there after",
-              all(v == ["chatSend", "chatSheet", True, False, True] for v in sent.values()), str(sent))
+            got.append(await t.locator("#toastUndo").is_visible())
+            await tap(t, "#toastUndo")
+            got.append(await until(t, f"S.items.has('ud{k}')", 3000))
+            sent[ms] = got
+        check("on a phone an Undo toast stays under the sheets: the chat's Send sends, Tab from Send never reaches the hidden Undo, the deleted to-do stays deleted, also when the delete answers late; Undo is there after and brings it back",
+              all(v == ["chatSend", "chatSheet", False, True, False, True, True] for v in sent.values()), str(sent))
+        await t.evaluate("""(async () => { for (const id of [...S.items.keys()].filter(k => /^(rq|up|ud)\\d+$/.test(k))) await S.db.doc('items/' + id).delete(); })()""")
 
         # In full screen the graph covers the status line (and makes it inert): a timer change that fails
         # is said under the graph's bar, and still after a redraw (the same line, not announced again).
@@ -1617,16 +1721,52 @@ async def main():
         await t.wait_for_timeout(700)
         below = await t.evaluate("document.getElementById('ping').getBoundingClientRect().top >= document.getElementById('awayBox').getBoundingClientRect().bottom")
         await t.evaluate("document.getElementById('ping').hidden = true")
+        await press(t, "#awayBox [data-fkey='aw:yes']", "focus")
         await t.evaluate("renderAll()")
         asked.append(await t.evaluate(away))
+        kept = await t.evaluate("document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.fkey || null : null")
         await tap(t, "#awayBox .btn.ghost")
         await t.wait_for_timeout(500)
         asked.append(await t.evaluate("[document.getElementById('awayBox').hidden, !!leftOf(myClock())]"))
         await tap(t, "[data-fkey='z:full']")
         await t.wait_for_timeout(300)
         asked.append(await t.evaluate("[G.full, document.getElementById('awayBox').parentNode.id, document.getElementById('awayBox').previousElementSibling.id]"))
-        check("in full screen the away question is asked under the graph's bar (a teammate's note below it), stays through a redraw, can be answered, and goes back to its place after",
-              below and asked == [[True, True, False, True], False, [True, True, False, True], [True, False], [False, "page", "notice"]], f"{below} {asked}")
+        check("in full screen the away question is asked under the graph's bar (a teammate's note below it), stays through a redraw with focus on its button, can be answered, and goes back to its place after",
+              below and kept == "aw:yes" and asked == [[True, True, False, True], False, [True, True, False, True], [True, False], [False, "page", "notice"]], f"{below} {kept} {asked}")
+        # A teammate's note shown first moves below what comes under the full-screen bar after it: a failed
+        # save's line, then the away question. It never covers them.
+        await fresh("f0")
+        await t.evaluate("openKey('f1-c3')")
+        await t.wait_for_timeout(400)
+        await tap(t, "[data-fkey='z:full']")
+        await until(t, "G.full", 2000)
+        under = "(sel => { const p = document.getElementById('ping'), n = document.querySelector(sel); return !p.hidden && !!n && !n.hidden && p.getBoundingClientRect().top >= n.getBoundingClientRect().bottom; })"
+        note = "ping(member('anand'), 'Anand changed “A made-up line”', 'updatesSheet')"
+        await t.evaluate(note)
+        await t.wait_for_timeout(300)
+        await t.evaluate("""(async () => { await writeClock(x => { x.openSince = Date.now() - 30 * 60000; x.leftAt = Date.now() - 4 * 60000; });
+            const d = S.db.doc; window.__d = d; S.db.doc = p => { const x = d(p), no = () => Promise.reject({ code: 'unavailable', message: 'made-up failure' });
+              return p.startsWith('clock/') ? { ...x, set: no, update: no } : x; };
+            reconcileClock(false); })()""")
+        moved = [await until(t, "S.failWords === tr('clockFailed')", 5000)]
+        await t.wait_for_timeout(200)
+        moved.append(await t.evaluate(f"{under}('#planView .flow.full > .save-err')"))
+        if SHOTS:
+            await t.screenshot(path=f"{SHOTS}/full_screen_note_below_failure.png")
+        await t.evaluate("(() => { S.db.doc = window.__d; document.getElementById('ping').hidden = true; clearFailed(); })()")
+        await t.evaluate(note)
+        await t.wait_for_timeout(300)
+        await t.evaluate("writeClock(x => { x.openSince = Date.now() - 60 * 60000; x.leftAt = Date.now() - 30 * 60000; }).then(() => reconcileClock(false))")
+        moved.append(await until(t, "!document.getElementById('awayBox').hidden", 3000))
+        await t.wait_for_timeout(200)
+        moved.append(await t.evaluate(f"{under}('#awayBox')"))
+        await t.evaluate("document.getElementById('ping').hidden = true")
+        await tap(t, "#awayBox .btn.ghost")
+        await t.wait_for_timeout(400)
+        await tap(t, "[data-fkey='z:full']")
+        await t.wait_for_timeout(300)
+        check("in full screen a teammate's note shown first moves below what comes under the graph's bar after it: a failed save's line, the away question",
+              moved == [True, True, True, True], str(moved))
 
         # The people data arriving after a sheet was opened: the login over it keeps focus, and once a
         # name is picked the sheet is still modal (the page under it inert) with focus in it.
@@ -2508,8 +2648,10 @@ async def main():
         # no more: in the chat badge, on the bell and in the title, after a reload too, and the open chat
         # writes no mark again and again. A message 20 s ahead, read in the open chat, is read. A mark
         # stored a day ahead (as an earlier version stored it) no longer hides new messages, and the next
-        # look stores one that is not ahead. A phone a day ahead stores no mark ahead, so on the right date
-        # a teammate's change made now counts. The first mark goes through markSeen(), as every mark does.
+        # look stores one that is not ahead. A phone a day ahead that already has a mark stores none ahead,
+        # so on the right date a teammate's change made now counts (a first visit's mark is where that
+        # visit began, by that phone's clock). The first mark goes through markSeen(), as every mark does.
+        # A laptop of the same account whose clock is slow hides nothing.
         DAY = 86400000
         ctxw = await b7.new_context(viewport={"width": 390, "height": 844})
         seed = await ctxw.new_page()
@@ -2599,8 +2741,8 @@ async def main():
         await v.close()
         check("a seen mark stored a day ahead no longer hides new messages, and the next look stores a mark that is not ahead",
               b == [[None, None, False], [None, "2", True], True], f"{b} {stored}")
-        # A phone a day ahead opens Updates: the mark it stores is not ahead; on the right date (the
-        # laptop) a teammate's change made now counts.
+        # A phone a day ahead that already has a mark opens Updates: the mark it stores is not ahead; on
+        # the right date (the laptop) a teammate's change made now counts.
         now = int(time.time() * 1000)
         await put({"seen/wdv": {**await mark_of("wdv"), "updates": now - 3600000}, "items/wd2": tick(2, "wda", now - 1800000)})
         f = await reader("wdv", ahead=DAY)
@@ -2616,7 +2758,7 @@ async def main():
         await lap.wait_for_timeout(200)
         c = [stored["updates"] <= int(time.time() * 1000), await lap.evaluate(counts)]
         await lap.close()
-        check("a phone a day ahead stores no seen mark ahead, so on the right date a teammate's change made now counts",
+        check("a phone a day ahead that already has a seen mark stores none ahead, so on the right date a teammate's change made now counts",
               c == [True, ["1", None, True]], f"{c} {stored}")
         # A first visit: the mark is written through markSeen() (the only place that writes seen/), from
         # where the visit began, for both counts.
@@ -2629,6 +2771,35 @@ async def main():
         await first.close()
         check("a first visit's seen mark goes through markSeen(), the only place that writes one, and starts both counts where the visit began",
               len(writes) == 1 and inside and mark and mark.get("updates") == base and mark.get("chat") == base and isinstance(mark.get("ahead"), dict), f"{len(writes)} {inside} {mark} {base}")
+        # Vida reads the chat on her phone (right clock); Obama then writes a line and adds a to-do; her
+        # laptop (same account) opens with a clock 5 min, or a day, slow. There the phone's mark looks
+        # still to come, so the laptop starts afresh, but only what that mark covered stays seen: Obama's
+        # line and to-do count on both devices, also after a reload, and the line she read does not.
+        slow = {}
+        for off in (-5 * 60000, -DAY):
+            now = int(time.time() * 1000)
+            await put({**people, "people/wsv": {"who": "vida", "at": now - 5 * DAY}, "seen/wsv": {"updates": now - 3600000, "chat": now - 3600000},
+                       "chat/ws1": {"by": "wda", "text": "A made-up line she reads on her phone", "at": now - 20000}}, fresh=True)
+            ph = await reader("wsv")
+            await ph.click("#chatBtn")
+            await ph.wait_for_timeout(300)
+            await ph.click("#chatSheet [data-close]")
+            await ph.wait_for_timeout(300)
+            now = int(time.time() * 1000)
+            await put({"chat/ws2": {"by": "wdo", "text": "A made-up line sent after she read", "at": now}, "items/ws3": tick(3, "wdo", now)})
+            await until(ph, "S.chat.some(m => m.id === 'ws2') && S.items.has('ws3')", 3000)
+            lap = await reader("wsv", ahead=off)
+            await ph.wait_for_timeout(300)
+            got = [await ph.evaluate(counts), await lap.evaluate(counts)]
+            await ph.reload()
+            await until(ph, "S.loaded && S.seenReady && S.chatReady", 6000)
+            await ph.wait_for_timeout(300)
+            got += [await ph.evaluate(counts), await ph.evaluate("unseen('chat', seenList('chat')).map(m => m.id)")]
+            slow[off // 60000] = got
+            await ph.close()
+            await lap.close()
+        check("a laptop of the same account whose clock is slow (5 min, a day) hides nothing: a teammate's line and to-do written after she read count on both devices, also after a reload; the line she read does not",
+              all(v == [["1", "1", True], ["1", "1", True], ["1", "1", True], ["ws2"]] for v in slow.values()), str(slow))
         await ctxw.close()
         # A plain CSV import: the lines read as added by the one importing them, are not news to her, keep
         # their times, and do not come back as news on every later change.
@@ -3264,6 +3435,63 @@ async def main():
               race["a"] == ["vida", "anand", None, True, True] and race["b"] == [False, {"give": "obama", "note": "A made-up note"}, True, True], str(race))
         check("remote: Accept in For you on a request taken back meanwhile writes nothing and says the to-do changed",
               race["c"] == ["vida", None, "This to-do changed meanwhile, so nothing was saved. Check it and tap again.", False], str(race["c"]))
+        # While a hand-off tap is checked and saved (the check read is held here) the owner sheet says so
+        # and its buttons wait, so a second choice is never dropped without a word; the first is saved
+        # once. A sheet closed and opened again on that to-do meanwhile says the to-do changed, when a
+        # teammate changed it before the read answered, and nothing is written.
+        for k in ("ho6", "ho7"):
+            rpc("vida", "doc_set", {"p_path": f"items/{k}", "p_data": todo("vida", f"A made-up hand-off {k}")})
+        V = await slow_phone("vida@test.invalid", "vida-pass-1")
+        held, sent = {k: asyncio.Event() for k in ("ho6", "ho7")}, []
+
+        async def hold_read(route):
+            await held["ho6" if "items%2Fho6" in route.request.url else "ho7"].wait()
+            await route.continue_()
+
+        async def count_write(route):
+            if (json.loads(route.request.post_data or "{}").get("p_path") or "") in ("items/ho6", "items/ho7"):
+                sent.append(json.loads(route.request.post_data)["p_path"])
+            await route.continue_()
+        await V.context.route(lambda u: "/sb/rest/v1/docs" in u and ("path=eq.items%2Fho6" in u or "path=eq.items%2Fho7" in u), hold_read)
+        await V.context.route(lambda u: "/sb/rest/v1/rpc/doc_" in u, count_write)
+        waits = """(() => { const b = document.getElementById('handBody'); return [b.getAttribute('aria-busy'),
+            [...b.querySelectorAll('button')].every(n => n.getAttribute('aria-disabled') === 'true'), (b.querySelector('.hand-wait') || {}).textContent || null]; })()"""
+        await tap(V, "[data-fkey='w:ho6']")
+        await until(V, "S.sheet === 'handSheet' && S.handId === 'ho6'", 3000)
+        await V.wait_for_timeout(300)
+        await tap(V, "#handBody [data-fkey='hc:obama']")
+        await V.wait_for_timeout(500)
+        busy = [await V.evaluate(waits)]
+        await tap(V, "#handBody [data-fkey='hc:anand']")
+        await V.wait_for_timeout(300)
+        busy.append(list(sent))
+        held["ho6"].set()
+        await until(V, "!S.sheet", 5000)
+        await V.wait_for_timeout(500)
+        busy += [list(sent), (sb_row("items/ho6")["data"].get("ask") or {}).get("to"),
+                 await V.evaluate("document.getElementById('toast').hidden ? null : document.getElementById('toastText').textContent")]
+        await V.evaluate("document.getElementById('toast').hidden = true")
+        await tap(V, "[data-fkey='w:ho7']")
+        await until(V, "S.sheet === 'handSheet' && S.handId === 'ho7'", 3000)
+        await V.wait_for_timeout(300)
+        await tap(V, "#handBody [data-fkey='hc:obama']")
+        await V.wait_for_timeout(400)
+        await tap(V, "#handSheet [data-close]")
+        await until(V, "!S.sheet", 2000)
+        await V.wait_for_timeout(300)
+        await tap(V, "[data-fkey='w:ho7']")
+        await until(V, "S.sheet === 'handSheet' && S.handId === 'ho7'", 3000)
+        await V.wait_for_timeout(300)
+        rpc("anand", "doc_update", {"p_path": "items/ho7", "p_patch": {"who": "anand", "act": "owner", "editedBy": users["anand"], "editedAt": ms()}})
+        held["ho7"].set()
+        await until(V, changed, 4000)
+        row = sb_row("items/ho7")["data"]
+        again = [await V.evaluate(changed), row["who"], row.get("ask"), "items/ho7" in sent]
+        await V.context.close()
+        check("remote: while a hand-off tap is checked and saved the owner sheet says so and its buttons wait; a second choice is not taken, the first is saved once",
+              busy == [["true", True, "Checking and saving…"], [], ["items/ho6"], "obama", "Request sent to Obama."], str(busy))
+        check("remote: an owner sheet closed and opened again while its tap is checked says the to-do changed meanwhile, and nothing is written",
+              again == [True, "anand", None, False], str(again))
         sb("reset", {})
 
         # In Claude (fake-claude): once meta/home names the new home, this copy is read-only and links
