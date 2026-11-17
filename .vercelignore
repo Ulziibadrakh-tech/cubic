@@ -4,3 +4,5 @@ docs/
 CLAUDE.md
 README.md
 *.py
+data/
+.github/

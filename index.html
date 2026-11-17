@@ -359,6 +359,22 @@ body { background: radial-gradient(130% 42% at 50% 0%, var(--glow), transparent 
 .tl-bar { border: 0; border-radius: 999px; background: color-mix(in srgb, var(--ink) 8%, transparent); overflow: hidden; height: 12px; }
 .tl-bar span { background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 60%, #FFFFFF)); border-radius: 999px; }
 
+/* Plan views: plan picker, layer labels, loops, build order */
+.gchips { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+.gchip { flex: 0 0 auto; border: 0; border-radius: 999px; padding: 9px 14px; font-size: 14px; font-weight: 600; white-space: nowrap; background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink); }
+.gchip[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.glayer { position: absolute; top: 0; height: 18px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); white-space: nowrap; }
+.gnode.loop { border-style: dashed; border-color: var(--bad); }
+.gnode[aria-pressed="true"] { outline: 3px solid var(--accent); outline-offset: 2px; }
+details.build > summary { cursor: pointer; list-style: none; padding: 2px 0; }
+details.build > summary::-webkit-details-marker { display: none; }
+details.build > summary::after { content: '＋'; margin-left: auto; color: var(--ink-2); }
+details.build[open] > summary::after { content: '－'; }
+.build-list { counter-reset: step; }
+.build-list li { counter-increment: step; }
+.build-list button { padding-left: 34px; position: relative; }
+.build-list button::before { content: counter(step); position: absolute; left: 0; top: 10px; width: 26px; text-align: right; font-size: 12px; font-weight: 700; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+
 /* Motion: squash on press, overshoot on release, rows pop in, a tick bounces. */
 .btn, .icon-btn, .chip, .who, .x, .cell-tile, .g-cell, .toggle button, .turn button, .gfilter, .todo input[type="checkbox"] { transition: transform .45s var(--spring), background-color .2s, box-shadow .2s; }
 .btn:active, .icon-btn:active, .chip:active, .who:active, .x:active, .toggle button:active, .turn button:active, .gfilter:active { transform: scale(.9); transition-duration: .08s; }
@@ -668,7 +684,7 @@ function removeItem(id) {
    open     дуусаагүй, хэнийг ч хүлээхгүй, хэнийг ч гацаахгүй */
 const STATE = { done: 'Дууссан', open: 'Нээлттэй', blocked: 'Гацсан', blocking: 'Гацааж буй' };
 const STATE_MARK = { done: '✓', open: '○', blocked: '■', blocking: '▶' };
-const depsOf = i => (Array.isArray(i.deps) ? i.deps : []).filter(d => d !== i.id && S.items.has(d));
+const depsOf = i => [...new Set(Array.isArray(i.deps) ? i.deps : [])].filter(d => d !== i.id && S.items.has(d));
 function flow() {
   const st = new Map();
   S.items.forEach(i => st.set(i.id, { waits: [], holds: [], state: 'open' }));
@@ -693,6 +709,106 @@ function downstream(id) {
 /* A to-do may not wait for something that already waits for it. */
 const wouldLoop = (id, candidate) => candidate === id || upstream(candidate).has(id);
 const short = (t, n = 44) => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
+
+/* ── Topological sort (Kahn) over the to-dos that wait for, or are waited on by, another ──
+   order   a build order: each to-do comes after everything it waits for. Among to-dos ready at
+           the same moment, the one higher in its list (later `at`) goes first, so a plan added in
+           build order reads back in that order.
+   layer   the longest chain of waiting that ends at the to-do; 0 = waits for nothing.
+   loop    to-dos that wait on each other in a circle. wouldLoop() stops this on screen, but two
+           people editing at once can still make one. They are named, never silently placed.
+   groups  to-dos joined by any chain of waiting, so separate plans can be shown one at a time.
+   direct  for each to-do, the dependencies not already implied by another one (drawn as arrows). */
+function plan() {
+  const all = [...S.items.values()];
+  const deps = new Map(all.map(i => [i.id, depsOf(i)])), users = new Map();
+  deps.forEach((ds, id) => ds.forEach(d => { if (!users.has(d)) users.set(d, []); users.get(d).push(id); }));
+  const ids = all.filter(i => deps.get(i.id).length || users.has(i.id)).map(i => i.id);
+  const at = id => S.items.get(id).at || 0;
+  const indeg = new Map(ids.map(id => [id, deps.get(id).length]));
+  const layer = new Map(), order = [];
+  const ready = ids.filter(id => !indeg.get(id));
+  ready.forEach(id => layer.set(id, 0));
+  while (ready.length) {
+    let k = 0;
+    for (let j = 1; j < ready.length; j++) if (at(ready[j]) > at(ready[k]) || (at(ready[j]) === at(ready[k]) && ready[j] < ready[k])) k = j;
+    const id = ready.splice(k, 1)[0];
+    order.push(id);
+    (users.get(id) || []).forEach(u => {
+      layer.set(u, Math.max(layer.get(u) || 0, layer.get(id) + 1));
+      indeg.set(u, indeg.get(u) - 1);
+      if (!indeg.get(u)) ready.push(u);
+    });
+  }
+  /* What Kahn could not place is a loop or waits behind one. Peel off the ones only waiting
+     behind (nobody left waits on them); what stays is the loop itself. */
+  const placed = new Set(order);
+  const stuck = new Set(ids.filter(id => !placed.has(id)));
+  const behind = new Set(stuck);
+  let peeled = true;
+  while (peeled) {
+    peeled = false;
+    behind.forEach(id => { if (!(users.get(id) || []).some(u => behind.has(u))) { behind.delete(id); peeled = true; } });
+  }
+  const loop = [...behind];
+  const top = order.length ? Math.max(...order.map(id => layer.get(id))) + 1 : 0;
+  stuck.forEach(id => { layer.set(id, top); order.push(id); });
+  /* Arrows: a dependency is implied when another dependency of the same to-do already waits for it. */
+  const up = new Map();
+  const reach = id => {
+    if (up.has(id)) return up.get(id);
+    up.set(id, new Set());
+    const s = new Set();
+    deps.get(id).forEach(d => { s.add(d); reach(d).forEach(x => s.add(x)); });
+    up.set(id, s); return s;
+  };
+  const direct = new Map();
+  let implied = 0;
+  ids.forEach(id => {
+    const ds = deps.get(id);
+    const keep = ds.filter(d => !ds.some(o => o !== d && reach(o).has(d)));
+    implied += ds.length - keep.length; direct.set(id, keep);
+  });
+  /* Groups: union-find over the waiting links. A group is named by its latest dated milestone,
+     else by the to-do that comes last in the build order. */
+  const parent = new Map(ids.map(id => [id, id]));
+  const find = id => { while (parent.get(id) !== id) { parent.set(id, parent.get(parent.get(id))); id = parent.get(id); } return id; };
+  ids.forEach(id => deps.get(id).forEach(d => { const a = find(id), b = find(d); if (a !== b) parent.set(a, b); }));
+  const byRoot = new Map();
+  order.forEach(id => { const r = find(id); if (!byRoot.has(r)) byRoot.set(r, []); byRoot.get(r).push(id); });
+  const groups = [...byRoot.values()].map(members => {
+    const dated = members.filter(id => S.items.get(id).cell === MILESTONE_CELL).map(id => ({ id, d: milestoneDate(S.items.get(id).text) })).filter(x => x.d);
+    dated.sort((a, b) => b.d - a.d);
+    const name = dated.length ? dated[0].id : members[members.length - 1];
+    const fresh = Math.max(...members.map(id => Math.max(S.items.get(id).at || 0, S.items.get(id).editedAt || 0)));
+    return { key: name, label: S.items.get(name).text, members: new Set(members), size: members.length, fresh };
+  }).sort((a, b) => b.size - a.size || b.fresh - a.fresh);
+  const groupOf = new Map();
+  groups.forEach(g => g.members.forEach(id => groupOf.set(id, g.key)));
+  return { ids, order, layer, loop, stuck, stuckLayer: stuck.size ? top : -1, deps, direct, implied, groups, groupOf };
+}
+/* The plan picked on the graph and the timeline. Groups under GROUP_MIN to-dos share "Бусад". */
+const GROUP_MIN = 5;
+function pickedGroup(P) {
+  const big = P.groups.filter(g => g.size >= GROUP_MIN);
+  if (P.groups.length < 2) return null;
+  if (G.group === 'all') return null;
+  if (G.group === 'other' && big.length < P.groups.length) return { key: 'other', has: id => !big.some(g => g.members.has(id)) };
+  let g = P.groups.find(x => x.key === G.group && x.size >= GROUP_MIN);
+  if (!g) g = big.slice().sort((a, b) => b.fresh - a.fresh)[0];
+  return g ? { key: g.key, has: id => g.members.has(id) } : null;
+}
+function groupChips(P, picked, redraw) {
+  if (P.groups.length < 2) return null;
+  const big = P.groups.filter(g => g.size >= GROUP_MIN);
+  const rest = P.groups.filter(g => g.size < GROUP_MIN).reduce((t, g) => t + g.size, 0);
+  const chip = (key, text, on) => el('button', { type: 'button', class: 'gchip', 'aria-pressed': String(on), onclick: () => { G.group = key; G.pick = null; redraw(); } }, text);
+  return el('div', { class: 'gchips', role: 'group', 'aria-label': 'Төлөвлөгөө сонгох' }, [
+    ...big.map(g => chip(g.key, `${short(g.label, 30)} · ${g.size}`, !!picked && picked.key === g.key)),
+    rest ? chip('other', `Бусад · ${rest}`, !!picked && picked.key === 'other') : null,
+    chip('all', `Бүгд · ${P.ids.length}`, !picked),
+  ].filter(Boolean));
+}
 
 function countFor(key) {
   if (key === GRAPH_CELL) { let b = 0; flow().forEach(x => { if (x.state === 'blocked') b += 1; }); return b ? `${b} гацсан` : 'Гацсан ажилгүй'; }
@@ -1142,7 +1258,37 @@ function planImport(d) {
   });
   d.people.forEach(([k, v]) => { if (!S.people.has(k)) plan.people.push([k, { who: v.who, at: +v.at || Date.now() }]); });
   d.clock.forEach(([k, v]) => { if (!S.clocks.has(k)) plan.clock.push([k, JSON.parse(JSON.stringify(v))]); });
+  plan.loops = dropImportLoops([...plan.add, ...plan.update]);
   return plan;
+}
+/* Import is a place that adds dependencies, so it is guarded like every other (wouldLoop).
+   Imported dependencies are added one at a time to what the workspace will hold afterwards; one
+   that would close a loop of waiting is left out and counted on the plan. */
+function dropImportLoops(incoming) {
+  const next = new Map([...S.items.values()].map(i => [i.id, depsOf(i)]));
+  incoming.forEach(x => { if (x.id) next.set(x.id, []); });
+  const reaches = (from, target) => {
+    const seen = new Set(), stack = [from];
+    while (stack.length) {
+      const k = stack.pop();
+      if (k === target) return true;
+      if (seen.has(k)) continue;
+      seen.add(k); (next.get(k) || []).forEach(d => stack.push(d));
+    }
+    return false;
+  };
+  let dropped = 0;
+  incoming.forEach(x => {
+    const keep = [];
+    (x.body.deps || []).forEach(d => {
+      if (keep.includes(d)) return;
+      if (x.id && (d === x.id || reaches(d, x.id))) { dropped += 1; return; }
+      keep.push(d);
+      if (x.id) next.set(x.id, keep.slice());
+    });
+    x.body.deps = keep;
+  });
+  return dropped;
 }
 const planSize = p => p.add.length + p.update.length + p.faces.length + p.people.length + p.clock.length;
 async function applyImport(p) {
@@ -1175,6 +1321,7 @@ function renderImportPlan(p) {
     line('Шинэ ажил', p.add.length), line('Шинэчлэгдэх ажил', p.update.length), line('Талын нэр', p.faces.length),
     line('Хүн', p.people.length), line('Цагийн бүртгэл', p.clock.length),
     line('Ижил, өөрчлөхгүй', p.same), line('Энд илүү шинэ тул алгасна', p.older),
+    line('Тойрог үүсгэх тул хасах хамаарал', p.loops),
   ].filter(Boolean));
   const msg = el('p', { class: 'fine', hidden: true });
   const go = el('button', { type: 'button', class: 'btn', text: `Оруулах (${total})`, disabled: !total });
@@ -1212,65 +1359,70 @@ function initData() {
   });
 }
 
-/* ── Dependency graph: зүүнээс баруун тийш, хүлээж буй ажил нь зүүн талдаа ── */
-const G = { W: 172, H: 62, GX: 46, GY: 10, filter: 'all', pick: null };
-function graphLayout() {
-  const nodes = [...S.items.values()].filter(i => depsOf(i).length || [...S.items.values()].some(o => depsOf(o).includes(i.id)));
-  const ids = new Set(nodes.map(n => n.id)), level = new Map();
-  const lev = (id, trail = new Set()) => {
-    if (level.has(id)) return level.get(id);
-    if (trail.has(id)) return 0;
-    trail.add(id);
-    const ds = depsOf(S.items.get(id)).filter(d => ids.has(d));
-    const v = ds.length ? 1 + Math.max(...ds.map(d => lev(d, trail))) : 0;
-    level.set(id, v); return v;
-  };
-  nodes.forEach(n => lev(n.id));
+/* ── Dependency graph: зүүнээс баруун тийш, хүлээж буй ажил нь зүүн талдаа ──
+   Columns are the layers of the topological sort. Only direct needs are drawn; a need that another
+   need already implies is counted, not drawn (the chain still lights up when a to-do is picked). */
+const G = { W: 172, H: 62, GX: 46, GY: 10, TOP: 24, filter: 'all', pick: null, group: null };
+function graphLayout(P, has) {
+  const nodes = P.order.filter(has).map(id => S.items.get(id));
   const cols = [];
-  nodes.forEach(n => { const l = level.get(n.id); (cols[l] = cols[l] || []).push(n); });
+  nodes.forEach(n => { const l = P.layer.get(n.id); (cols[l] = cols[l] || []).push(n); });
+  const used = cols.map((c, l) => (c ? l : -1)).filter(l => l >= 0);
+  const xOf = new Map(used.map((l, k) => [l, k]));
   const row = new Map();
-  cols.forEach((col, l) => {
-    const centre = n => { const ds = depsOf(n).filter(d => row.has(d)); return ds.length ? ds.reduce((t, d) => t + row.get(d), 0) / ds.length : 1e6; };
-    if (l === 0) col.sort((a, b) => (a.cell > b.cell ? 1 : a.cell < b.cell ? -1 : (b.at || 0) - (a.at || 0)));
-    else col.sort((a, b) => centre(a) - centre(b) || (a.cell > b.cell ? 1 : -1));
+  used.forEach(l => {
+    const col = cols[l];
+    const centre = n => { const ds = P.deps.get(n.id).filter(d => row.has(d)); return ds.length ? ds.reduce((t, d) => t + row.get(d), 0) / ds.length : 1e6; };
+    if (l !== used[0]) col.sort((a, b) => centre(a) - centre(b) || P.order.indexOf(a.id) - P.order.indexOf(b.id));
     col.forEach((n, k) => row.set(n.id, k));
   });
   const pos = new Map();
-  cols.forEach((col, l) => col.forEach((n, k) => pos.set(n.id, { x: l * (G.W + G.GX), y: k * (G.H + G.GY) })));
-  const tall = Math.max(1, ...cols.map(c => (c ? c.length : 0)));
-  return { nodes, pos, w: cols.length * (G.W + G.GX) - G.GX, h: tall * (G.H + G.GY) - G.GY, loose: S.items.size - nodes.length };
+  used.forEach(l => cols[l].forEach((n, k) => pos.set(n.id, { x: xOf.get(l) * (G.W + G.GX), y: G.TOP + k * (G.H + G.GY) })));
+  const tall = Math.max(1, ...used.map(l => cols[l].length));
+  return { nodes, pos, layers: used.map(l => ({ l, x: xOf.get(l) * (G.W + G.GX) })), w: Math.max(G.W, used.length * (G.W + G.GX) - G.GX), h: G.TOP + tall * (G.H + G.GY) - G.GY };
 }
 function renderGraph() {
   const host = $('planView'), old = host.querySelector('.graph-scroll');
   const keep = old ? { x: old.scrollLeft, y: old.scrollTop } : null;
-  const fl = flow(), lay = graphLayout();
-  if (G.pick && !S.items.has(G.pick)) G.pick = null;
-  const tally = { all: S.items.size, done: 0, open: 0, blocked: 0, blocking: 0 };
-  fl.forEach(x => { tally[x.state] += 1; });
+  const fl = flow(), P = plan(), picked = pickedGroup(P);
+  const has = id => !picked || picked.has(id);
+  const lay = graphLayout(P, has);
+  if (G.pick && (!S.items.has(G.pick) || !has(G.pick))) G.pick = null;
+  const tally = { all: lay.nodes.length, done: 0, open: 0, blocked: 0, blocking: 0 };
+  lay.nodes.forEach(n => { tally[fl.get(n.id).state] += 1; });
   const filters = el('div', { class: 'gfilters', role: 'group', 'aria-label': 'Төлөвөөр шүүх' }, [['all', 'Бүгд'], ['blocking', STATE.blocking], ['blocked', STATE.blocked], ['open', STATE.open], ['done', STATE.done]].map(([k, label]) =>
     el('button', { type: 'button', class: `gfilter s-${k}`, 'aria-pressed': String(G.filter === k), onclick: () => { G.filter = k; renderGraph(); } },
       [el('b', { text: String(tally[k]) }), el('span', { text: `${STATE_MARK[k] ? STATE_MARK[k] + ' ' : ''}${label}` })])));
 
   const chain = G.pick ? new Set([G.pick, ...upstream(G.pick), ...downstream(G.pick)]) : null;
   const dim = n => (chain ? !chain.has(n.id) : G.filter !== 'all' && fl.get(n.id).state !== G.filter);
+  const loops = new Set(P.loop);
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('width', lay.w); svg.setAttribute('height', lay.h); svg.setAttribute('class', 'gedges'); svg.setAttribute('aria-hidden', 'true');
-  lay.nodes.forEach(n => depsOf(n).forEach(d => {
-    const a = lay.pos.get(d), b = lay.pos.get(n.id); if (!a || !b) return;
-    const x1 = a.x + G.W, y1 = a.y + G.H / 2, x2 = b.x, y2 = b.y + G.H / 2, mx = (x1 + x2) / 2;
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`);
-    const live = !S.items.get(d).done && !n.done;
-    path.setAttribute('class', `gedge${live ? ' live' : ''}${chain && !(chain.has(d) && chain.has(n.id)) ? ' dim' : ''}`);
-    svg.append(path);
-  }));
-  const canvas = el('div', { class: 'graph-canvas', style: `width:${lay.w}px;height:${lay.h}px` }, svg);
+  let implied = 0;
   lay.nodes.forEach(n => {
-    const p = lay.pos.get(n.id), x = fl.get(n.id);
-    canvas.append(el('button', { type: 'button', class: `gnode s-${x.state}${n.cell === MILESTONE_CELL ? ' ms' : ''}${dim(n) ? ' dim' : ''}${G.pick === n.id ? ' picked' : ''}`,
-      style: `left:${p.x}px;top:${p.y}px;width:${G.W}px;height:${G.H}px`, 'aria-label': `${STATE[x.state]}: ${n.text}`,
+    const direct = P.direct.get(n.id) || [];
+    implied += P.deps.get(n.id).length - direct.length;
+    direct.forEach(d => {
+      const a = lay.pos.get(d), b = lay.pos.get(n.id); if (!a || !b) return;
+      const x1 = a.x + G.W, y1 = a.y + G.H / 2, x2 = b.x, y2 = b.y + G.H / 2, mx = (x1 + x2) / 2;
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`);
+      const live = !S.items.get(d).done && !n.done;
+      path.setAttribute('class', `gedge${live ? ' live' : ''}${chain && !(chain.has(d) && chain.has(n.id)) ? ' dim' : ''}`);
+      svg.append(path);
+    });
+  });
+  const canvas = el('div', { class: 'graph-canvas', style: `width:${lay.w}px;height:${lay.h}px` }, svg);
+  const layerName = id => (P.stuck.has(id) ? 'Тойрогийн улмаас дараалалгүй' : `Давхарга ${P.layer.get(id)}`);
+  lay.layers.forEach(({ l, x }) => canvas.append(el('span', { class: 'glayer', 'aria-hidden': 'true', style: `left:${x}px;width:${G.W}px`, text: l === P.stuckLayer ? '⟲ Тойрог' : `Давхарга ${l}` })));
+  lay.nodes.forEach(n => {
+    const p = lay.pos.get(n.id), x = fl.get(n.id), inLoop = loops.has(n.id);
+    canvas.append(el('button', { type: 'button', class: `gnode s-${x.state}${n.cell === MILESTONE_CELL ? ' ms' : ''}${inLoop ? ' loop' : ''}${dim(n) ? ' dim' : ''}${G.pick === n.id ? ' picked' : ''}`,
+      style: `left:${p.x}px;top:${p.y}px;width:${G.W}px;height:${G.H}px`, 'aria-pressed': String(G.pick === n.id),
+      'aria-label': `${layerName(n.id)}. ${STATE[x.state]}: ${n.text}`,
       onclick: () => { G.pick = G.pick === n.id ? null : n.id; renderGraph(); } },
-      [el('small', { text: `${STATE_MARK[x.state]} ${STATE[x.state]}${member(n.who) ? ' · ' + member(n.who).name : ''}` }), el('span', { text: n.text })]));
+      [el('small', { text: `${inLoop ? '⟲ ' : STATE_MARK[x.state] + ' '}${STATE[x.state]}${member(n.who) ? ' · ' + member(n.who).name : ''}` }), el('span', { text: n.text })]));
   });
   const scroll = el('div', { class: 'graph-scroll', tabindex: '0', 'aria-label': 'Хамаарлын граф. Хажуу тийш гүйлгэнэ.' }, canvas);
 
@@ -1280,22 +1432,40 @@ function renderGraph() {
     const names = arr => arr.map(d => short(S.items.get(d).text, 40)).join(' · ');
     detail = el('div', { class: 'note gdetail' }, [
       el('b', { text: n.text }),
-      el('span', { text: `${STATE[x.state]} · ${whereIs(n.cell)}` }),
+      el('span', { text: `${STATE[x.state]} · ${layerName(n.id)} · ${whereIs(n.cell)}` }),
       x.waits.length ? el('span', { text: `Хүлээж буй: ${names(x.waits)}` }) : null,
       x.holds.length ? el('span', { text: `Гацааж буй: ${names(x.holds)}` }) : null,
       el('div', { class: 'btns' }, [el('button', { type: 'button', class: 'btn', text: 'Нүдийг нээх', onclick: () => openKey(n.cell) }),
         el('button', { type: 'button', class: 'btn ghost', text: 'Сонголтыг болих', onclick: () => { G.pick = null; renderGraph(); } })])]);
   }
-  /* The same information as lists: what can start now (most blocking first), and what is stuck on what. */
-  const undone = [...S.items.values()].filter(i => !i.done);
-  const ready = undone.filter(i => fl.get(i.id).state !== 'blocked' && (depsOf(i).length || fl.get(i.id).holds.length))
-    .map(i => ({ i, n: [...downstream(i.id)].filter(d => !S.items.get(d).done).length })).sort((a, b) => b.n - a.n).slice(0, 12);
+  const shownLoop = P.loop.filter(has);
+  const loopNote = shownLoop.length ? el('div', { class: 'note gdetail', role: 'alert' }, [
+    el('b', { text: `⟲ ${shownLoop.length} ажил бие биеэ хүлээж тойрог үүсгэсэн` }),
+    el('span', { text: 'Нэгнийх нь «Хүлээж буй ажил»-аас нөгөөг хасна уу. Тэр хүртэл эдгээр болон тэднийг хүлээж буй ажил барих дараалалд хамгийн сүүлд орно.' }),
+    el('ul', { class: 'recent' }, shownLoop.map(id => el('li', {}, el('button', { type: 'button', onclick: () => openKey(S.items.get(id).cell) },
+      [el('b', { text: S.items.get(id).text }), el('small', { text: whereIs(S.items.get(id).cell) })]))))]) : null;
+  /* The same information as lists: what can start now (most blocking first), what is stuck on what,
+     and the whole build order, layer by layer. */
+  const undone = lay.nodes.filter(i => !i.done);
+  const ready = undone.filter(i => fl.get(i.id).state !== 'blocked')
+    .map(i => ({ i, n: [...downstream(i.id)].filter(d => !S.items.get(d).done).length })).sort((a, b) => b.n - a.n || P.order.indexOf(a.i.id) - P.order.indexOf(b.i.id)).slice(0, 12);
   const stuck = undone.filter(i => fl.get(i.id).state === 'blocked');
   const line = (i, sub) => el('li', {}, el('button', { type: 'button', onclick: () => openKey(i.cell) }, [el('b', { text: i.text }), el('small', { text: sub })]));
+  const layersShown = lay.layers.filter(z => z.l !== P.stuckLayer).length;
+  const build = lay.nodes.length ? el('details', { class: 'card build' }, [
+    el('summary', { class: 'label', 'data-n': '↦', text: `Барих дараалал · ${lay.nodes.length} ажил, ${layersShown} давхарга` }),
+    el('ol', { class: 'recent build-list' }, lay.nodes.map(n => {
+      const x = fl.get(n.id);
+      return el('li', {}, el('button', { type: 'button', onclick: () => openKey(n.cell) }, [
+        el('b', { text: `${loops.has(n.id) ? '⟲' : STATE_MARK[x.state]} ${n.text}` }),
+        el('small', { text: `${layerName(n.id)} · ${STATE[x.state]} · ${whereIs(n.cell)}${member(n.who) ? ' · ' + member(n.who).name : ''}` })]));
+    }))]) : null;
+  const loose = S.items.size - P.ids.length;
   host.replaceChildren(...[
-    filters, detail,
+    groupChips(P, picked, renderGraph), filters, loopNote, detail,
     lay.nodes.length ? scroll : el('p', { class: 'empty', text: 'Одоогоор хамаарал алга. Ажлыг засахдаа «Хүлээж буй ажил» нэмнэ үү.' }),
-    el('p', { class: 'fine', text: `Зүүн талын ажил дуусаж байж баруун талынх эхэлнэ. Зузаан шугам: одоо гацааж буй холбоос. Ажил дээр дарвал түүний гинжийг тодруулна.${lay.loose ? ` Хамааралгүй ${lay.loose} ажил графт ороогүй.` : ''}` }),
+    el('p', { class: 'fine', text: `Зүүн талын ажил дуусаж байж баруун талынх эхэлнэ. Багана бүр нэг давхарга. Зузаан шугам: одоо гацааж буй холбоос. Ажил дээр дарвал түүний гинжийг тодруулна.${implied ? ` Өөр холбоосоор илэрхийлэгдсэн ${implied} шууд бус холбоосыг зураагүй.` : ''}${loose ? ` Хамааралгүй ${loose} ажил графт ороогүй.` : ''}` }),
+    build,
     el('section', { class: 'card' }, [el('h2', { class: 'label', 'data-n': '▶', text: 'Одоо эхлэх боломжтой' }),
       el('ul', { class: 'recent' }, ready.length ? ready.map(({ i, n }) => line(i, `${whereIs(i.cell)}${n ? ` · ${n} ажлыг нээнэ` : ''}${member(i.who) ? ' · ' + member(i.who).name : ''}`)) : [el('li', {}, el('p', { class: 'empty', text: 'Алга.' }))])]),
     el('section', { class: 'card' }, [el('h2', { class: 'label', 'data-n': '■', text: 'Гацсан' }),
@@ -1304,22 +1474,35 @@ function renderGraph() {
 }
 
 /* ── Timeline: шалгуур (milestone) бүр, түүнд хүрэхэд үлдсэн ажил ── */
+/* A leading MM/DD. The year is the one that puts the date nearest today, so a 01/10 milestone
+   written in December means next January, and a 12/20 one read in January means last December. */
 function milestoneDate(text) {
-  const m = /^\s*(\d{1,2})\s*[\/.]\s*(\d{1,2})/.exec(text); if (!m) return null;
-  const d = new Date(new Date().getFullYear(), +m[1] - 1, +m[2]); return Number.isNaN(d.getTime()) ? null : d;
+  const m = /^\s*(\d{1,2})\s*[\/.]\s*(\d{1,2})/.exec(text || ''); if (!m) return null;
+  const mo = +m[1], da = +m[2];
+  if (mo < 1 || mo > 12 || da < 1 || da > 31) return null;
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  const y = now.getFullYear();
+  const options = [y - 1, y, y + 1].map(yy => new Date(yy, mo - 1, da)).filter(d => d.getMonth() === mo - 1);
+  if (!options.length) return null;
+  return options.reduce((best, d) => (Math.abs(d - now) < Math.abs(best - now) ? d : best));
 }
 function renderTimeline() {
   const fl = flow(), today = new Date(); today.setHours(0, 0, 0, 0);
-  const stones = [...S.items.values()].filter(i => i.cell === MILESTONE_CELL)
-    .map(i => ({ i, date: milestoneDate(i.text) })).sort((a, b) => (a.date ? a.date.getTime() : 9e15) - (b.date ? b.date.getTime() : 9e15) || (a.i.at || 0) - (b.i.at || 0));
+  const P = plan(), picked = pickedGroup(P);
+  const all = [...S.items.values()].filter(i => i.cell === MILESTONE_CELL);
+  const stones = all.filter(i => !picked || picked.has(i.id))
+    .map(i => ({ i, date: milestoneDate(i.text) })).sort((a, b) => (a.date ? a.date.getTime() : 9e15) - (b.date ? b.date.getTime() : 9e15) || (b.i.at || 0) - (a.i.at || 0));
   const host = $('planView');
-  if (!stones.length) { host.replaceChildren(el('p', { class: 'empty', text: 'Milestones нүдэнд шалгуур нэмбэл энд цагийн дарааллаар харагдана. Эхэнд нь огноо бичнэ: 11/22 · …' })); return; }
+  if (!all.length) { host.replaceChildren(el('p', { class: 'empty', text: 'Milestones нүдэнд шалгуур нэмбэл энд цагийн дарааллаар харагдана. Эхэнд нь огноо бичнэ: 11/22 · …' })); return; }
+  const chips = groupChips(P, picked, renderTimeline);
+  if (!stones.length) { host.replaceChildren(...[chips, el('p', { class: 'empty', text: 'Энэ төлөвлөгөөнд шалгуур алга.' })].filter(Boolean)); return; }
   const shown = new Set();   /* a to-do is listed under the first milestone that needs it */
-  host.replaceChildren(el('ol', { class: 'tl' }, stones.map(({ i, date }) => {
+  host.replaceChildren(...[chips, el('ol', { class: 'tl' }, stones.map(({ i, date }) => {
     const need = [...upstream(i.id)].map(d => S.items.get(d));
     const done = need.filter(n => n.done).length, blocked = need.filter(n => fl.get(n.id).state === 'blocked').length;
     const ready = need.filter(n => !n.done && fl.get(n.id).state !== 'blocked');
-    const fresh = ready.filter(n => !shown.has(n.id)); ready.forEach(n => shown.add(n.id));
+    const rank = new Map(P.order.map((id, k) => [id, k]));
+    const fresh = ready.filter(n => !shown.has(n.id)).sort((a, b) => (rank.get(a.id) ?? 1e9) - (rank.get(b.id) ?? 1e9)); ready.forEach(n => shown.add(n.id));
     const days = date ? Math.round((date - today) / 86400000) : null;
     const complete = i.done || (need.length > 0 && done === need.length);
     const when = i.done ? '✓ Хүрсэн' : days === null ? 'Огноогүй' : days < 0 ? `${-days} хоног хэтэрсэн` : days === 0 ? 'Өнөөдөр' : `${days} хоног үлдсэн`;
@@ -1330,8 +1513,9 @@ function renderTimeline() {
       el('p', { class: 'fine', text: need.length ? `${need.length}-аас ${done} дууссан · ${blocked} гацсан · ${ready.length} эхлэх боломжтой${complete && !i.done ? ' · бүх ажил дууссан, шалгуураа тэмдэглэнэ үү' : ''}` : 'Энэ шалгуурт ажил холбоогүй байна.' }),
       fresh.length ? el('ul', { class: 'recent' }, fresh.slice(0, 6).map(n => el('li', {}, el('button', { type: 'button', onclick: () => openKey(n.cell) },
         [el('b', { text: n.text }), el('small', { text: `${whereIs(n.cell)}${member(n.who) ? ' · ' + member(n.who).name : ''}` })])))) : null,
+      fresh.length > 6 ? el('p', { class: 'fine', text: `Бас ${fresh.length - 6} ажил эхлэх боломжтой. Бүгдийг «Dependency graph»-ийн «Барих дараалал»-аас харна.` }) : null,
     ]);
-  })));
+  }))].filter(Boolean));
 }
 
 /* ── Чиглүүлэлт: #f2 бол тал, #f2-c1 бол нүд ── */

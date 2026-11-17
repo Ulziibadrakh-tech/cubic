@@ -7,13 +7,19 @@
 Prints PASS/FAIL per check and exits non-zero if any failed.
 """
 import asyncio
+import json
 import sys
+from pathlib import Path
 
 from playwright.async_api import async_playwright
 
 BASE = "http://127.0.0.1:8800"
 CHROME = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] not in ("", "-") else None   # "-" keeps Playwright's own
 SHOTS = sys.argv[2] if len(sys.argv) > 2 else None
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "dev"))
+import plan_tools  # noqa: E402  (dev/plan_tools.py: topological sort of a plan into CUBIC to-dos)
+PLAN_FIXTURE = ROOT / "tests" / "fixtures" / "plan-shape.json"   # same shape as a real 20-day plan, neutral text
 results, errors = [], []
 
 
@@ -277,6 +283,84 @@ async def main():
             await pg3.wait_for_timeout(400)
             await pg3.screenshot(path=f"{SHOTS}/area_dark.png", full_page=True)
         await b.close()
+
+    # A 41-task plan through dev/plan_tools.py and import, then the plan views (topological sort).
+    async with async_playwright() as p2:
+        b2 = await p2.chromium.launch(executable_path=CHROME, args=["--no-sandbox"])
+        ctx4 = await b2.new_context(viewport={"width": 390, "height": 844})
+        pg4 = await ctx4.new_page()
+        pg4.on("pageerror", lambda e: errors.append(str(e)))
+        await pg4.goto(f"{BASE}/?bare=1")
+        await pg4.evaluate("localStorage.clear()")
+        await pg4.reload()
+        await pg4.wait_for_timeout(600)
+        await pg4.click("#whoBox .btn >> text=Vida")
+        _plan, _nodes, _rank = plan_tools.load(PLAN_FIXTURE)
+        _report, _items = plan_tools.build(_plan, _nodes, _rank)
+        plan_json = json.dumps(plan_tools.export(_items), ensure_ascii=False)
+        await pg4.fill("#importText", plan_json)
+        await pg4.click("#importCheck")
+        await pg4.wait_for_timeout(200)
+        check("the plan imports as 50 new to-dos", "50" in await pg4.inner_text("#importPlan"))
+        await pg4.click("#importPlan .btn >> text=Оруулах")
+        await pg4.wait_for_timeout(700)
+        topo = await pg4.evaluate("""(() => { const P = plan(); const pos = new Map(P.order.map((id, k) => [id, k]));
+          const okOrder = P.ids.every(id => P.deps.get(id).every(d => pos.get(d) < pos.get(id)));
+          const L = k => P.layer.get('tp-' + k);
+          return { n: P.ids.length, okOrder, first: P.order.slice(0, 5), loop: P.loop.length, groups: P.groups.length,
+            l39: L('39'), l32: L('32'), l14: L('14'), lmeet: L('meet'), implied: P.implied }; })()""")
+        check("Kahn order puts every to-do after what it waits for", topo["okOrder"] and topo["n"] == 50, str(topo))
+        check("build order starts with the plan's numbering", topo["first"] == ["tp-01", "tp-02", "tp-03", "tp-04", "tp-05"], str(topo["first"]))
+        check("layers match the plan (14 in layer 2, 32 in 6, 39 in 11)", (topo["l14"], topo["l32"], topo["l39"], topo["lmeet"]) == (2, 6, 11, 13), str(topo))
+        check("no loop in the plan", topo["loop"] == 0)
+        await pg4.goto(f"{BASE}/?bare=1#f1-c3")
+        await pg4.wait_for_timeout(600)
+        labels = await pg4.locator(".glayer").all_inner_texts()
+        check("graph columns are labelled by layer", len(labels) == 14 and labels[0].lower().startswith("давхарга 0"), str(labels[:3]))
+        check("graph draws only direct needs and says how many it left out", f"{topo['implied']} шууд бус" in await pg4.inner_text("#planView"))
+        await pg4.click("details.build > summary")
+        first_step = await pg4.locator(".build-list li >> nth=0").inner_text()
+        check("build order list starts with 01", first_step.startswith("▶ 01") or first_step.startswith("○ 01"), first_step.split("\n")[0])
+        await pg4.goto(f"{BASE}/?bare=1#f2-c0")
+        await pg4.wait_for_timeout(400)
+        rows = [t.split("\n")[0][:2] for t in await pg4.locator("#items .item-text").all_inner_texts()]
+        check("a space lists its plan tasks in build order", rows == ["01", "02", "09", "14", "35", "39"], str(rows))
+        # A second, separate plan makes the picker appear; each view then shows one plan.
+        await pg4.evaluate("""(async () => { const c = S.db.collection('items');
+          for (let k = 0; k < 6; k++) await c.doc('xx-' + k).set({ cell: 'f3-c0', text: 'Өөр ' + k, deps: k ? ['xx-' + (k - 1)] : [], done: false, who: '', url: '', at: 1000 + k }); })()""")
+        await pg4.goto(f"{BASE}/?bare=1#f1-c3")
+        await pg4.wait_for_timeout(600)
+        chips = await pg4.locator(".gchip").all_inner_texts()
+        check("two plans: a picker with both and «Бүгд»", len(chips) == 3 and chips[-1].startswith("Бүгд"), str(chips))
+        check("the newest plan is shown first", await pg4.locator(".gnode").count() == 50)
+        await pg4.click(".gchip >> text=Бүгд")
+        await pg4.wait_for_timeout(300)
+        check("«Бүгд» shows every plan", await pg4.locator(".gnode").count() == 56)
+        # Import must not close a loop of waiting (wouldLoop guards every place that adds one).
+        cyc = '{"app":"cubic","items":[{"id":"tp-01","cell":"f2-c0","text":"01 loop test","deps":["tp-39"],"editedAt":9999999999999}]}'
+        await pg4.goto(f"{BASE}/?bare=1#f0")
+        await pg4.wait_for_timeout(400)
+        await pg4.fill("#importText", cyc)
+        await pg4.click("#importCheck")
+        await pg4.wait_for_timeout(200)
+        check("import names a dependency it leaves out to avoid a loop", "Тойрог" in await pg4.inner_text("#importPlan"))
+        await pg4.click("#importPlan .btn >> text=Оруулах")
+        await pg4.wait_for_timeout(500)
+        check("after that import there is still no loop", await pg4.evaluate("plan().loop.length") == 0 and await pg4.evaluate("S.items.get('tp-01').deps.length") == 0)
+        # A loop that arrives anyway (two people at once) is named, not hidden.
+        await pg4.evaluate("""S.db.doc('items/tp-01').set({ ...S.items.get('tp-01'), id: undefined, deps: ['tp-39'] })""")
+        await pg4.goto(f"{BASE}/?bare=1#f1-c3")
+        await pg4.wait_for_timeout(600)
+        check("a loop made outside the editor is named on the graph", "тойрог" in (await pg4.inner_text("#planView")).lower() and await pg4.locator(".gnode.loop").count() >= 2)
+        if SHOTS:
+            await pg4.evaluate("S.db.doc('items/tp-01').set({ ...S.items.get('tp-01'), id: undefined, deps: [] })")
+            await pg4.goto(f"{BASE}/?bare=1#f1-c3")
+            await pg4.wait_for_timeout(600)
+            await pg4.screenshot(path=f"{SHOTS}/plan_graph.png")
+            await pg4.goto(f"{BASE}/?bare=1#f1-c0")
+            await pg4.wait_for_timeout(600)
+            await pg4.screenshot(path=f"{SHOTS}/plan_timeline.png")
+        await b2.close()
 
     check("no script errors", not errors, "; ".join(errors[:3]))
     print(f"\n{sum(results)}/{len(results)} checks passed")
