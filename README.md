@@ -15,25 +15,42 @@ so on screen. Use "Өгөгдөл" (export/import) to move data between the two.
 ## What it does today
 
 The screen is in Mongolian, with an EN button for English (each viewer's
-choice is kept in their browser) and a button for light or dark theme.
+choice is kept in their browser). On a phone, home is only the top bar and the
+cube: the bell ("Танд"), the chat, and the person, who opens the menu (timer,
+search, all spaces, the team with its world clock, data and backup, theme).
 
-- **Cube and list.** Drag the cube freely; it carries on with the speed of the
-  drag and settles on the nearest side. Arrows and keyboard work too.
-  "Жагсаалт" shows the same 24 spaces without 3D. Links such as `#f0-c2` open
-  a space directly.
+- **Login.** On first visit a full-screen page asks "Хэн ажиллах вэ?": Vida,
+  Anand or Obama, with each one's role, city and local time. The Claude account
+  (or this browser, off Claude) is the identity; this only picks the name.
+- **Cube.** Drag the cube freely; it carries on with the speed of the drag and
+  settles on the nearest side. Arrow keys work when it has focus. "Бүх нүд" in
+  the menu lists the same 24 spaces without 3D. Links such as `#f0-c2` open a
+  space directly.
 - **Spaces are to-do lists.** Type a line and press Enter. Tick it when done,
-  tap the text to edit, tap the round badge to set who owns it, swipe the row
+  tap the text to edit, tap the round badge for the owner, swipe the row
   sideways to delete (with undo). The ✕ button does the same without a swipe.
-- **People.** The team is Vida, Anand and Obama. Each person signs in with
-  their own Claude account and picks who they are on first visit. Vida and
-  Anand build the technology (Anand as forward deployed engineer, with the
-  restaurants); Obama runs business, marketing and branding. A new to-do starts
-  with its side's owner (Pilots → Anand, Technology → Vida, Marketing,
-  Business & Finance and Branding → Obama); one tap on the badge changes it.
+- **People and handing over.** Vida and Anand build the technology (Anand as
+  forward deployed engineer, with the restaurants); Obama runs business,
+  marketing and branding. A new to-do starts with its side's owner (Pilots →
+  Anand, Technology → Vida, Marketing, Business & Finance and Branding →
+  Obama). The badge opens the owner sheet: hand your to-do to one of the other
+  two, or offer to take a teammate's. The one asked accepts or declines, on the
+  row or under "Танд"; until then the owner stays. The sheet suggests whom to
+  ask and says why (whose side it is, the kind of work, whether it is daytime
+  there, open to-dos). No answer for 12 hours offers the other person; when
+  both decline, the page offers to decide in the chat. "Дараа нь хийх" lists
+  each person's to-dos that can start now, the nearest milestone first.
+- **Chat and updates.** One team chat, with everyone's local time on top. The
+  bell shows requests and what the others changed since you last looked; a
+  short note appears when something changes while the page is open. (Phone
+  alerts while it is closed come later, with Telegram.)
+- **English for the team's words.** A to-do can carry an English version next
+  to its text; EN shows it. "Translate" asks the viewer's own Claude for the
+  missing ones. The text as written is never changed.
 - **Time.** A person's timer starts when they open the workspace and stops on
   "Түр зогсоох". Time is attributed to the space they are in. After more than
-  10 minutes away the page asks whether to count that time. "Баг" shows each
-  person's status, open to-dos, today and the last 7 days.
+  10 minutes away the page asks whether to count that time. The team list
+  shows each person's status, open to-dos, today and the last 7 days.
 
 - **Reorganise.** Tap a to-do's text to edit it or move it to another space
   (with undo). Paste several lines into "Шинэ ажил" to add one to-do per line;
@@ -60,7 +77,7 @@ on purpose for a team of three.
 | `index.html` | The whole product: markup, styles and script in one file. This is what gets published. |
 | `dev/serve.py` | Local server. Serves `index.html` with stand-in data so it runs without Claude. |
 | `dev/fake-claude.js` | The stand-in for sign-in and shared data. Stores data in the browser's localStorage. |
-| `tests/check_flow.py` | Phone-sized browser check of the main flows (120 checks). |
+| `tests/check_flow.py` | Phone-sized browser check of the main flows (162 checks). |
 | `dev/plan_tools.py` | Turns a plan (tasks, what each waits for, milestones) into a CUBIC import file in topological order, and checks it. |
 | `tests/fixtures/plan-shape.json` | A neutral 41-task plan with a real shape, used by the checks. |
 | `data/` | Real plans and backups. Not tracked by git and not deployed: this repository is public. |
@@ -151,13 +168,14 @@ the viewer's local date.
   which one the graph and the timeline show (the most recently added first),
   with "Бүгд" for all.
 - `Plan › Milestones` holds the milestones (start the text with `MM/DD`, or
-  `MM/DD/YYYY`). `Plan › Timeline` draws an SVG chart on a dark "screen":
-  how many tasks the milestones up to each date need (the plan), a line for
-  today, and a dot for what is done now, with a sentence saying whether that is
-  on plan. Below it, one card per milestone with a progress ring, the days left
-  or late, and the to-dos that can start, in build order. The Milestones space
-  shows the same chart above its list. Everything on the chart comes from the
-  data; nothing stores when a to-do was ticked, so there is no invented history.
+  `MM/DD/YYYY`); each row says its days left or late and how much is done.
+  `Plan › Timeline` is the same graph as the dependency graph, on a dark
+  "screen", grouped by milestone in date order: each to-do sits before the
+  first milestone that needs it, each milestone node carries its date, days
+  left and a progress ring, and a pink line marks today. The bar above says
+  what is done and whether the plan is on time. Both graphs zoom and open full
+  screen. Nothing stores when a to-do was ticked, so there is no invented
+  history.
 - The graph and the plan picker are worked out again from the data on every
   change: when someone links or unlinks to-dos, ticks one, or adds one, every
   open page redraws with the new order, layers and plans.

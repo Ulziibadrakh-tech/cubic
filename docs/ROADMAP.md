@@ -28,7 +28,12 @@ the order the rest would come in. Nothing below is committed to a date.
 | CI on every push, security headers on Vercel | Done |
 | Roles and default owner by side | Done (`TEAM`, `SIDE_OWNER`) |
 | English toggle, theme toggle, standard dark palette | Done |
-| Timeline and milestones as an SVG chart (planned vs done, today) | Done |
+| Timeline and milestones as one plan graph (milestone groups, today, progress on the nodes) | Done |
+| Login page, minimal phone home (cube only), menu | Done |
+| Team chat, updates with unread counts, in-page alerts | Done |
+| World clock (each person's city and local time) | Done (`team` collection) |
+| English versions of to-dos, Translate through the viewer's Claude | Done (`en`, `sample`) |
+| Handing to-dos over: request, accept or decline, suggestions, escalation, Do next | Done (`ask`, `rankFor`, `doNext`) |
 
 ## Decided against, for a team of three
 
@@ -46,7 +51,8 @@ Revisit if the team grows or outside people are invited.
 2. **Activity history.** Keep earlier versions of an entry so an edit can be
    reviewed, not only the last editor.
 3. **Time corrections.** Let a person fix a day's total, with a reason kept.
-4. **Notifications.** In-page first.
+4. **Phone notifications.** In-page alerts exist; alerts while the page is
+   closed need Telegram (below).
 
 ## Later
 

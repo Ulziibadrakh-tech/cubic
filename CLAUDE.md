@@ -7,9 +7,14 @@ file: no build step, no framework, no dependencies beyond the two Google Fonts.
 
 - Slug: `e702c5a1-64a8-4f1c-9d1b-7dfb135f1869`
 - URL: https://claude.ai/artifact/VXX9JmKG23SPdy8pm1ZMSp
-- Declared capabilities: `{"db": {}, "user": {"scopes": ["profile"]}, "downloads": true}`
+- Declared capabilities: `{"db": {}, "user": {"scopes": ["profile"]}, "downloads": true, "sample": {}}`
   (`downloads` lets "JSON татах" save a backup file; on a phone the share sheet
-  offers Proton Drive. Pass the whole set when publishing.)
+  offers Proton Drive. `sample` lets "Translate" ask the viewer's own Claude for
+  English versions of to-dos. Pass the whole set when publishing.)
+- Collections: `faces`, `items`, `people`, `clock`, `chat` (messages:
+  `{by: account id, text, at}`), `team` (`team/<vida|anand|obama>`: `{city, tz}`
+  for the world clock), `seen` (`seen/<account id>`: when that person last
+  looked at updates and chat).
 
 To publish: read the current version with `get_artifact`, then republish
 `index.html` with that `base_version`. Capabilities carry forward. Never create
@@ -55,12 +60,15 @@ The team works mostly from phones, through Claude sessions on this repository.
   change. Read with `db_list` before any `db_write`, and pass `ifVersion`.
 - **No silent loss.** Every write goes through `save()` or `writeClock()`, and
   each one through `dbWrite()` (one write at a time per document, one retry on
-  `unavailable`). A failed save keeps the person's text on screen and says so.
+  `unavailable`). The one exception is `markSeen()`: a `seen/<id>` mark is not
+  the person's work, so it uses `dbWrite()` alone and a lost one only brings a
+  count back. A failed save keeps the person's text on screen and says so.
   Changing a to-do is `patchItem()`, a merge of the changed fields, never a
   rewrite of the cached document. No write before the data has loaded
   (`canWriteNow()`), and no clock write before that person's clock has loaded.
 - **Subscribe once.** `onSnapshot` is called once per collection in
-  `connect()`. Never from a render function.
+  `connect()` (faces, items, people, clock, chat, team, seen). Never from a
+  render function.
 - **No writes on a tick.** The timer writes only on a change of state (start,
   pause, change of space, leaving, returning). Running totals are computed on
   screen from `openSince`.
@@ -78,8 +86,12 @@ The team works mostly from phones, through Claude sessions on this repository.
 - **Two languages.** Screen text is Mongolian by default with an МН/EN toggle.
   Every string on screen goes through `tr(key, ...)` with entries in both
   `L.mn` and `L.en`; static markup uses `data-t`, `data-t-ph`, `data-t-al`,
-  `data-t-ti`. Never hard-code screen text. To-do text and the team's own side
-  and space names are never translated (only untouched default names are).
+  `data-t-ti`. Never hard-code screen text. Side and space names are the team's
+  own words (only untouched default names are translated). A to-do's text is
+  never changed by a translation: it may carry an English version (`en`, made
+  from `enSrc`), shown in English only while `enSrc` still equals `text`
+  (`txt(i)`, `hasEn(i)`). Editing in English edits `en`. "Translate" asks the
+  viewer's Claude through `sample` and writes `en`/`enSrc` with `patchItem`.
 - **Plain words on screen.** No jargon, and never a status the page cannot
   back up.
 
@@ -89,13 +101,37 @@ The team works mostly from phones, through Claude sessions on this repository.
 other hosts, remote images. Only a plain `#name` survives in the URL: no query
 strings, so routing uses `#f2` and `#f2-c1`.
 
+## The phone screen
+
+- Home is the top bar (wordmark, МН/EN, bell, chat, the person) and the cube.
+  Nothing else: the timer, search, "All spaces", the team with its world
+  clock, data and backup, and the theme live in the menu (the person button).
+- The login page (`showLogin`) asks which of the three this account is, once.
+  It is not a password: the Claude account (or this browser, off Claude) is
+  the identity. "Хүн солих" in the menu brings it back.
+- Sheets (`openSheet`/`closeSheets`) make the page under them inert; Escape
+  closes them. Only one is open at a time.
+
 ## Product stance
 
 - Three skilled people (`TEAM` in `index.html`): Vida and Anand build the
   technology, Anand as forward deployed engineer with the restaurants; Obama
   runs business, marketing and branding. A new to-do starts with its side's
   owner (`SIDE_OWNER`: Pilots → Anand, Technology → Vida, Marketing, Business &
-  Finance and Branding → Obama, Plan → nobody); one tap changes it.
+  Finance and Branding → Obama, Plan → nobody).
+- Handing over (the owner badge opens the owner sheet): the owner, or anyone
+  for a to-do with no owner, asks one of the other two to take it; someone who
+  wants a teammate's to-do offers to take it. The one asked accepts or
+  declines; until then the owner stays. `ask` holds the open request, `nope`
+  who declined since the owner last changed, `declined` the last no. Only the
+  person asked answers (`answerHand`); accept writes `who`.
+- Deciding fast: the sheet suggests whom to ask and writes why (`rankFor`:
+  the side's person, the kind of work, awake now by their local time, open
+  to-dos; whoever declined goes last). No answer for 12 hours offers the other
+  person; both declined sends the decision to the chat. "Do next" (`doNext`)
+  ranks a person's to-dos that can start now: nearest milestone, then most
+  unblocked, then build order. All of this is worked out on screen; nothing
+  is decided for people.
 - A space is a plain to-do list: short lines, tick, owner, swipe to delete.
   No due dates, priorities or required fields.
 - Sides: Pilots, Plan, Technology, Marketing, Business & Finance, Branding
@@ -106,15 +142,25 @@ strings, so routing uses `#f2` and `#f2-c1`.
   save time, import through `dropImportLoops()`). `plan()` is the topological
   sort (Kahn): build order, layers, loops, separate plans, implied links.
 - Two Plan spaces are views, not lists (`isViewCell`): `f1-c0` Timeline and
-  `f1-c3` Dependency graph. Milestones are the to-dos in `f1-c1`; a leading
-  `MM/DD` in the text is the date the Timeline sorts by.
+  `f1-c3` Dependency graph, both drawn by `drawFlow()` as one graph. The
+  Dependency graph has a column per layer; the Timeline has a group of
+  columns per milestone in date order, with today drawn between the groups.
+  Milestones are the to-dos in `f1-c1`; a leading `MM/DD` in the text is the
+  date the Timeline sorts by. Milestone nodes and Milestones rows carry the
+  date state and progress (`milestoneData`).
 - Status is written in words and a mark, never by colour alone.
 - Screen text is Mongolian first (English on the toggle); seeded content is
   Mongolian. Keep lines short in both.
-- Timeline and Milestones draw an SVG chart: planned tasks by milestone date,
-  today, and what is done now. Nothing stores when a to-do was ticked, so the
-  chart never invents a history; status is also written in words.
+- The graph screen is dark with neon in both themes (`--hud-*`), zooms, and
+  opens full screen. Its bar says what is done and whether the plan is on time
+  (due by today = what the milestones dated today or earlier need). Nothing
+  stores when a to-do was ticked, so it never invents a history.
 - The cube should feel physical: free drag, momentum, a soft settle. Do not
   replace it with fixed step animations.
 - Time is shown per person and per space, never as a ranking.
-- Integrations (Telegram, Proton, Claude) come later; see `docs/ROADMAP.md`.
+- Chat is one shared conversation. Updates are worked out from the to-dos
+  (who changed one last, when, and `act`: add, done, undone, owner, move,
+  edit, ask, accept, decline, cancel); the bell counts what is new since
+  `seen/<id>` plus requests waiting for this person. Alerts show while the
+  page is open; phone alerts while it is closed come with Telegram.
+- Integrations (Telegram, Proton) come later; see `docs/ROADMAP.md`.
