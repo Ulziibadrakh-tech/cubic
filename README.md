@@ -50,22 +50,35 @@ search, all spaces, the team with its world clock, data and backup, theme).
   Anand, Technology → Vida, Marketing, Business & Finance and Branding →
   Obama). The badge opens the owner sheet: hand your to-do to one of the other
   two, or offer to take a teammate's. The one asked accepts or declines, on the
-  row or under "For you"; until then the owner stays. The sheet suggests whom to
+  row or under "For you"; until then the owner stays. One request at a time:
+  while one is open, the sheet says who is waiting, and only the one who made it
+  can take it back or ask someone else. Ticking a to-do ends its request. Before
+  a tap there (or an Accept or Decline) writes, the page reads the to-do again
+  from the team's data: if it changed meanwhile, here or a moment ago on a
+  teammate's phone, nothing is saved and the page says so (a typed note
+  stays). The sheet suggests whom to
   ask and says why (whose side it is, the kind of work, whether it is daytime
   there, open to-dos). No answer for 12 hours offers the other person; when
   both decline, the page offers to decide in the chat. "Do next" lists
   each person's to-dos that can start now, the nearest milestone first.
 - **Chat and updates.** One team chat, with everyone's local time on top. The
-  bell shows requests and what the others changed since you last looked; a
-  short note appears when something changes while the page is open. (Phone
-  alerts while it is closed come later, with Telegram.)
+  bell shows requests and what the others changed since you last looked, each
+  to-do once; a first visit counts as a look, so what is written while you are
+  away is new next time. A message or change from a phone with a wrong date
+  ("from tomorrow") counts until you have seen it, not until its date comes, and
+  never hides what comes after it. A short note appears when something changes while the
+  page is open. A viewer who can only read gets no box to write in, and the
+  chat and the menu say why. (Phone alerts while it is closed come later, with
+  Telegram.)
 - **Older to-dos.** Some were first written in Mongolian and carry an English
   version next to the text (`en`, made from `enSrc`). The page shows that
   English while it still matches the text; editing such a to-do stores the
   English as its text.
 - **Time.** A person's timer starts when they open the workspace and stops on
   "Pause". Time is attributed to the space they are in. After more than
-  10 minutes away the page asks whether to count that time. The team list
+  10 minutes away the page asks whether to count that time (with the plan
+  graph in full screen, under the graph's own bar, where a timer change that
+  could not be saved is said too). The team list
   shows each person's status, open to-dos, today and the last 7 days.
 
 - **Reorganise.** Tap a to-do's text to edit it or move it to another space
@@ -80,7 +93,9 @@ search, all spaces, the team with its world clock, data and backup, theme).
   claims a download was saved). "Copy" always works. Import takes a JSON export or a
   CSV with at least `cell` and `text` columns, shows what will change, and
   writes only after you confirm. Import never deletes: a to-do with the same
-  id is replaced only if the imported one was edited later; a CSV without a
+  id is updated only if the imported one was edited later, and only with what
+  the file holds, so the rest is kept (a CSV has no English version, no file
+  carries an open hand-off request; a new owner or a tick ends one); a CSV without a
   `deps` column leaves dependencies alone; a dependency that would close a
   loop is left out and counted; rows aimed at the two view spaces are skipped
   and counted; people and time records are added only if missing (an open

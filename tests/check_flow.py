@@ -7,6 +7,7 @@
 Prints PASS/FAIL per check and exits non-zero if any failed.
 """
 import asyncio, re
+import datetime
 import json
 import sys
 import time
@@ -127,6 +128,27 @@ async def drag(pg, x1, y1, x2, y2, steps=8, hold=0):
     if hold:
         await pg.wait_for_timeout(hold)
     await pg.mouse.up()
+
+
+async def tap(pg, sel):
+    """A finger tap at the middle of what `sel` finds (on screen). False, and no tap, if it is not there."""
+    try:
+        box = await pg.locator(sel).first.bounding_box(timeout=3000)
+    except Exception:
+        return False
+    if not box:
+        return False
+    await pg.touchscreen.tap(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+    return True
+
+
+async def press(pg, sel, how="click"):
+    """Click or focus what `sel` finds; False if it is not there (the check that follows then fails)."""
+    try:
+        await (pg.click(sel, timeout=3000) if how == "click" else pg.focus(sel, timeout=3000))
+        return True
+    except Exception:
+        return False
 
 
 def _skip_string(src, i):
@@ -714,6 +736,66 @@ async def main():
         await pg5.click("#importPlan .btn >> text=Import (")
         await pg5.wait_for_timeout(400)
         check("a CSV without a deps column leaves dependencies alone", await pg5.evaluate("JSON.stringify(S.items.get('d2').deps)") == '["d1"]')
+        # Import updates a to-do with what the file holds and keeps the rest: an older to-do's English
+        # version (a CSV has no column for it) and an open hand-off request (no file carries one).
+        await pg5.evaluate("""(async () => { const c = S.db.collection('items'), mk = (id, text, en, at) => c.doc(id).set({ cell: 'f2-c3', text, en, enSrc: text,
+            deps: [], done: false, who: 'anand', url: '', at, by: 'fixes', editedBy: 'fixes', editedAt: 1000 });
+          await mk('en1', 'Файл бэлдэх', 'Prepare the file', 7); await mk('en2', 'Гэрээ батлах', 'Approve the contract', 6); await mk('en3', 'Цэс шинэчлэх', 'Update the menu', 5); })()""")
+        await pg5.wait_for_timeout(300)
+        await pg5.evaluate("askHand('en1', 'vida', 'Can you take it?')")
+        await pg5.wait_for_timeout(300)
+
+        async def check_in(text, go=True):
+            await pg5.fill("#importText", text)
+            await pg5.click("#importCheck")
+            await pg5.wait_for_timeout(200)
+            said = (await pg5.inner_text("#importPlan")).replace("\n", " ")
+            if go:
+                await pg5.click("#importPlan .btn >> text=Import (")
+                await pg5.wait_for_timeout(400)
+            return said
+        same = await check_in(await pg5.evaluate("exportCsv()"), go=False)
+        await pg5.click("#importPlan .btn >> text=Cancel")
+        check("a CSV of to-dos with English versions, checked back in, is the same (it has no column for them)",
+              "Same, unchanged" in same and "Newer here" not in same and "Updated" not in same, same)
+        # One row of this copy's CSV, changed as another copy would have it, edited later there.
+        row = """((id, patch) => { const rows = parseCsv(exportCsv()), head = rows[0], r = rows.find(x => x[0] === id);
+          Object.entries({ ...patch, editedAt: String(Date.now() + 60000) }).forEach(([k, v]) => { r[head.indexOf(k)] = v; });
+          return [head, r].map(x => x.map(csvCell).join(',')).join('\\r\\n'); })"""
+        said = await check_in(await pg5.evaluate(f"{row}('en2', {{ done: '1' }})"))
+        it = await pg5.evaluate("S.items.get('en2')")
+        check("a newer copy of a to-do (ticked on another copy, by CSV) keeps its English version, and reads as finished",
+              "Updated to-dos" in said and it["done"] is True and await pg5.evaluate("txt(S.items.get('en2'))") == "Approve the contract" and it.get("act") == "done", f"{said} | {str(it)[:200]}")
+        await check_in(await pg5.evaluate("""(() => { const it = exportData().items.find(i => i.id === 'en3'); delete it.en; delete it.enSrc;
+          return JSON.stringify({ app: 'cubic', items: [{ ...it, done: true, editedAt: Date.now() + 60000 }] }); })()"""))
+        it = await pg5.evaluate("S.items.get('en3')")
+        check("a newer JSON copy without the English version keeps it, as the text is the same", it["done"] is True and it.get("en") == "Update the menu" and it.get("enSrc") == it["text"], str(it)[:200])
+        await check_in(await pg5.evaluate(f"{row}('en1', {{ deps: 'en3' }})"))
+        it = await pg5.evaluate("S.items.get('en1')")
+        check("a newer copy that made the to-do wait for another keeps the open request to Vida and the English version; it reads as a change",
+              await pg5.evaluate("(askOf(S.items.get('en1')) || {}).to") == "vida" and it["deps"] == ["en3"] and it.get("en") == "Prepare the file" and it.get("act") == "edit", str(it)[:220])
+        await check_in(await pg5.evaluate(f"{row}('en1', {{ owner: 'obama' }})"))
+        it = await pg5.evaluate("S.items.get('en1')")
+        check("an imported new owner ends the open request, as any change of owner does", it["who"] == "obama" and not it.get("ask") and it.get("nope") == [] and it.get("act") == "owner", str(it)[:200])
+        # An imported tick ends an open request too, as a tick on the row does.
+        await pg5.evaluate("askHand('en1', 'anand', '')")
+        await pg5.wait_for_timeout(300)
+        asked = await pg5.evaluate("(askOf(S.items.get('en1')) || {}).to || null")
+        await check_in(await pg5.evaluate(f"{row}('en1', {{ done: '1' }})"))
+        it = await pg5.evaluate("S.items.get('en1')")
+        check("an imported tick ends the open request, as a tick on the row does",
+              asked == "obama" and it["done"] is True and not it.get("ask") and not it.get("declined") and it.get("act") == "done", f"{asked} | {str(it)[:200]}")
+        # A to-do deleted while the plan is on screen: an update would find nothing, so it comes back whole.
+        await pg5.fill("#importText", await pg5.evaluate("""(() => { const it = exportData().items.find(i => i.id === 'en3');
+          return JSON.stringify({ app: 'cubic', items: [{ ...it, text: 'Update the menu, printed', editedAt: Date.now() + 180000 }] }); })()"""))
+        await pg5.click("#importCheck")
+        await pg5.wait_for_timeout(200)
+        await pg5.evaluate("S.db.doc('items/en3').delete()")
+        await pg5.wait_for_timeout(300)
+        await pg5.click("#importPlan .btn >> text=Import (")
+        await pg5.wait_for_timeout(400)
+        check("a to-do deleted while the import plan is on screen comes back as the file has it",
+              await pg5.evaluate("(S.items.get('en3') || {}).text") == "Update the menu, printed", await pg5.inner_text("#importPlan"))
         # Saving an edit applies only what it changed to the dependencies.
         await close_sheet(pg5)
         await pg5.goto(f"{BASE}/?as=fixes#f2-c2")
@@ -802,6 +884,86 @@ async def main():
         await dev_b.evaluate("Object.defineProperty(document, 'hidden', { value: true, configurable: true }); document.dispatchEvent(new Event('visibilitychange'))")
         await dev_a.wait_for_timeout(800)
         check("the device in use takes the clock back from one that went hidden", await dev_a.evaluate("!!(myClock() && myClock().openSince && !myClock().leftAt)"))
+        # Time away is decided by how long it was, never by a tap or key on this device: that tap is the
+        # person coming back. The device left in front, untouched, while the other one left: a key on
+        # it 2 hours later asks first; 15 hours later the stretch ends when they left (the 12-hour cut).
+        away = "(() => { const c = myClock(); return { asked: !document.getElementById('awayBox').hidden, left: !!leftOf(c), min: Math.round(weekMs(c) / 60000) }; })()"
+        hide = "Object.defineProperty(document, 'hidden', { value: true, configurable: true }); document.dispatchEvent(new Event('visibilitychange'))"
+        show = "Object.defineProperty(document, 'hidden', { value: false, configurable: true }); document.dispatchEvent(new Event('visibilitychange'))"
+        left_h_ago = lambda h: f"writeClock(x => {{ x.days = {{}}; x.openSince = Date.now() - {h + 1} * 3600000; x.openCell = 'home'; x.leftAt = Date.now() - {h} * 3600000; }})"
+        keyed = {}
+        for h in (2, 15):
+            await dev_a.evaluate("S.lastInput = Date.now() - 20 * 3600000; document.getElementById('awayBox').hidden = true")
+            await dev_b.evaluate(left_h_ago(h))           # the other device, as if it had left h hours ago
+            await dev_a.wait_for_timeout(3200)           # the page takes the clock back at most once in 3 s
+            await dev_a.keyboard.press("Shift")
+            await dev_a.wait_for_timeout(500)
+            keyed[h] = await dev_a.evaluate(away)
+        await dev_a.close()
+        check("a key on the device left in front, 2 hours after the other one left, asks first; after 15 hours the stretch ends when they left",
+              keyed[2] == {"asked": True, "left": True, "min": 60} and keyed[15] == {"asked": False, "left": False, "min": 60}, str(keyed))
+        # A tab opened in the background and shown later: the question (2 hours), or the cut (20 hours).
+        shown = {}
+        for h in (2, 20):
+            await dev_b.evaluate(left_h_ago(h))
+            tab = await ctxd.new_page()
+            tab.on("pageerror", lambda e: errors.append(str(e)))
+            await tab.add_init_script("Object.defineProperty(document, 'hidden', { value: true, configurable: true })")
+            await tab.goto(f"{BASE}/?as=twodev#f2-c1")
+            await tab.wait_for_timeout(800)
+            await tab.evaluate(show)
+            await tab.wait_for_timeout(500)
+            shown[h] = await tab.evaluate(away)
+            await tab.close()
+        check("a page opened in a background tab asks about the time away when shown (2 hours), or ends the stretch when they left (20 hours)",
+              shown[2] == {"asked": True, "left": True, "min": 60} and shown[20] == {"asked": False, "left": False, "min": 60}, str(shown))
+        # Opened in front 2 hours after leaving, it asks; a tap elsewhere, then another app and back,
+        # leaves the question there.
+        await dev_b.evaluate(left_h_ago(2))
+        tab = await ctxd.new_page()
+        tab.on("pageerror", lambda e: errors.append(str(e)))
+        await tab.goto(f"{BASE}/?as=twodev#f2-c1")
+        await tab.wait_for_timeout(800)
+        first = await tab.evaluate(away)
+        await tab.click("#meBtn")
+        await tab.wait_for_timeout(200)
+        await close_sheet(tab)
+        await tab.evaluate(hide)
+        await tab.wait_for_timeout(300)
+        await tab.evaluate(show)
+        await tab.wait_for_timeout(500)
+        tapped = await tab.evaluate(away)
+        await tab.close()
+        check("a tap while the away question shows, then another app and back: the question stays, nothing counted",
+              first == tapped == {"asked": True, "left": True, "min": 60}, f"{first} {tapped}")
+        # A laptop asleep with the page in front, on Playwright's own clock: the lid closes (time jumps,
+        # each timer that fell due runs once on waking), or opens with a key pressed before the page's
+        # next 15 s tick. Back to the cube starts a new stretch after the last tick: closing the lid
+        # 2 hours brings the question, 13 hours the cut.
+        lid = {}
+        for name in ("back2", "back13", "wakekey"):
+            ctxs = await b4.new_context(viewport={"width": 390, "height": 844})
+            await ctxs.clock.install()
+            lp = await ctxs.new_page()
+            lp.on("pageerror", lambda e: errors.append(str(e)))
+            await lp.goto(f"{BASE}/?reset=1&as=lid{name}#f2-c1")
+            await login(lp, "Vida")
+            await lp.wait_for_timeout(300)
+            if name.startswith("back"):
+                await lp.click("#back")
+                await lp.wait_for_timeout(300)
+                await lp.clock.fast_forward("02:00:00" if name == "back2" else "13:00:00")
+            else:
+                now = await lp.evaluate("Date.now()")
+                await lp.clock.set_system_time(datetime.datetime.fromtimestamp(now / 1000 + 2 * 3600, datetime.timezone.utc))
+                await lp.keyboard.press("Shift")
+                await lp.clock.run_for(16000)
+            await lp.wait_for_timeout(600)
+            lid[name] = await lp.evaluate(away)
+            await ctxs.close()
+        check("a laptop that sleeps within 15 s of a new stretch (Back, then the lid) asks about 2 hours and ends the stretch at 13",
+              lid["back2"] == {"asked": True, "left": True, "min": 0} and lid["back13"] == {"asked": False, "left": False, "min": 0}, str(lid))
+        check("a key pressed after the lid opens, before the page's next tick, still brings the question", lid["wakekey"] == {"asked": True, "left": True, "min": 0}, str(lid["wakekey"]))
         await b4.close()
 
     # Second review: fixes that must not come back.
@@ -943,6 +1105,18 @@ async def main():
         split = await g.locator(".gchip").count()
         check("the graph merges two plans the moment they are linked, and splits them when unlinked",
               before == 3 and merged["chips"] == 0 and merged["nodes"] == 11 and merged["layer"] == 9 and split == 3, f"{before} {merged} {split}")
+        # A plan's chip names it in the words its card shows: an older milestone's English version.
+        await g.evaluate("S.db.doc('items/ms1').update({ text: '11/30 · M1 Нэгдсэн', en: '11/30 · M1 Joined', enSrc: '11/30 · M1 Нэгдсэн' })")
+        await g.wait_for_timeout(400)
+        named = {}
+        for key in ("f1-c0", "f1-c3"):
+            await g.evaluate(f"openKey('{key}')")
+            await g.wait_for_timeout(300)
+            named[key] = await g.locator(".gchip").all_inner_texts()
+        await g.evaluate("S.db.doc('items/ms1').update({ text: '11/30 · M1 Joined', en: null, enSrc: null })")
+        await g.wait_for_timeout(400)
+        check("a plan's chip shows an older to-do's English version, as its card does (graph and timeline)",
+              all(v and v[0] == "11/30 · M1 Joined · 6" for v in named.values()), str(named))
         await g.evaluate("S.db.doc('items/a2').update({ done: true })")
         await g.wait_for_timeout(400)
         check("ticking a to-do updates the graph's counts live", "1" in await g.inner_text(".gfilter.s-done"))
@@ -1059,6 +1233,507 @@ async def main():
         check("nothing on screen is in Mongolian", not bad, str(bad)[:160])
         await b6.close()
 
+    # Sheets, full screen, navigation and contrast (from the PR #3 review), on a touch phone: the back
+    # gesture closes a sheet; full screen keeps focus in the graph and lets the page go whatever ends
+    # it; a failed save is said where the person looks; notes and toasts land where they should; text
+    # reads at 4.5:1 in both themes.
+    async with async_playwright() as p9:
+        b9 = await p9.chromium.launch(executable_path=CHROME, args=["--no-sandbox"])
+        tctx = await b9.new_context(viewport={"width": 390, "height": 844}, has_touch=True, is_mobile=True)
+        N = f"{BASE}/?as=nav"
+        t = await tctx.new_page()                          # the data, from a page of its own (?reset stays out of t's history)
+        t.on("pageerror", lambda e: errors.append(str(e)))
+        await t.goto(f"{N}&reset=1#f0")
+        await t.wait_for_timeout(700)
+        await login(t, "Vida")
+        await t.evaluate("""(async () => { const c = S.db.collection('items'), md = d => { const x = new Date(Date.now() + d * 86400000); return `${x.getMonth() + 1}/${x.getDate()}`; };
+          for (let k = 0; k < 5; k++) await c.doc('n' + k).set({ cell: 'f2-c1', text: 'Step ' + k, deps: k ? ['n' + (k - 1)] : [], done: false, who: k === 1 ? 'vida' : '', url: '', at: 100 + k });
+          await c.doc('nm').set({ cell: 'f1-c1', text: md(6) + ' · M1 Made-up', deps: ['n4'], done: false, who: '', url: '', at: 200 });
+          for (let k = 0; k < 30; k++) await c.doc('row' + k).set({ cell: 'f2-c1', text: 'Long list row ' + k, deps: [], done: false, who: '', url: '', at: 10 + k }); })()""")
+        await t.wait_for_timeout(300)
+        await t.close()
+        t = await tctx.new_page()
+        t.on("pageerror", lambda e: errors.append(str(e)))
+        here = "(() => typeof S === 'object' ? { sheet: S.sheet, cell: S.cell, hash: location.hash } : null)()"
+
+        async def fresh(h="f0"):
+            """The page loaded anew at #h (from another page, so it really loads)."""
+            await t.goto("about:blank")
+            await t.goto(f"{N}#{h}")
+            await t.wait_for_timeout(600)
+
+        async def back():
+            await t.go_back()
+            await t.wait_for_timeout(400)
+            return await t.evaluate(here)
+
+        # The phone's back gesture closes the open sheet, and nothing else.
+        await fresh()
+        await tap(t, "#meBtn")
+        await t.wait_for_timeout(300)
+        a = [await t.evaluate("S.sheet"), await back(), await back()]
+        check("the phone's back gesture closes the open sheet and stays on the page; the next back leaves",
+              a[0] == "menuSheet" and a[1] == {"sheet": None, "cell": None, "hash": "#f0"} and a[2] is None, str(a))
+        await fresh()
+        await t.evaluate("openKey('f2-c1')")
+        await t.wait_for_timeout(300)
+        await tap(t, "#items .who >> nth=0")
+        await t.wait_for_timeout(300)
+        a = [await t.evaluate("S.sheet"), await back(), await back()]
+        check("back with the owner sheet open in a space closes the sheet and stays in the space; the next back goes to the cube",
+              a[0] == "handSheet" and a[1] == {"sheet": None, "cell": "f2-c1", "hash": "#f2-c1"} and a[2] == {"sheet": None, "cell": None, "hash": "#f0"}, str(a))
+        closed = {}
+        for how in ("x", "Escape", "backdrop"):
+            await fresh()
+            await tap(t, "#meBtn")
+            await t.wait_for_timeout(700)                      # the sheet has settled: the backdrop shows above it
+            if how == "x":
+                await tap(t, "#menuSheet [data-close]")
+            elif how == "Escape":
+                await t.keyboard.press("Escape")
+            else:
+                await t.touchscreen.tap(195, 8)
+            await t.wait_for_timeout(400)
+            closed[how] = [await t.evaluate("S.sheet"), await back()]
+        check("a sheet closed with ✕, Escape or the backdrop leaves no history step behind: the next back leaves",
+              all(v == [None, None] for v in closed.values()), str(closed))
+        await fresh()
+        await tap(t, "#meBtn")
+        await t.wait_for_timeout(300)
+        await t.evaluate("openSheet('chatSheet')")             # one sheet opened from another
+        await t.wait_for_timeout(300)
+        two = [await t.evaluate("S.sheet"), await back(), await back()]
+        await fresh()
+        await tap(t, "#meBtn")
+        await t.wait_for_timeout(300)
+        await t.evaluate("document.getElementById('spacesBox').open = true")
+        await press(t, "#gridView .g-cell >> nth=5")            # All spaces: Plan › Milestones
+        opened = await until(t, "S.cell === 'f1-c1' && !S.sheet", 2000)
+        space = [opened, await back(), await back()]
+        await fresh()
+        await t.evaluate("openKey('f2-c1')")
+        await t.wait_for_timeout(300)
+        await tap(t, "#meBtn")
+        await t.wait_for_timeout(700)
+        await tap(t, "#menuSheet [data-close]")
+        await t.wait_for_timeout(400)
+        await tap(t, "#back")
+        await t.wait_for_timeout(400)
+        own = [await t.evaluate(here), await back()]
+        check("one sheet opened from another keeps one step; a space opened from a sheet: back goes to the cube, then leaves; the page's own Back still works",
+              two == ["chatSheet", {"sheet": None, "cell": None, "hash": "#f0"}, None] and space == [True, {"sheet": None, "cell": None, "hash": "#f0"}, None]
+              and own == [{"sheet": None, "cell": None, "hash": "#f0"}, None], f"{two} {space} {own}")
+        fp = await tctx.new_page()
+        await fp.set_content(f'<iframe src="{N}#f0" style="width:390px;height:800px;border:0"></iframe>')
+        await fp.wait_for_timeout(1200)
+        fr = fp.frames[1]
+        steps = [await fr.evaluate("history.length")]
+        await fr.evaluate("openSheet('menuSheet')")
+        await fp.wait_for_timeout(200)
+        steps += [await fr.evaluate("history.length"), await fr.evaluate("S.sheet")]
+        await fp.close()
+        check("inside a frame (as in Claude) a sheet adds no history step: the history is the host's", steps[0] == steps[1] and steps[2] == "menuSheet", str(steps))
+
+        # Full screen on a touch phone: the Owner sheet over it takes the taps and gives full screen back;
+        # leaving it through "Open the space" or a "can start" line lets the page scroll again.
+        await fresh("f0")
+        await t.evaluate("openKey('f1-c3')")
+        await t.wait_for_timeout(400)
+        await tap(t, ".flow-btn")
+        await t.wait_for_timeout(300)
+        await tap(t, "#planView .gnode[data-fkey='g:n1']")
+        await t.wait_for_timeout(300)
+        await tap(t, ".flow .gdetail .btn >> text=Owner")
+        await t.wait_for_timeout(600)
+        who = await t.evaluate("(document.querySelector('#handBody .cand') || {}).dataset?.who || null")
+        await tap(t, "#handBody .cand >> nth=0")
+        await t.wait_for_timeout(500)
+        ask = await t.evaluate("(askOf(S.items.get('n1')) || {}).to || null")
+        await tap(t, ".flow .gdetail .btn >> text=Owner")
+        await t.wait_for_timeout(600)
+        await tap(t, "#handSheet [data-close]")
+        await t.wait_for_timeout(400)
+        full = await t.evaluate("({ full: G.full, fixed: getComputedStyle(document.querySelector('#planView .flow')).position === 'fixed', sheet: S.sheet, live: !document.getElementById('page').inert })")
+        check("in full screen (Dependency graph, touch) a tap on the Owner sheet's choice asks that person, and closing the sheet returns to full screen",
+              who and ask == who and full == {"full": True, "fixed": True, "sheet": None, "live": True}, f"{who} {ask} {full}")
+        await tap(t, ".flow .gdetail .btn >> text=Open the space")
+        await t.wait_for_timeout(400)
+        await t.mouse.wheel(0, 500)
+        await t.wait_for_timeout(300)
+        out = [await t.evaluate("({ cell: S.cell, full: G.full, locked: document.body.classList.contains('locked') })"), await t.evaluate("scrollY > 100")]
+        await t.evaluate("openKey('f1-c0')")
+        await t.wait_for_timeout(400)
+        await tap(t, ".flow-btn")
+        await t.wait_for_timeout(300)
+        await t.evaluate("G.pick = 'nm'; renderTimeline()")
+        await t.wait_for_timeout(200)
+        await tap(t, ".flow .gdetail ul button")              # "▶ Step 0", the one that can start
+        await t.wait_for_timeout(400)
+        await t.mouse.wheel(0, 500)
+        await t.wait_for_timeout(300)
+        out += [await t.evaluate("({ cell: S.cell, full: G.full, locked: document.body.classList.contains('locked') })"), await t.evaluate("scrollY > 100")]
+        check("leaving full screen through “Open the space” or a “can start” line leaves the page scrollable",
+              out == [{"cell": "f2-c1", "full": False, "locked": False}, True] * 2, str(out))
+
+        # Full screen by keyboard: focus never walks onto the page under the graph, and nothing is left
+        # inert or locked however full screen ends (Close, Escape, a space opened from it, the back gesture).
+        await fresh("f0")
+        await t.evaluate("openKey('f1-c0')")
+        await t.wait_for_timeout(400)
+        await press(t, ".flow-btn", "focus")
+        await t.keyboard.press("Enter")
+        await t.wait_for_timeout(300)
+        await t.evaluate("G.pick = 'n1'; renderTimeline()")
+        await press(t, ".flow .gdetail .btn >> nth=-1", "focus")
+        where = "(() => { const a = document.activeElement; return !a || a === document.body ? 'body' : a.closest('#planView .flow.full') ? 'graph' : a.id || a.className; })()"
+        walk = []
+        for key in ["Tab"] * 5 + ["Shift+Tab"] * 5:
+            await t.keyboard.press(key)
+            walk.append(await t.evaluate(where))
+        left = "({ locked: document.body.classList.contains('locked'), inert: [...document.querySelectorAll('#page [inert]')].filter(n => !n.closest('#cube')).length })"
+        ends = {}
+        for how in ("close", "escape", "open", "back"):
+            await fresh("f0")
+            await t.evaluate("openKey('f1-c0')")
+            await t.wait_for_timeout(300)
+            await t.evaluate("setFull(true, renderTimeline); G.pick = 'n1'; renderTimeline()")
+            await t.wait_for_timeout(200)
+            if how == "close":
+                await press(t, ".flow-btn")
+            elif how == "escape":
+                await t.keyboard.press("Escape")
+            elif how == "open":
+                await press(t, ".flow .gdetail .btn >> text=Open the space")
+            else:
+                await t.go_back()
+            await t.wait_for_timeout(400)
+            ends[how] = await t.evaluate(left)
+        check("in full screen keyboard focus stays in the graph (the page under it is inert), and however full screen ends nothing stays inert or locked",
+              "graph" in walk and all(w in ("graph", "body") for w in walk) and all(v == {"locked": False, "inert": 0} for v in ends.values()), f"{walk} {ends}")
+
+        # A failed save started from the login or a sheet is said there (the status line is under it).
+        fail = """(() => { const orig = S.db.doc; window.__orig = orig; S.db.doc = p => { const d = orig(p), no = () => Promise.reject({ code: 'unavailable', message: 'made-up failure' });
+            return { ...d, set: no, update: no, delete: no }; }; })()"""
+        said = """(() => { const words = document.getElementById('sync').textContent, login = document.getElementById('login'), host = S.sheet ? document.getElementById(S.sheet) : login.hidden ? null : login;
+            const seen = host ? [...host.querySelectorAll('p, span, b')].filter(n => n.textContent === words && n.getClientRects().length).map(n => n.getBoundingClientRect()).filter(r => r.top >= 0 && r.bottom <= innerHeight) : [];
+            return [S.sheet || (host ? 'login' : 'page'), words, seen.length > 0]; })()"""
+        heal = "(() => { S.db.doc = window.__orig; })()"
+        f = await tctx.new_page()
+        f.on("pageerror", lambda e: errors.append(str(e)))
+        await f.goto(f"{BASE}/?as=navfail#f0")
+        await f.wait_for_timeout(700)
+        await f.evaluate(fail)
+        await press(f, "#login .login-card[data-who='anand']")
+        await until(f, "!document.getElementById('login').hidden && document.getElementById('sync').dataset.state === 'failed'", 4000)
+        await f.wait_for_timeout(200)
+        told = [await f.evaluate(said)]
+        await f.evaluate(heal)
+        await press(f, "#login .login-card[data-who='anand']")
+        await f.wait_for_timeout(400)
+        await press(f, "#meBtn")
+        await f.wait_for_timeout(300)
+        await f.evaluate(fail)
+        await press(f, "#clockBtn")
+        await until(f, "document.getElementById('sync').dataset.state === 'failed'", 4000)
+        told.append(await f.evaluate(said))
+        if SHOTS:
+            await f.screenshot(path=f"{SHOTS}/save_failed_in_menu.png")
+        await f.evaluate(heal + "; closeSheets(true)")
+        await f.evaluate("""S.db.doc('items/hx').set({ cell: 'f2-c1', text: 'A made-up hand-off', deps: [], done: false, who: 'obama', url: '', at: 5,
+            ask: { to: 'anand', give: 'anand', from: 'obama', by: 'someone', at: Date.now() - 60000, note: '' } })""")
+        await f.wait_for_timeout(300)
+        await press(f, "#bellBtn")
+        await f.wait_for_timeout(300)
+        await f.evaluate(fail)
+        await press(f, "#forYou .mini >> nth=0")
+        await until(f, "document.getElementById('sync').dataset.state === 'failed'", 4000)
+        told.append(await f.evaluate(said))
+        await f.evaluate(heal + "; closeSheets(true)")
+        # The owner sheet says it once, at its top, not again at its foot.
+        await f.evaluate(fail)
+        await f.evaluate("openHand('hx')")
+        await f.wait_for_timeout(300)
+        await press(f, "#handSheet [data-fkey='hb:yes']")
+        await until(f, "document.getElementById('sync').dataset.state === 'failed'", 4000)
+        await f.wait_for_timeout(200)
+        once = await f.evaluate("""(() => { const words = document.getElementById('sync').textContent;
+            return [words, [...document.querySelectorAll('#handSheet p, #handSheet span, #handSheet b')].filter(n => n.textContent === words && n.getClientRects().length).length,
+              !!document.querySelector('#handSheet > .save-err')]; })()""")
+        await f.evaluate(heal + "; closeSheets(true)")
+        await f.close()
+        check("a save that fails from the login, the menu (Pause) or For you (Accept) is said there, on screen, not only in the line it covers",
+              [x[0] for x in told] == ["login", "menuSheet", "updatesSheet"] and all(x[2] for x in told), str(told))
+        check("in the owner sheet a failed save is said once, at the top of the sheet", once == ["Not saved. Please try again.", 1, True], str(once))
+
+        # Moving focus up a long list never leaves it behind the sticky top bar (390 and 320 wide).
+        hidden = """(() => { const a = document.activeElement; if (!a || a === document.body || a.closest('.top')) return 0;
+            return a.getBoundingClientRect().top < document.querySelector('.top').getBoundingClientRect().bottom ? 1 : 0; })()"""
+        under = {}
+        for w, h in ((390, 844), (320, 640)):
+            await t.set_viewport_size({"width": w, "height": h})
+            await fresh("f2-c1")
+            await press(t, "#items .x >> nth=-1", "focus")
+            n = 0
+            for _ in range(70):
+                await t.keyboard.press("Shift+Tab")
+                n += await t.evaluate(hidden)
+            under[w] = n
+        await t.set_viewport_size({"width": 390, "height": 844})
+        check("moving focus up a long list never puts the focused control behind the sticky top bar", under == {390: 0, 320: 0}, str(under))
+
+        # Home is the cube alone on one screen, the wordmark on one line (320 and 390 wide).
+        fit = {}
+        for w, h in ((320, 640), (390, 844)):
+            await t.set_viewport_size({"width": w, "height": h})
+            await fresh("f0")
+            fit[w] = await t.evaluate("[document.documentElement.scrollHeight - innerHeight, Math.round(document.querySelector('.top .mark').getBoundingClientRect().height)]")
+        await t.set_viewport_size({"width": 390, "height": 844})
+        check("home fits the screen with the wordmark on one line, 320 and 390 wide", all(v[0] <= 0 and v[1] <= 40 for v in fit.values()), str(fit))
+
+        # A teammate's note never covers the way back: a space's Back and its side chip (390 and 320), or
+        # the full-screen graph's bar; and the person's initial in it is centred.
+        top_at = "(([x, y]) => { const e = document.elementFromPoint(x, y); return e ? (e.closest('#ping') ? 'note' : e.id || e.className) : null; })"
+        cover = {}
+        for w, h in ((390, 844), (320, 640)):
+            await t.set_viewport_size({"width": w, "height": h})
+            await fresh("f2-c1")
+            await t.evaluate("ping(member('anand'), 'Anand changed “A made-up line long enough to take two lines in the note”', 'updatesSheet')")
+            await t.wait_for_timeout(700)
+            for sel in ("#back", "#areaChip"):
+                r = await t.locator(sel).bounding_box(timeout=3000)
+                cover[f"{w} {sel}"] = await t.evaluate(f"{top_at}([{r['x'] + r['width'] / 2}, {r['y'] + r['height'] / 2}])")
+            cover[f"{w} initial"] = await t.evaluate("getComputedStyle(document.querySelector('#ping .who')).display")
+            if SHOTS and w == 390:
+                await t.screenshot(path=f"{SHOTS}/note_below_back.png")
+        await t.set_viewport_size({"width": 390, "height": 844})
+        await t.evaluate("openKey('f1-c3'); setFull(true, renderGraph)")
+        await t.wait_for_timeout(300)
+        await t.evaluate("ping(member('anand'), 'Anand changed “A made-up line”', 'updatesSheet')")
+        await t.wait_for_timeout(700)
+        r = await t.locator(".flow-btn").bounding_box(timeout=3000)
+        cover["full Close"] = await t.evaluate(f"{top_at}([{r['x'] + r['width'] / 2}, {r['y'] + r['height'] / 2}])")
+        await t.evaluate("setFull(false, renderGraph); document.getElementById('ping').hidden = true")
+        check("a teammate's note never covers a space's Back or side chip (390 and 320 wide) nor the full-screen graph's bar; its initial is centred",
+              all(v in ("back", "areaChip", "flow-btn", "grid") for v in cover.values()), str(cover))
+
+        # A toast said in a sheet (no Undo) shows over it, lets a tap through to the sheet, and never shows
+        # over the login. Hit-testing skips what takes no taps, so for "drawn on top" the toast takes them
+        # for a moment. Escape on "Switch person" is its Cancel.
+        await fresh("f0")
+        await press(t, "#bellBtn")
+        await t.wait_for_timeout(300)
+        await t.evaluate("toast('A made-up confirmation')")
+        await t.wait_for_timeout(200)
+        mid = "(() => { const r = document.getElementById('toast').getBoundingClientRect(), e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return e ? (e.closest('#toast') ? 'toast' : e.closest('#login') ? 'login' : e.closest('.sheet') ? 'sheet' : e.className) : null; })()"
+        drawn = "(() => { const t = document.getElementById('toast'); t.style.pointerEvents = 'auto'; const at = " + mid + "; t.style.pointerEvents = ''; return at; })()"
+        over = [await t.evaluate(drawn), await t.evaluate(mid)]
+        await t.evaluate("closeSheets(true); askWho()")
+        await t.wait_for_timeout(300)
+        over.append(await t.evaluate(drawn))
+        cancel = await t.evaluate("(document.querySelector('#login .login-foot .btn') || {}).textContent || null")
+        await t.keyboard.press("Escape")
+        await t.wait_for_timeout(300)
+        esc = await t.evaluate("[document.getElementById('login').hidden, document.activeElement && document.activeElement.id]")
+        await t.evaluate("document.getElementById('toast').hidden = true")
+        check("a toast said in a sheet shows over it, lets a tap through to the sheet, and never shows over the login", over == ["toast", "sheet", "login"], str(over))
+        check("Escape on the Switch person page is its Cancel: it closes, back on the menu button", cancel == "Cancel" and esc == [True, "meBtn"], f"{cancel} {esc}")
+
+        # An Undo toast is the page's: it stays under every sheet, so a tap on the chat's Send never lands on
+        # it. Delete a row with its ✕, open the chat, tap the box, write, tap Send (real taps): the message
+        # goes, the to-do stays deleted, and Undo is still there once the chat closes. Then the same with
+        # the delete answering late, its toast said while the chat is open.
+        await t.evaluate("""(async () => { for (const k of [0, 1]) await S.db.doc('items/ud' + k).set({ cell: 'f2-c2', text: 'A made-up row to delete ' + k, deps: [], done: false, who: '', url: '', at: 300 + k }); })()""")
+        on_send = "(() => { const r = document.getElementById('chatSend').getBoundingClientRect(), e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return e ? (e.closest('button') || e).id || e.className : null; })()"
+        sent = {}
+        for k, late in ((0, 0), (1, 1500)):
+            await fresh("f2-c2")
+            if late:
+                await t.evaluate("""ms => { const d = S.db.doc; S.db.doc = p => { const x = d(p);
+                    return p.startsWith('items/') ? { ...x, delete: () => new Promise(r => setTimeout(r, ms)).then(() => x.delete()) } : x; }; }""", late)
+            await tap(t, f"[data-fkey='x:ud{k}']")
+            if not late:
+                await until(t, "!document.getElementById('toast').hidden", 3000)
+            await tap(t, "#chatBtn")
+            await until(t, "S.sheet === 'chatSheet'", 3000)
+            await t.wait_for_timeout(300)
+            await tap(t, "#chatText")
+            await t.keyboard.type(f"A made-up line {k}")
+            if late:
+                await until(t, "!document.getElementById('toast').hidden", 4000)
+            got = [await t.evaluate(on_send), await t.evaluate("S.sheet")]
+            await tap(t, "#chatSend")
+            await t.wait_for_timeout(600)
+            got += [await t.evaluate(f"S.chat.some(m => m.text === 'A made-up line {k}')"), await t.evaluate(f"S.items.has('ud{k}')")]
+            await tap(t, "#chatSheet [data-close]")
+            await t.wait_for_timeout(300)
+            sent[late] = got + [await t.locator("#toastUndo").is_visible()]
+        check("on a phone an Undo toast stays under the sheets: the chat's Send sends and the deleted to-do stays deleted, also when the delete answers late; Undo is there after",
+              all(v == ["chatSend", "chatSheet", True, False, True] for v in sent.values()), str(sent))
+
+        # In full screen the graph covers the status line (and makes it inert): a timer change that fails
+        # is said under the graph's bar, and still after a redraw (the same line, not announced again).
+        # The away question is asked there too, stays through a redraw, can be answered, and goes back to
+        # its place once full screen ends.
+        await fresh("f0")
+        await t.evaluate("openKey('f1-c3')")
+        await t.wait_for_timeout(400)
+        await tap(t, "[data-fkey='z:full']")
+        full = await until(t, "G.full", 2000)
+        line = """(() => { const l = document.querySelector('#planView .flow.full > .flow-bar + .save-err'); if (!l) return null;
+            const r = l.getBoundingClientRect(), e = document.elementFromPoint(r.left + 12, r.top + r.height / 2);
+            return [l.textContent, l.getAttribute('role'), !!l.closest('[inert]'), !!e && l.contains(e), l === window.__line]; })()"""
+        await t.evaluate("""(async () => { await writeClock(x => { x.openSince = Date.now() - 30 * 60000; x.leftAt = Date.now() - 4 * 60000; });
+            const d = S.db.doc; window.__d = d; S.db.doc = p => { const x = d(p), no = () => Promise.reject({ code: 'unavailable', message: 'made-up failure' });
+              return p.startsWith('clock/') ? { ...x, set: no, update: no } : x; };
+            reconcileClock(false); })()""")
+        failed = await until(t, "S.failWords === tr('clockFailed')", 5000)
+        await t.evaluate("window.__line = document.querySelector('#planView .flow.full > .save-err')")
+        said = [await t.evaluate(line), await t.evaluate("(() => { const s = document.getElementById('sync'); return [s.textContent, !!s.closest('[inert]')]; })()")]
+        if SHOTS:
+            await t.screenshot(path=f"{SHOTS}/full_screen_save_failed.png")
+        await t.evaluate("renderAll()")
+        said.append(await t.evaluate(line))
+        check("in full screen a timer change that fails is said under the graph's bar (the status line is covered), and still after a redraw, not announced again",
+              full and failed and said == [["The timer change was not saved.", "alert", False, True, True], ["The timer change was not saved.", True],
+                                           ["The timer change was not saved.", None, False, True, True]], str(said))
+        await t.evaluate("(() => { S.db.doc = window.__d; })()")   # writes work again
+        await t.evaluate("writeClock(x => { x.openSince = Date.now() - 60 * 60000; x.leftAt = Date.now() - 30 * 60000; }).then(() => reconcileClock(false))")
+        await until(t, "!document.getElementById('awayBox').hidden", 3000)
+        away = """(() => { const b = document.getElementById('awayBox'), r = b.getBoundingClientRect(), e = document.elementFromPoint(r.left + r.width / 2, r.top + 12);
+            return [!b.hidden, !!b.closest('#planView .flow.full'), !!b.closest('[inert]'), !!e && b.contains(e)]; })()"""
+        asked = [await t.evaluate(away), await t.evaluate("!!document.querySelector('.save-err')")]
+        if SHOTS:
+            await t.screenshot(path=f"{SHOTS}/full_screen_away.png")
+        # A teammate's note comes below the question, never over its buttons.
+        await t.evaluate("ping(member('anand'), 'Anand changed “A made-up line”', 'updatesSheet')")
+        await t.wait_for_timeout(700)
+        below = await t.evaluate("document.getElementById('ping').getBoundingClientRect().top >= document.getElementById('awayBox').getBoundingClientRect().bottom")
+        await t.evaluate("document.getElementById('ping').hidden = true")
+        await t.evaluate("renderAll()")
+        asked.append(await t.evaluate(away))
+        await tap(t, "#awayBox .btn.ghost")
+        await t.wait_for_timeout(500)
+        asked.append(await t.evaluate("[document.getElementById('awayBox').hidden, !!leftOf(myClock())]"))
+        await tap(t, "[data-fkey='z:full']")
+        await t.wait_for_timeout(300)
+        asked.append(await t.evaluate("[G.full, document.getElementById('awayBox').parentNode.id, document.getElementById('awayBox').previousElementSibling.id]"))
+        check("in full screen the away question is asked under the graph's bar (a teammate's note below it), stays through a redraw, can be answered, and goes back to its place after",
+              below and asked == [[True, True, False, True], False, [True, True, False, True], [True, False], [False, "page", "notice"]], f"{below} {asked}")
+
+        # The people data arriving after a sheet was opened: the login over it keeps focus, and once a
+        # name is picked the sheet is still modal (the page under it inert) with focus in it.
+        lp = await tctx.new_page()
+        lp.on("pageerror", lambda e: errors.append(str(e)))
+        await lp.goto(f"{BASE}/?as=navlate&late=people:1500#f0")
+        await lp.wait_for_timeout(400)
+        await press(lp, "#meBtn")
+        await until(lp, "!document.getElementById('login').hidden", 4000)
+        tabs = []
+        for _ in range(7):
+            await lp.keyboard.press("Tab")
+            tabs.append(await lp.evaluate("(() => { const a = document.activeElement; return !a || a === document.body ? 'body' : a.closest('#login') ? 'login' : a.closest('.sheet') ? 'sheet' : a.id || a.className; })()"))
+        await press(lp, "#login .login-card[data-who='obama']")
+        await lp.wait_for_timeout(400)
+        after = await lp.evaluate("[S.sheet, document.getElementById('page').inert, !!document.activeElement.closest('#menuSheet')]")
+        await lp.close()
+        check("a login that comes over an open sheet keeps focus to itself, and after a name is picked the sheet is still modal with focus in it",
+              all(x in ("login", "body") for x in tabs) and after == ["menuSheet", True, True], f"{tabs} {after}")
+
+        # The person in the top bar says the timer's state in words, and its dot differs by shape.
+        dots = await t.evaluate("""(() => { const was = S.clocks.get(S.me), now = Date.now(), out = {};
+            for (const [k, c] of [['on', { days: {}, openSince: now - 60000 }], ['away', { days: {}, openSince: now - 600000, leftAt: now - 120000 }], ['off', { days: {}, openSince: null }]]) {
+              S.clocks.set(S.me, c); renderClock(); const cs = getComputedStyle(document.getElementById('meDot'));
+              out[k] = [document.getElementById('meBtn').getAttribute('aria-label'), cs.display !== 'none', cs.boxShadow.includes('inset')]; }
+            S.clocks.set(S.me, was); renderClock(); return out; })()""")
+        check("the person in the top bar says the timer's state in words, and its dot differs by shape (filled, ring, none)",
+              dots["on"][0].endswith("Timer on") and dots["on"][1:] == [True, False] and "Away" in dots["away"][0] and dots["away"][1:] == [True, True]
+              and dots["off"][0].endswith("Timer stopped") and dots["off"][1] is False, str(dots))
+
+        # The graph keeps keyboard focus through a teammate's change (scroll area, the picked to-do's
+        # buttons, a "can start" line), and clearing the selection gives focus back to the node.
+        await fresh("f0")
+        await t.evaluate("G.group = 'all'; openKey('f1-c0')")
+        await t.wait_for_timeout(400)
+        await t.evaluate("G.pick = 'nm'; renderTimeline()")
+        kept = {}
+        for k, sel in enumerate((".flow-scroll", ".flow .gdetail ul button", ".flow .gdetail .btn >> nth=0", ".flow .gdetail .btn >> nth=-1")):
+            await press(t, sel, "focus")
+            was = await t.evaluate("document.activeElement.textContent.slice(0, 24)")
+            await t.evaluate(f"S.db.doc('items/n3').update({{ text: 'Step 3, edit {k}' }})")
+            await t.wait_for_timeout(300)
+            kept[sel] = await t.evaluate("document.activeElement === document.body ? 'body' : document.activeElement.textContent.slice(0, 24)") == was
+        await press(t, ".flow .gdetail .btn >> nth=-1", "focus")
+        await t.keyboard.press("Enter")
+        await t.wait_for_timeout(200)
+        node = await t.evaluate("document.activeElement.dataset.fkey || document.activeElement.tagName")
+        check("the graph keeps keyboard focus through a teammate's change, and clearing the selection focuses the node that was picked",
+              all(kept.values()) and node == "g:nm", f"{kept} {node}")
+
+        # The Timeline's scroll does not carry into the Dependency graph.
+        await t.evaluate("document.querySelector('.flow-scroll').scrollLeft = 99999")
+        tl = await t.evaluate("document.querySelector('.flow-scroll').scrollLeft")
+        await press(t, "#back")
+        await t.wait_for_timeout(300)
+        await t.evaluate("openKey('f1-c3')")
+        await t.wait_for_timeout(400)
+        gx = await t.evaluate("(s => [s.scrollLeft, s.scrollWidth - s.clientWidth])(document.querySelector('.flow-scroll'))")
+        check("the Dependency graph opens at its start even after the Timeline was scrolled", tl > 0 and gx[0] == 0 and gx[1] > 0, f"{tl} {gx}")
+
+        # In the Timeline a milestone stuck behind a loop sits after it: only the loop's own links turn back.
+        await t.evaluate("""(async () => { const c = S.db.collection('items'), x = new Date(Date.now() + 4 * 86400000);
+          await c.doc('lc1').set({ cell: 'f2-c3', text: 'Loop one', deps: ['lc2'], done: false, who: '', url: '', at: 1 });
+          await c.doc('lc2').set({ cell: 'f2-c3', text: 'Loop two', deps: ['lc1'], done: false, who: '', url: '', at: 2 });
+          await c.doc('lcm').set({ cell: 'f1-c1', text: `${x.getMonth() + 1}/${x.getDate()} · M3 Behind a loop`, deps: ['lc1'], done: false, who: '', url: '', at: 3 }); })()""")
+        await t.wait_for_timeout(300)
+        await t.evaluate("G.group = 'all'; openKey('f1-c0')")
+        await t.wait_for_timeout(500)
+        loop = await t.evaluate("""(() => { const x = id => parseFloat(document.querySelector(`[data-fkey="g:${id}"]`).style.left);
+          const back = [...document.querySelectorAll('.gedge')].map(p => /M([\\d.-]+),[\\d.-]+ C[\\d., -]+ ([\\d.-]+),[\\d.-]+$/.exec(p.getAttribute('d'))).filter(m => m && +m[2] <= +m[1]).length;
+          return { one: x('lc1'), two: x('lc2'), m: x('lcm'), back }; })()""")
+        await t.evaluate("(async () => { for (const id of ['lc1', 'lc2', 'lcm']) await S.db.doc('items/' + id).delete(); })()")
+        check("in the Timeline a milestone stuck behind a loop sits after it, so only the loop's own two links turn back",
+              loop["m"] > max(loop["one"], loop["two"]) and loop["back"] == 2, str(loop))
+
+        # Contrast in both themes: the login's words over its glow, the status line on its own background,
+        # Updates' “New”, the time on your own chat bubbles, and the graph's status filters.
+        colour = PROBE + RATIO + """ const rgb = c => { const v = c.match(/[\\d.]+/g).map(Number); return c.startsWith('color(') ? `rgb(${v.slice(0, 3).map(x => Math.round(x * 255)).join(', ')})` : c; };
+          const opaque = n => { for (; n; n = n.parentElement) { const c = getComputedStyle(n).backgroundColor; if (!/rgba\\(.*, 0\\)$|transparent|\\/ 0\\)$/.test(c)) return rgb(c); } return rgb(probe('--bg')); };"""
+        ratios = {}
+        for scheme in ("light", "dark"):
+            await t.emulate_media(color_scheme=scheme)
+            await fresh("f0")
+            await t.evaluate("askWho()")
+            await t.wait_for_timeout(200)
+            r = await t.evaluate("(() => { " + colour + """ const p = document.querySelector('#login > p:not(.fine):not(.err)'), c = getComputedStyle(p).color;
+                return Math.min(ratio(c, rgb(probe('--glow'))), ratio(c, rgb(probe('--bg')))); })()""")
+            ratios[f"{scheme} login"] = r
+            await t.keyboard.press("Escape")
+            await t.evaluate("openKey('f2-c1')")
+            await t.wait_for_timeout(300)
+            for state in ("saved", "failed"):
+                ratios[f"{scheme} sync {state}"] = await t.evaluate("(() => { " + colour + f""" setSync('{state}', 'x'); const s = document.getElementById('sync'), bg = getComputedStyle(s).backgroundColor;
+                    return /rgba\\(.*, 0\\)$|transparent/.test(bg) ? 0 : ratio(getComputedStyle(s).color, bg); }})()""")
+            await press(t, "#bellBtn")
+            await t.wait_for_timeout(300)
+            ratios[f"{scheme} new"] = await t.evaluate("(() => { " + colour + """ const u = document.createElement('ul'); u.className = 'upd'; u.innerHTML = '<li><small><span class="new">New</span></small></li>';
+                document.querySelector('#updatesSheet .sheet-body').append(u); const n = u.querySelector('.new'), r = ratio(rgb(getComputedStyle(n).color), opaque(n)); u.remove(); return r; })()""")
+            await t.evaluate("closeSheets(true)")
+            ratios[f"{scheme} chat meta"] = await t.evaluate("(() => { " + colour + """ const li = document.createElement('li'); li.className = 'msg mine'; li.innerHTML = '<div class="bubble"><small>You · 10:00</small><p>x</p></div>';
+                document.getElementById('chatList').append(li); const s = li.querySelector('small'), cs = getComputedStyle(s), bg = opaque(s);
+                const [r, g, b] = cs.color.match(/[\\d.]+/g).map(Number), [R, G, B] = bg.match(/[\\d.]+/g).map(Number), a = +cs.opacity;
+                const seen = `rgb(${r * a + R * (1 - a)}, ${g * a + G * (1 - a)}, ${b * a + B * (1 - a)})`; li.remove(); return ratio(seen, bg); })()""")
+            await t.evaluate("openKey('f1-c3')")
+            await t.wait_for_timeout(400)
+            ratios[f"{scheme} filters"] = await t.evaluate("(() => { " + colour + """ return Math.min(...[...document.querySelectorAll('.gfilter span, .gfilter b')].map(n => ratio(rgb(getComputedStyle(n).color), opaque(n)))); })()""")
+            ratios[f"{scheme} full-screen failure"] = await t.evaluate("(() => { " + colour + """ setFull(true, renderGraph); sayFailed(tr('clockFailed'));
+                const l = document.querySelector('#planView .flow.full > .save-err'), r = l ? ratio(rgb(getComputedStyle(l).color), opaque(l)) : 0;
+                clearFailed(); setSync('', ''); setFull(false, renderGraph); return r; })()""")
+        await t.emulate_media(color_scheme="light")
+        low = {k: round(v, 2) for k, v in ratios.items() if v < 4.5}
+        check("text reads at 4.5:1 or more in both themes: the login over its glow, the status line, Updates' “New”, your chat bubbles' time, the graph's filters, a failure said in full screen",
+              len(ratios) == 14 and not low, str(low or {k: round(v, 2) for k, v in ratios.items()}))
+        await b9.close()
+
 
     # Screen text: one English dictionary, no key written twice.
     check("the screen-text dictionary has no repeated keys", *dict_check())
@@ -1088,12 +1763,52 @@ async def main():
         check("the Waits-for picker offers to add, not a loading message", first_opt == "＋ Add something it waits for", first_opt)
         await a.press("#area .edit-row input", "Escape")
         await a.wait_for_timeout(200)
-        # A failed paste stays on screen when another space is opened.
+        # A failed paste stays on screen when another space is opened (its lines have their own place,
+        # under the box).
         await a.evaluate("showLeftover(['line A', 'line B'], 'f2-c1')")
         await a.evaluate("openKey('f2-c2')")
         await a.wait_for_timeout(200)
-        check("lines of a failed paste stay on screen in another space", await a.locator("#captureErr").is_visible() and "line A" in await a.inner_text("#captureErr"))
-        await a.click("#captureErr .btn >> nth=1")
+        check("lines of a failed paste stay on screen in another space", await a.locator("#leftover").is_visible() and "line A" in await a.inner_text("#leftover"))
+        await a.click("#leftover .btn >> nth=1")
+        # Pasted lines that were not saved are never lost: a later paste that saves, or a failed add, leaves
+        # them listed (the add's message has its own line, gone once an add saves), and "Try again"
+        # tapped twice saves each line once (a slow link here).
+        lo = await ctx7.new_page()
+        lo.on("pageerror", lambda e: errors.append(str(e)))
+        await lo.goto(f"{BASE}/?as=rev3lo#f4-c1")
+        await login(lo, "Obama")
+        await lo.evaluate("""(() => { const orig = S.db.doc; window.__fail = true; window.__slow = 0;
+          S.db.doc = p => { const d = orig(p), set = d.set; d.set = async v => { if (window.__fail && /^Lost /.test((v && v.text) || '')) throw { code: 'unavailable', message: 'test' };
+            await new Promise(r => setTimeout(r, window.__slow)); return set(v); }; return d; }; })()""")
+        paste = """t => { const dt = new DataTransfer(); dt.setData('text/plain', t);
+          document.getElementById('newText').dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true })); }"""
+        left = "(() => { const n = document.getElementById('leftover'); return n && !n.hidden ? n.textContent : ''; })()"
+        await lo.evaluate(f"({paste})('Kept one\\nLost two\\nLost three')")
+        await lo.wait_for_timeout(1800)
+        first = await lo.evaluate(left)
+        await lo.evaluate(f"({paste})('Fine four\\nFine five')")
+        await lo.wait_for_timeout(600)
+        kept = await lo.evaluate(left)
+        check("lines of a half-failed paste stay listed after the next paste saves", "Lost two · Lost three" in first and "Lost two · Lost three" in kept
+              and await lo.evaluate("['Kept one', 'Fine four', 'Fine five'].every(t => [...S.items.values()].some(i => i.text === t))"), f"{first} | {kept}")
+        await lo.fill("#newText", "Lost six")
+        await lo.press("#newText", "Enter")
+        await lo.wait_for_timeout(1600)
+        failed = [await lo.inner_text("#captureErr"), await lo.evaluate(left)]
+        await lo.fill("#newText", "Fine seven")
+        await lo.press("#newText", "Enter")
+        await lo.wait_for_timeout(500)
+        after = [await lo.evaluate("document.getElementById('captureErr').hidden"), await lo.evaluate(left)]
+        check("a failed add says so on its own line and the paste's lines stay; the next add that saves clears that line",
+              failed[0] == "Could not add it. Your text is still here." and "Lost two · Lost three" in failed[1] and after[0] is True and "Lost two · Lost three" in after[1], f"{failed} {after}")
+        await lo.evaluate(f"({paste})('Kept eight\\nLost nine')")
+        await lo.wait_for_timeout(1800)
+        await lo.evaluate("window.__fail = false; window.__slow = 300")
+        await lo.evaluate("(() => { const b = document.querySelector('#leftover .btn'); if (b) { b.click(); b.click(); } })()")
+        await lo.wait_for_timeout(2500)
+        saved = await lo.evaluate("['Lost two', 'Lost three', 'Lost nine'].map(t => [...S.items.values()].filter(i => i.text === t).length)")
+        check("“Try again” tapped twice saves each line once, and the lines go once saved", saved == [1, 1, 1] and await lo.evaluate(left) == "", f"{saved} {await lo.evaluate(left)}")
+        await lo.close()
         # Older to-dos were written in Mongolian with an English version next to them (en, made from enSrc).
         # The page shows the English while it was made from the current text; editing stores the English as the text.
         await a.evaluate("openKey('f2-c1')")
@@ -1126,7 +1841,38 @@ async def main():
         await a.select_option("#team select", label="Seoul")
         await a.wait_for_timeout(300)
         check("a city is picked from a list and saved for everyone", await a.evaluate("JSON.stringify(S.team.get('vida'))") == '{"city":"Seoul","tz":"Asia/Seoul"}')
+        # A timer write (here: another device of this account leaves, this one takes the clock back)
+        # never redraws the team card under an open city picker.
+        await a.click("#team .city >> nth=1")
+        await a.wait_for_timeout(150)
+        await a.evaluate("writeClock(x => { x.leftAt = Date.now() - 1000; }).then(() => reconcileClock(false))")
+        await a.wait_for_timeout(400)
+        held = await a.evaluate("(() => { const s = document.querySelector('#team select'); return !!s && document.activeElement === s; })()")
+        await a.keyboard.press("Escape")
+        await a.wait_for_timeout(150)
+        check("a timer write while a city picker is open keeps the picker and its focus", held and not await a.evaluate("!!document.querySelector('#team select')"))
         await close_sheet(a)
+        # Night is one rule: at 07:00 there the clock shows no ☾ and the owner sheet does not say night;
+        # at 23:00 both say night. (Obama's city for a moment, on this page only.)
+        night = await a.evaluate("""(() => { const zone = hh => { let n = hh - new Date().getUTCHours(); if (n < -12) n += 24; if (n > 14) n -= 24;
+            return n === 0 ? 'Etc/GMT' : `Etc/GMT${n > 0 ? '-' : '+'}${Math.abs(n)}`; };
+          const out = {}, keep = S.team.get('obama');
+          for (const hh of [7, 23]) { S.team.set('obama', { city: 'Testville', tz: zone(hh) });
+            out[hh] = { clock: localTime('obama'), why: whyText(rankFor({ cell: 'f3-c0', who: '' }).find(x => x.m.id === 'obama')) }; }
+          if (keep) S.team.set('obama', keep); else S.team.delete('obama'); return out; })()""")
+        check("night is one rule: at 07:00 there the clock has no ☾ and the owner sheet does not say night; at 23:00 both say night",
+              "☾" not in night["7"]["clock"] and "night" not in night["7"]["why"] and "☾" in night["23"]["clock"] and "night there" in night["23"]["why"], str(night))
+        # The login's cards show each person's city when the cities arrive after the cards are drawn.
+        lc = await ctx7.new_page()
+        lc.on("pageerror", lambda e: errors.append(str(e)))
+        await lc.goto(f"{BASE}/?as=rev3city&late=team:500#f0")
+        await lc.wait_for_selector("#login .login-card", state="visible", timeout=4000)
+        early = await lc.evaluate("S.team.size")
+        await lc.wait_for_timeout(900)
+        zones = await lc.evaluate("Object.fromEntries([...document.querySelectorAll('#login [data-zone]')].map(n => [n.dataset.zone, n.textContent]))")
+        await lc.close()
+        check("the login's cards show each person's city when the cities arrive after the cards",
+              early == 0 and zones == {"vida": "Seoul", "anand": "Chicago", "obama": ""}, f"{early} {zones}")
         # Chat and updates between two people.
         b = await ctx7.new_page()
         b.on("pageerror", lambda e: errors.append(str(e)))
@@ -1237,6 +1983,9 @@ async def main():
         await close_sheet(b)
         await b.wait_for_timeout(300)
         bb = await b.evaluate("requestsForMe().length")
+        # The request is also the newest change to that to-do: the bell counts it once, not twice.
+        bell = [await b.inner_text("#bellBadge"), await b.get_attribute("#bellBtn", "aria-label"), await b.evaluate("document.title")]
+        check("one request counts once on the bell, its label and the tab title", bell == ["1", "For you, 1 new", "(1) CUBIC Best-shot Workspace"], str(bell))
         await b.click("#bellBtn")
         await b.wait_for_timeout(300)
         fy = await b.inner_text("#forYou")
@@ -1265,6 +2014,19 @@ async def main():
         await a.click("#handBody .btn >> text=Decide in chat")
         await a.wait_for_timeout(300)
         check("deciding in chat opens the chat with the question written", await a.evaluate("S.sheet") == "chatSheet" and "A to-do to hand off" in await a.input_value("#chatText"))
+        fit = await a.evaluate("(() => { const t = document.getElementById('chatText'); return [t.scrollHeight, t.clientHeight]; })()")
+        check("the chat box grows to show the whole question, not one line of it", fit[1] > 50 and fit[0] <= fit[1], str(fit))
+        # A message not sent yet stays in the chat box: the question goes after it, and only once.
+        await a.fill("#chatText", "Shall we meet at ten?")
+        for _ in range(2):
+            await close_sheet(a)
+            await a.click(f"#items .who[data-fkey='w:{hid}']")
+            await a.wait_for_timeout(250)
+            await a.click("#handBody .btn >> text=Decide in chat")
+            await a.wait_for_timeout(300)
+        box = await a.input_value("#chatText")
+        check("deciding in chat keeps a message not sent yet and adds the question after it, once",
+              box == "Shall we meet at ten?\n“A to-do to hand off” — who takes this?", box)
         await a.fill("#chatText", "")
         await close_sheet(a)
         await a.evaluate(f"keepIt('{hid}').then(() => askHand('{hid}', 'anand', ''))")
@@ -1289,6 +2051,234 @@ async def main():
         await a.click(f"#items .who[data-fkey='w:{sid}']")
         await a.wait_for_timeout(250)
         check("a request with no answer for 12 hours says so and offers the other person", "no answer for 13 h" in tag and await a.locator("#handBody .btn >> text=Ask Obama").count() == 1, tag)
+        # The request has no note: no stray word in the box, for the asker or the one asked. The one
+        # already asked is marked so (not "Suggested"); the suggestion is the other person, as "Ask Obama" says.
+        sheet = await a.inner_text("#handBody")
+        cards = await a.evaluate("Object.fromEntries([...document.querySelectorAll('#handBody .cand')].map(c => [c.dataset.who, [c.classList.contains('best'), c.disabled, (c.querySelector('.tag') || {}).textContent || '']]))")
+        await b.click(f"#items .who[data-fkey='w:{sid}']")
+        await b.wait_for_timeout(250)
+        asked = await b.inner_text("#handBody")
+        await close_sheet(b)
+        check("a request without a note shows no stray word; the one already asked is marked so, the other one suggested",
+              "null" not in sheet and "null" not in asked and "asks you to take this" in asked
+              and cards == {"anand": [False, True, "Already asked"], "obama": [True, False, "Suggested"]}, f"{cards} {asked[:80]}")
+        # The sheet is not redrawn under the note being typed. When Anand accepts meanwhile, a tap on the
+        # sheet as drawn writes nothing (no request in someone else's name), says so and keeps the note.
+        await a.click("#handBody input")
+        await a.keyboard.type("Can you take it?")
+        await b.click(f"#items .mini[data-fkey='ya:{sid}']")
+        await until(a, f"S.items.get('{sid}').who === 'anand'")
+        await a.click("#handBody .cand[data-who='obama']")
+        await a.wait_for_timeout(400)
+        it = await a.evaluate(f"S.items.get('{sid}')")
+        check("a tap on an owner sheet drawn before a teammate's answer writes nothing, says so and keeps the typed note",
+              it["who"] == "anand" and not it.get("ask") and "changed meanwhile" in await a.inner_text("#handBody")
+              and await a.input_value("#handBody input") == "Can you take it?", f"{it.get('who')} {it.get('ask')}")
+        await close_sheet(a)
+        # Once the keyboard is closed the sheet follows the data again, and what was typed stays.
+        await a.fill("#newText", "A note to keep")
+        await a.press("#newText", "Enter")
+        await a.wait_for_timeout(300)
+        nid = await a.evaluate("[...S.items.values()].find(i => i.text === 'A note to keep').id")
+        await a.click(f"#items .who[data-fkey='w:{nid}']")
+        await a.wait_for_timeout(250)
+        await a.fill("#handBody input", "You know the API well")
+        await a.evaluate("document.querySelector('#handBody input').dataset.old = '1'; document.activeElement.blur()")
+        await o.evaluate("addItem('A change elsewhere', 'f3-c0')")
+        redrawn = await until(a, "!document.querySelector('#handBody input').dataset.old", 3000)
+        check("a note typed in the owner sheet survives a teammate's change after the keyboard closes",
+              redrawn and await a.input_value("#handBody input") == "You know the API well", str(redrawn))
+        await close_sheet(a)
+        # Offers. Obama offers to take a Pilots to-do (Anand's). Vida, the third person, reads who offered
+        # and cannot replace it; Anand answers it first and no note field of his holds Obama's words;
+        # Obama's other account sees the offer as his. Anand accepts: the words say it went to Obama.
+        for pg in (a, b, o):
+            await pg.evaluate("openKey('f0-c2')")
+        await a.fill("#newText", "An offer to accept")
+        await a.press("#newText", "Enter")
+        await a.wait_for_timeout(300)
+        xid = await a.evaluate("[...S.items.values()].find(i => i.text === 'An offer to accept').id")
+        await o.wait_for_timeout(200)
+        await o.click(f"#items .who[data-fkey='w:{xid}']")
+        await o.wait_for_timeout(250)
+        await o.fill("#handBody input", "I know their team")
+        await o.click("#handBody .btn >> text=I’ll do it")
+        await until(a, f"!!askOf(S.items.get('{xid}'))")
+        await until(b, f"!!askOf(S.items.get('{xid}'))")
+        vtag = await a.inner_text(f"#items li:has([data-fkey='w:{xid}']) .flow-tag.ask-out")
+        check("a third person reads who offered, not “Your offer”", vtag.startswith("→ Obama offered: Anand decides") and "Your offer" not in vtag, vtag)
+        await a.click(f"#items .who[data-fkey='w:{xid}']")
+        await a.wait_for_timeout(250)
+        vs = await a.inner_text("#handBody")
+        again = await a.evaluate(f"askHand('{xid}', 'vida', '')")
+        await close_sheet(a)
+        ask = await a.evaluate(f"askOf(S.items.get('{xid}'))")
+        check("while Obama's offer is open nobody else replaces it: the sheet says who is waiting",
+              "Obama is already waiting for an answer." in vs and "I’ll do it" not in vs and again is False and ask["give"] == "obama" and ask["note"] == "I know their team", f"{again} {ask} {vs[:120]}")
+        await b.click(f"#items .who[data-fkey='w:{xid}']")
+        await b.wait_for_timeout(250)
+        notes = await b.evaluate("[...document.querySelectorAll('#handBody input')].map(n => n.value)")
+        bs = await b.inner_text("#handBody")
+        await close_sheet(b)
+        check("the owner answers the offer first; no note field of his holds the offerer's words", "Obama offers to take this" in bs and "I know their team" not in notes, str(notes))
+        o2 = await ctx7.new_page()
+        o2.on("pageerror", lambda e: errors.append(str(e)))
+        await o2.goto(f"{BASE}/?as=rev3o2#f0-c2")
+        await o2.wait_for_timeout(700)
+        await login(o2, "Obama")
+        await o2.wait_for_timeout(300)
+        otag = await o2.inner_text(f"#items li:has([data-fkey='w:{xid}']) .flow-tag.ask-out")
+        await o2.click(f"#items .who[data-fkey='w:{xid}']")
+        await o2.wait_for_timeout(250)
+        check("on his other account Obama sees the offer as his and can take it back",
+              otag.startswith("→ Your offer: Anand decides") and await o2.locator("#handBody .btn >> text=Take back").count() == 1, otag)
+        await o2.close()
+        await b.click(f"#items .mini[data-fkey='ya:{xid}']")
+        await b.wait_for_timeout(400)
+        await until(a, f"S.items.get('{xid}').who === 'obama'")
+        await until(o, f"S.items.get('{xid}').who === 'obama'")
+        btoast = await b.inner_text("#toastText")
+        lines = [await a.evaluate(f"updLine(S.items.get('{xid}'))"), await o.evaluate(f"updLine(S.items.get('{xid}'))")]
+        check("an accepted offer goes to the one who offered, and the words say so",
+              await b.evaluate(f"S.items.get('{xid}').who") == "obama" and btoast == "Given to Obama."
+              and lines == ["Anand gave “An offer to accept” to Obama", "Anand accepted your offer: “An offer to accept”"], f"{btoast} {lines}")
+        # Anand asks Vida, who declines; then Obama offers and Anand declines. Only Obama reads the "no"
+        # to his offer, and his OK puts it away without wiping who declined before.
+        await a.fill("#newText", "An offer to decline")
+        await a.press("#newText", "Enter")
+        await a.wait_for_timeout(300)
+        yid = await a.evaluate("[...S.items.values()].find(i => i.text === 'An offer to decline').id")
+        await b.evaluate(f"askHand('{yid}', 'vida', '')")
+        await until(a, f"answersMe(S.items.get('{yid}'))")
+        await a.evaluate(f"answerHand('{yid}', false)")
+        await until(o, f"nopeOf(S.items.get('{yid}')).includes('vida') && !askOf(S.items.get('{yid}'))")
+        await o.click(f"#items .who[data-fkey='w:{yid}']")
+        await o.wait_for_timeout(250)
+        await o.click("#handBody .btn >> text=I’ll do it")
+        await o.wait_for_timeout(400)
+        await b.click(f"#items .mini[data-fkey='na:{yid}']")
+        await b.wait_for_timeout(400)
+        await until(o, f"!!S.items.get('{yid}').declined")
+        brow = await b.inner_text(f"#items li:has([data-fkey='w:{yid}']) .item-main")
+        await b.click("#bellBtn")
+        await b.wait_for_timeout(300)
+        bfy = (await b.inner_text("#forYou")).upper()
+        await close_sheet(b)
+        orow = await o.inner_text(f"#items li:has([data-fkey='w:{yid}']) .item-main")
+        check("the owner who declined an offer does not read “said no to your offer”; the one who offered does",
+              "said no" not in brow and "YOUR REQUESTS" not in bfy and "✕ Anand said no to your offer" in orow, f"{brow} | {orow}")
+        await o.click(f"#items li:has([data-fkey='w:{yid}']) .flow-tag.ask-no")
+        await o.wait_for_timeout(250)
+        obtns = await o.locator("#handBody .ask-box .btn").all_inner_texts()
+        await o.click("#handBody .ask-box .btn >> nth=0")
+        await o.wait_for_timeout(400)
+        it = await o.evaluate(f"S.items.get('{yid}')")
+        check("the one whose offer was declined gets OK, not Keep it, and it keeps who declined before",
+              obtns == ["OK"] and not it.get("declined") and it.get("nope") == ["vida"] and it["who"] == "anand", f"{obtns} {it.get('nope')}")
+        # Toasts say what happened, not the words of the button.
+        await b.fill("#newText", "Toast words")
+        await b.press("#newText", "Enter")
+        await b.wait_for_timeout(300)
+        tid = await b.evaluate("[...S.items.values()].find(i => i.text === 'Toast words').id")
+        await b.evaluate(f"askHand('{tid}', 'vida', '')")
+        toasts = []
+        for button in ("Take back", "Leave it with nobody", "Keep it"):
+            if button == "Keep it":
+                await b.evaluate(f"takeIt('{tid}').then(() => askHand('{tid}', 'vida', ''))")
+                await until(a, f"answersMe(S.items.get('{tid}'))")
+                await a.evaluate(f"answerHand('{tid}', false)")
+                await until(b, f"declinedForMe(S.items.get('{tid}'))")
+            await b.wait_for_timeout(400)
+            await b.click(f"#items .who[data-fkey='w:{tid}']")
+            await b.wait_for_timeout(250)
+            await b.click(f"#handBody .btn >> text={button}")
+            await b.wait_for_timeout(400)
+            toasts.append(await b.inner_text("#toastText"))
+        check("toasts say what happened, not the words of the button", toasts == ["Request taken back.", "It has no owner now.", "It stays with you."], str(toasts))
+        # Ticking a to-do ends its request: reopening it does not bring the old request back.
+        await b.fill("#newText", "Ticked with a request")
+        await b.press("#newText", "Enter")
+        await b.wait_for_timeout(300)
+        kid = await b.evaluate("[...S.items.values()].find(i => i.text === 'Ticked with a request').id")
+        await b.evaluate(f"askHand('{kid}', 'obama', '')")
+        had = await until(o, f"requestsForMe().some(i => i.id === '{kid}')")
+        await b.click(f"#items input[data-fkey='c:{kid}']")
+        await until(b, f"S.items.get('{kid}').done")
+        await b.wait_for_timeout(300)
+        await b.click(f"#items input[data-fkey='c:{kid}']")
+        await until(o, f"!S.items.get('{kid}').done")
+        check("ticking a to-do ends its request; reopening it does not bring the old one back",
+              had and await o.evaluate(f"!S.items.get('{kid}').done && !S.items.get('{kid}').ask && requestsForMe().every(i => i.id !== '{kid}')"))
+        # Keyboard. Focus stays on a person in the owner sheet through a teammate's change, and Enter there
+        # puts it back on the row's owner. In For you (the same Accept sits on the row under it) a
+        # teammate's change and the 15 s tick keep focus on Accept; once answered, focus moves on in the
+        # sheet. Answering on a row keeps focus in that row.
+        await b.fill("#newText", "Asked by keyboard")
+        await b.press("#newText", "Enter")
+        await b.wait_for_timeout(300)
+        fid = await b.evaluate("[...S.items.values()].find(i => i.text === 'Asked by keyboard').id")
+        await b.focus(f"#items .who[data-fkey='w:{fid}']")
+        await b.keyboard.press("Enter")
+        await b.wait_for_timeout(250)
+        await b.focus("#handBody .cand[data-who='obama']")
+        await a.evaluate("addItem('One more change elsewhere', 'f3-c0')")
+        await until(b, "[...S.items.values()].some(i => i.text === 'One more change elsewhere')")
+        await b.wait_for_timeout(200)
+        kept = await b.evaluate("document.activeElement.dataset.fkey || document.activeElement.tagName")
+        await b.keyboard.press("Enter")
+        await b.wait_for_timeout(400)
+        back = await b.evaluate("[S.sheet, document.activeElement.dataset.fkey || document.activeElement.tagName]")
+        check("keyboard: focus stays on a person in the owner sheet through a teammate's change, and after Enter is back on the row's owner",
+              kept == "hc:obama" and back == [None, f"w:{fid}"], f"{kept} {back}")
+        await until(o, f"requestsForMe().some(i => i.id === '{fid}')")
+        await o.click("#bellBtn")
+        await o.wait_for_timeout(300)
+        focused = "document.activeElement.dataset.fkey || document.activeElement.tagName"
+        await o.focus(f"#forYou .open[data-fkey='fyi:{fid}']")
+        await a.evaluate("addItem('A change while on its name', 'f3-c0')")
+        await until(o, "[...S.items.values()].some(i => i.text === 'A change while on its name')")
+        await o.wait_for_timeout(200)
+        k0 = await o.evaluate(focused)
+        await o.focus(f"#forYou .mini[data-fkey='ya:{fid}']")
+        await a.evaluate("addItem('Yet another change elsewhere', 'f3-c0')")
+        await until(o, "[...S.items.values()].some(i => i.text === 'Yet another change elsewhere')")
+        await o.wait_for_timeout(200)
+        k1 = await o.evaluate(focused)
+        await o.wait_for_timeout(15500)
+        k2 = await o.evaluate(focused)
+        await o.keyboard.press("Enter")
+        await o.wait_for_timeout(400)
+        k3 = await o.evaluate("[S.sheet, document.activeElement.className || document.activeElement.tagName]")
+        check("keyboard: in For you focus stays put through a teammate's change and the 15 s tick, then moves on in the sheet",
+              k0 == f"fyi:{fid}" and k1 == k2 == f"ya:{fid}" and k3 == ["updatesSheet", "x-btn"] and await o.evaluate(f"S.items.get('{fid}').who") == "obama", f"{k0} {k1} {k2} {k3}")
+        await close_sheet(o)
+        await b.fill("#newText", "Answered on its row")
+        await b.press("#newText", "Enter")
+        await b.wait_for_timeout(300)
+        gid = await b.evaluate("[...S.items.values()].find(i => i.text === 'Answered on its row').id")
+        await b.evaluate(f"askHand('{gid}', 'obama', '')")
+        await b.fill("#newText", "A newer row above it")
+        await b.press("#newText", "Enter")
+        await until(o, "[...document.querySelectorAll('#items .item-text')].some(n => n.textContent === 'A newer row above it')")
+        await o.focus(f"#items .mini[data-fkey='ya:{gid}']")
+        await o.keyboard.press("Enter")
+        await o.wait_for_timeout(400)
+        check("keyboard: answering on a row keeps focus in that row", await o.evaluate("document.activeElement.dataset.fkey") == f"c:{gid}",
+              await o.evaluate("document.activeElement.dataset.fkey"))
+        # A viewer who can only read sees a request to them in words, without buttons that would do nothing.
+        await b.fill("#newText", "Asked while read-only")
+        await b.press("#newText", "Enter")
+        await b.wait_for_timeout(300)
+        rid = await b.evaluate("[...S.items.values()].find(i => i.text === 'Asked while read-only').id")
+        await b.evaluate(f"askHand('{rid}', 'obama', '')")
+        ro7 = await ctx7.new_page()
+        ro7.on("pageerror", lambda e: errors.append(str(e)))
+        await ro7.goto(f"{BASE}/?as=rev3o&readonly=1#f0-c2")
+        await ro7.wait_for_timeout(800)
+        rrow = await ro7.inner_text(f"#items li:has([data-fkey='w:{rid}']) .item-main")
+        check("a read-only viewer reads a request to them but gets no Accept or Decline",
+              await ro7.evaluate("S.canWrite") is False and "Anand asks you to take this" in rrow and await ro7.locator("#items .mini").count() == 0, rrow)
+        await ro7.close()
         await close_sheet(a)
         # Do next: my to-dos that can start now, the nearest milestone first, then what unblocks more.
         order = await a.evaluate("""(async () => { const c = S.db.collection('items'), md = d => { const x = new Date(Date.now() + d * 86400000); return `${x.getMonth() + 1}/${x.getDate()}`; };
@@ -1318,6 +2308,412 @@ async def main():
         await r.wait_for_timeout(400)
         check("a refused update on a to-do that exists turns the page read-only", await r.evaluate("S.canWrite") is False and "only read" in await r.inner_text("#notice"))
         await r.close()
+        # The host names no account (nothing is written on opening): the first refused write is an edit.
+        # The page turns read-only, the edit box stays open with its text and says it was not saved, and
+        # the status line says why (never "try again").
+        r = await ctx7.new_page()
+        r.on("pageerror", lambda e: errors.append(str(e)))
+        await r.add_init_script("""Object.defineProperty(window, 'claude', { configurable: true, get() { return undefined; },
+            set(v) { const use = v.use; v.use = async k => (k === 'user' ? null : use(k)); Object.defineProperty(window, 'claude', { value: v, writable: true, configurable: true }); } })""")
+        await r.goto(f"{BASE}/?refuse=1#f2-c1")
+        await r.wait_for_timeout(900)
+        await r.click("#items .item-text >> nth=0")
+        await r.fill("#area .edit-row input", "Typed by a viewer who may only read")
+        await r.keyboard.press("Enter")
+        await r.wait_for_timeout(700)
+        kept = [await r.evaluate("S.canWrite"), await r.evaluate("(document.querySelector('[data-editing] input') || {}).value || null"),
+                await r.evaluate("(document.querySelector('[data-editing] .err') || {}).textContent || null"), await r.inner_text("#sync"), "only read" in await r.inner_text("#notice")]
+        await r.close()
+        check("a refused edit turns the page read-only, keeps the open edit box with its text, and the status line says why, not “try again”",
+              kept == [False, "Typed by a viewer who may only read", "Could not save. Your text is still here.", "Not saved: this copy is read-only.", True], str(kept))
+
+        # Chat, updates and the bell, in a workspace of their own: a viewer who cannot write is told so;
+        # a chat, city or seen read that fails turns off only itself; a first visit stores where it starts;
+        # a message goes once; the chat's live line reads only what came in; no mark moves past now; an
+        # imported line reads as added by the importer; updates group by space; focus and a screen reader's
+        # place survive the tick and a teammate's change.
+        ctx9 = await b7.new_context(viewport={"width": 390, "height": 844})
+
+        async def open9(url, wait=800):
+            pg = await ctx9.new_page()
+            pg.on("pageerror", lambda e: errors.append(str(e)))
+            await pg.goto(f"{BASE}/{url}")
+            await pg.wait_for_timeout(wait)
+            return pg
+        shown = "(id => { const n = document.getElementById(id); return n && !n.hidden ? n.textContent : null; })"
+        v9 = await open9("?reset=1&as=cb9v#f2-c1")
+        await login(v9, "Vida")
+        n9 = await open9("?as=cb9a#f2-c1")
+        await login(n9, "Anand")
+        # A viewer who can only read: the chat says so, with no box and no "write the first one"; the menu
+        # says so instead of asking for a name it cannot take.
+        r9 = await open9("?readonly=1&as=cb9r#f2-c1", 900)
+        await r9.click("#chatBtn")
+        await r9.wait_for_timeout(300)
+        rchat = [await r9.locator("#chatForm").is_visible(), await r9.inner_text("#chatList"), await r9.evaluate(f"{shown}('chatRo')")]
+        await close_sheet(r9)
+        await menu(r9)
+        rmenu = [await r9.inner_text("#meWho"), await r9.evaluate(f"{shown}('meRo')")]
+        await r9.close()
+        ro_line = "You can only read here. Ask the owner for Contributor access."
+        check("a read-only viewer's chat says they can only read: no box to write in, no “write the first one”",
+              rchat == [False, "No messages yet.", ro_line], str(rchat))
+        check("a read-only viewer's menu says they can only read, not “Pick your name”", rmenu == ["You", ro_line], str(rmenu))
+        # A message refused as this viewer's first write (?refuse=1; no timer was started) stays on screen
+        # to copy, without a Send button, and the chat says why.
+        await v9.evaluate("""(async () => { await S.db.doc('people/cb9z').set({ who: 'obama', at: 1 });
+          await S.db.doc('clock/cb9z').set({ days: {}, openSince: null, openCell: null, leftAt: null, paused: true, pausedAt: Date.now() }); })()""")
+        z9 = await open9("?refuse=1&as=cb9z#f0", 900)
+        writable = await z9.evaluate("S.canWrite")
+        await z9.click("#chatBtn")
+        await z9.fill("#chatText", "Typed before it turned read-only")
+        await z9.keyboard.press("Enter")
+        await z9.wait_for_timeout(500)
+        kept = [await z9.evaluate("S.canWrite"), await z9.locator("#chatText").is_visible(), await z9.input_value("#chatText"),
+                await z9.locator("#chatSend").is_visible(), await z9.evaluate(f"{shown}('chatErr')"), await z9.evaluate(f"{shown}('chatRo')")]
+        await z9.close()
+        check("a message refused as a viewer's first write stays on screen, with no Send, and the chat says why",
+              writable is True and kept == [False, True, "Typed before it turned read-only", False, "Not sent: this copy is read-only.", ro_line], str(kept))
+        # Sent before the data has loaded: "still loading" goes once it has.
+        await v9.evaluate("S.db.doc('people/cb9l').set({ who: 'vida', at: 1 })")
+        l9 = await open9("?as=cb9l&late=items:3000#f0", 300)
+        await l9.evaluate("openSheet('chatSheet')")
+        await l9.fill("#chatText", "Typed early")
+        await l9.keyboard.press("Enter")
+        early = await l9.evaluate(f"{shown}('chatErr')")
+        loaded = await until(l9, "S.loaded", 6000)
+        await l9.wait_for_timeout(200)
+        later = await l9.evaluate(f"{shown}('chatErr')")
+        await l9.close()
+        check("the chat's “still loading” line goes once the data has loaded", loaded and (early or "").startswith("The data is still loading") and later is None, f"{early} | {later}")
+        # The chat, the cities and the seen marks cannot be read (resource_exhausted, as for a query that
+        # reads too much): no page-wide "connection lost", to-dos still save, the chat says it could not
+        # load and offers no box, and no city is offered (a pick would write over one not seen).
+        f9 = await ctx9.new_page()
+        f9.on("pageerror", lambda e: errors.append(str(e)))
+        await f9.add_init_script("""(() => { let real; Object.defineProperty(window, 'claude', { configurable: true, get: () => real, set: v => {
+          const use = v.use; real = { ...v, use: async name => { const x = await use(name); if (name !== 'db' || !x) return x;
+            const col = x.collection, broken = () => ({ orderBy: broken, limit: broken, onSnapshot: (cb, err) => { setTimeout(() => err && err({ code: 'resource_exhausted', message: 'too many' }), 50); return () => {}; } });
+            return { ...x, collection: p => (['chat', 'team', 'seen'].includes(p) ? { ...col(p), ...broken() } : col(p)) }; } }; } }); })()""")
+        await f9.goto(f"{BASE}/?as=cb9f#f2-c1")
+        await f9.wait_for_timeout(900)
+        if await f9.locator("#login").is_visible():
+            await f9.click("#login .login-foot .btn")
+        await f9.fill("#newText", "Saved while the chat is down")
+        await f9.press("#newText", "Enter")
+        await f9.wait_for_timeout(300)
+        down = [await f9.evaluate(f"{shown}('notice')"), await f9.inner_text("#sync")]
+        await f9.click("#chatBtn")
+        await f9.wait_for_timeout(300)
+        down += [await f9.locator("#chatForm").is_visible(), await f9.evaluate(f"{shown}('chatRo')")]
+        await close_sheet(f9)
+        await menu(f9)
+        down.append(await f9.locator("#team button.city").count())
+        await f9.close()
+        check("a chat, city or seen read that fails turns off only that part: no “connection lost”, to-dos save, the chat says it could not load",
+              down == [None, "Saved", False, "The chat could not load.", 0], str(down))
+        # A first visit stores where it starts: a message sent while the page was closed counts on return,
+        # also after a reload (the person only read the chat, never opened the bell).
+        await n9.click("#chatBtn")
+        await n9.fill("#chatText", "Morning, all")
+        await n9.keyboard.press("Enter")
+        await n9.wait_for_timeout(300)
+        await close_sheet(n9)
+        o9 = await open9("?as=cb9o#f0")
+        await login(o9, "Obama")
+        await o9.click("#chatBtn")
+        await o9.wait_for_timeout(300)
+        await o9.evaluate("closeSheets()")
+        await o9.close()
+        await n9.click("#chatBtn")
+        await n9.fill("#chatText", "Obama, shall we meet at three?")
+        await n9.keyboard.press("Enter")
+        await n9.wait_for_timeout(300)
+        await close_sheet(n9)
+        o9 = await open9("?as=cb9o#f0", 1000)
+        badge = "(() => { const b = document.getElementById('chatBadge'); return [b.hidden ? null : b.textContent, document.title]; })()"
+        back = await o9.evaluate(badge)
+        await o9.reload()
+        await o9.wait_for_timeout(1000)
+        again = await o9.evaluate(badge)
+        await o9.close()
+        check("a first visit stores where it starts: a message sent while the page was closed counts on return, and after a reload",
+              back == again == ["1", "(1) CUBIC Best-shot Workspace"], f"{back} {again}")
+        # Enter twice while a message is still on its way (a slow line): it is sent once.
+        await n9.evaluate("""(() => { const d = S.db.doc; window.__doc = d;
+          S.db.doc = p => { const x = d(p); if (!p.startsWith('chat/')) return x; const set = x.set; return { ...x, set: v => new Promise(r => setTimeout(r, 800)).then(() => set(v)) }; }; })()""")
+        await n9.click("#chatBtn")
+        await n9.fill("#chatText", "Sent once, on a slow line")
+        await n9.keyboard.press("Enter")
+        await n9.wait_for_timeout(150)
+        await n9.keyboard.press("Enter")
+        await n9.wait_for_timeout(1500)
+        once = await n9.evaluate("S.chat.filter(m => m.text === 'Sent once, on a slow line').length")
+        await n9.evaluate("(() => { S.db.doc = window.__doc; })()")
+        check("pressing Enter twice while a message is still sending sends it once", once == 1, str(once))
+        # With the chat open, a screen reader hears only a message that just came in: the list itself is
+        # no live region, and the person's own message is not read out.
+        await v9.click("#chatBtn")
+        await v9.wait_for_timeout(300)
+        await n9.fill("#chatText", "A line for the reader")
+        await n9.keyboard.press("Enter")
+        await until(v9, "S.chat.some(m => m.text === 'A line for the reader')")
+        await v9.wait_for_timeout(200)
+        heard = await v9.evaluate("(document.getElementById('chatLive') || {}).textContent")
+        await v9.fill("#chatText", "My own line")
+        await v9.keyboard.press("Enter")
+        await v9.wait_for_timeout(400)
+        heard2 = await v9.evaluate("(document.getElementById('chatLive') || {}).textContent")
+        check("the chat list is no live region: a screen reader hears only a message that just came in",
+              heard == "Anand: A line for the reader" and heard2 == heard and await v9.get_attribute("#chatList", "aria-live") is None, f"{heard} | {heard2}")
+        # The name and time on your own messages: plain white on the accent, 4.5:1 in both themes.
+        own = []
+        for scheme in ("light", "dark"):
+            await v9.emulate_media(color_scheme=scheme)
+            own.append(await v9.evaluate("(() => { " + RATIO + """ const s = document.querySelector('.msg.mine .bubble small'), cs = getComputedStyle(s), op = +cs.opacity;
+              const bg = getComputedStyle(s.closest('.bubble')).backgroundColor, f = cs.color.match(/[\\d.]+/g).map(Number), k = bg.match(/[\\d.]+/g).map(Number);
+              return ratio(`rgb(${f[0] * op + k[0] * (1 - op)}, ${f[1] * op + k[1] * (1 - op)}, ${f[2] * op + k[2] * (1 - op)})`, bg); })()"""))
+        await v9.emulate_media(color_scheme="light")
+        check("the name and time on your own chat messages pass 4.5:1 in both themes", min(own) >= 4.5, str([round(x, 2) for x in own]))
+        await close_sheet(v9)
+        await close_sheet(n9)
+        # A message dated tomorrow (a phone with a wrong date) does not move the seen mark past now, so a
+        # message sent after it still counts; the one from tomorrow, read, no longer does.
+        await v9.evaluate("S.db.doc('chat/cb9ahead').set({ by: 'cb9x', text: 'From a phone a day ahead', at: Date.now() + 86400000 })")
+        await v9.wait_for_timeout(300)
+        await v9.click("#chatBtn")
+        await v9.wait_for_timeout(300)
+        await v9.evaluate("closeSheets()")
+        ahead = await v9.evaluate("S.seen.chat - Date.now()")
+        await n9.click("#chatBtn")
+        await n9.fill("#chatText", "A real line, sent now")
+        await n9.keyboard.press("Enter")
+        await until(v9, "S.chat.some(m => m.text === 'A real line, sent now')")
+        await v9.wait_for_timeout(200)
+        counted = await v9.evaluate("(() => { const b = document.getElementById('chatBadge'); return b.hidden ? null : b.textContent; })()")
+        await close_sheet(n9)
+        check("a message dated tomorrow does not move the seen mark past now; a message sent later still counts, the one from tomorrow (read) does not",
+              ahead <= 0 and counted == "1", f"{round(ahead / 3600000, 1)} h, chat badge {counted}")
+
+        # Phones with a wrong date, in a workspace of their own (made-up data written to the dev store
+        # before the pages open). A teammate's message and tick dated a day ahead count until read, then
+        # no more: in the chat badge, on the bell and in the title, after a reload too, and the open chat
+        # writes no mark again and again. A message 20 s ahead, read in the open chat, is read. A mark
+        # stored a day ahead (as an earlier version stored it) no longer hides new messages, and the next
+        # look stores one that is not ahead. A phone a day ahead stores no mark ahead, so on the right date
+        # a teammate's change made now counts. The first mark goes through markSeen(), as every mark does.
+        DAY = 86400000
+        ctxw = await b7.new_context(viewport={"width": 390, "height": 844})
+        seed = await ctxw.new_page()
+        await seed.goto(f"{BASE}/dev/fake-claude.js")
+        dev = "JSON.parse(localStorage.getItem('cubic-dev-db') || '{}')"
+
+        async def put(docs, fresh=False):
+            """Write documents to the dev store (None deletes one); the open pages hear it."""
+            await seed.evaluate("""([d, fresh]) => { const db = fresh ? {} : JSON.parse(localStorage.getItem('cubic-dev-db') || '{}');
+                for (const [k, v] of Object.entries(d)) { if (v === null) delete db[k]; else db[k] = v; } localStorage.setItem('cubic-dev-db', JSON.stringify(db)); }""", [docs, fresh])
+
+        async def mark_of(uid):
+            return await seed.evaluate(f"{dev}['seen/{uid}'] || null")
+
+        def tick(k, who, when, **more):
+            """A to-do changed last by `who` at `when` (made at `when` unless `at` says otherwise)."""
+            return {"cell": "f2-c1", "text": f"A made-up to-do {k}", "who": "", "done": False, "deps": [], "url": "", "by": who, "at": when, "editedBy": who, "editedAt": when, "act": "add", **more}
+
+        async def reader(uid, ahead=0, h="f0"):
+            pg = await ctxw.new_page()
+            pg.on("pageerror", lambda e: errors.append(str(e)))
+            if ahead:
+                await pg.add_init_script("""(() => { const off = %d, RD = Date, now = RD.now.bind(RD);
+                    class FD extends RD { constructor(...a) { if (a.length) super(...a); else super(now() + off); } static now() { return now() + off; } }
+                    window.Date = FD; })()""" % ahead)
+            await pg.goto(f"{BASE}/?as={uid}#{h}")
+            await until(pg, "S.loaded && S.seenReady && S.chatReady && S.peopleReady", 6000)
+            await pg.wait_for_timeout(300)
+            return pg
+        counts = """(() => { const b = id => { const n = document.getElementById(id); return n.hidden ? null : n.textContent; };
+            return [b('bellBadge'), b('chatBadge'), /^\\(\\d+\\)/.test(document.title)]; })()"""
+        now = int(time.time() * 1000)
+        people = {f"people/{u}": {"who": w, "at": now - 5 * DAY} for u, w in (("wdv", "vida"), ("wda", "anand"), ("wdo", "obama"))}
+        await put({**people, "seen/wdv": {"updates": now - 3600000, "chat": now - 3600000},
+                   "items/wd1": tick(1, "wda", now + DAY, done=True, act="done", at=now - 7200000),
+                   "chat/wdm1": {"by": "wda", "text": "A made-up line from a phone a day ahead", "at": now + DAY}}, fresh=True)
+        v = await reader("wdv")
+        a = [await v.evaluate(counts)]
+        await v.click("#chatBtn")
+        await v.wait_for_timeout(300)
+        await v.evaluate("""(() => { window.__marks = 0; const w = window.dbWrite; window.dbWrite = (p, ...x) => { if (p.startsWith('seen/')) window.__marks += 1; return w(p, ...x); }; })()""")
+        await v.evaluate("S.db.doc('chat/wdm0').set({ by: 'wdv', text: 'A made-up line of my own', at: Date.now() })")
+        await v.wait_for_timeout(1500)
+        marks = await v.evaluate("window.__marks")
+        await v.click("#chatSheet [data-close]")
+        await v.wait_for_timeout(200)
+        a.append(await v.evaluate(counts))
+        await v.click("#bellBtn")
+        await v.wait_for_timeout(300)
+        row = await v.inner_text("#updList")
+        await v.click("#updatesSheet [data-close]")
+        await v.wait_for_timeout(200)
+        a.append(await v.evaluate(counts))
+        await v.reload()
+        await until(v, "S.loaded && S.seenReady && S.chatReady", 6000)
+        await v.wait_for_timeout(300)
+        a.append(await v.evaluate(counts))
+        check("a message and a change dated a day ahead count until read, then no more (chat, bell, title), also after a reload; the open chat writes no marks again and again",
+              a == [["1", "1", True], ["1", None, True], [None, None, False], [None, None, False]] and "New" in row and marks <= 1, f"{a} {marks} {row[:60]!r}")
+        # 20 s ahead, read in the open chat.
+        await v.click("#chatBtn")
+        await v.wait_for_timeout(300)
+        await put({"chat/wdm2": {"by": "wda", "text": "A made-up line from a phone 20 s fast", "at": int(time.time() * 1000) + 20000}})
+        await until(v, "S.chat.some(m => m.id === 'wdm2')", 3000)
+        await v.wait_for_timeout(300)
+        await v.click("#chatSheet [data-close]")
+        await v.wait_for_timeout(200)
+        fast = await v.evaluate(counts)
+        await v.close()
+        check("a message from a phone 20 s fast, read in the open chat, no longer counts once the chat closes", fast == [None, None, False], str(fast))
+        # A chat mark stored a day ahead (the rest as it was): two real messages count; reading stores a
+        # mark that is not ahead.
+        now = int(time.time() * 1000)
+        await put({"items/wd1": None, "seen/wdv": {**await mark_of("wdv"), "chat": now + DAY}, "chat/wdm3": {"by": "wda", "text": "Another made-up line from tomorrow", "at": now + DAY - 60000}})
+        v = await reader("wdv")
+        b = [await v.evaluate(counts)]
+        for k in (4, 5):
+            await put({f"chat/wdm{k}": {"by": "wdo", "text": f"A made-up line sent now {k}", "at": int(time.time() * 1000)}})
+            await v.wait_for_timeout(300)
+        b.append(await v.evaluate(counts))
+        await v.click("#chatBtn")
+        await v.wait_for_timeout(300)
+        await v.click("#chatSheet [data-close]")
+        await v.wait_for_timeout(300)
+        stored = await mark_of("wdv")
+        b.append(stored["chat"] <= int(time.time() * 1000))
+        await v.close()
+        check("a seen mark stored a day ahead no longer hides new messages, and the next look stores a mark that is not ahead",
+              b == [[None, None, False], [None, "2", True], True], f"{b} {stored}")
+        # A phone a day ahead opens Updates: the mark it stores is not ahead; on the right date (the
+        # laptop) a teammate's change made now counts.
+        now = int(time.time() * 1000)
+        await put({"seen/wdv": {**await mark_of("wdv"), "updates": now - 3600000}, "items/wd2": tick(2, "wda", now - 1800000)})
+        f = await reader("wdv", ahead=DAY)
+        await f.click("#bellBtn")
+        await f.wait_for_timeout(300)
+        await f.click("#updatesSheet [data-close]")
+        await f.wait_for_timeout(300)
+        await f.close()
+        stored = await mark_of("wdv")
+        lap = await reader("wdv", h="f2-c1")
+        await put({"items/wd2": tick(2, "wda", int(time.time() * 1000), done=True, act="done", at=now - 1800000)})
+        await until(lap, "!!(S.items.get('wd2') || {}).done", 3000)
+        await lap.wait_for_timeout(200)
+        c = [stored["updates"] <= int(time.time() * 1000), await lap.evaluate(counts)]
+        await lap.close()
+        check("a phone a day ahead stores no seen mark ahead, so on the right date a teammate's change made now counts",
+              c == [True, ["1", None, True]], f"{c} {stored}")
+        # A first visit: the mark is written through markSeen() (the only place that writes seen/), from
+        # where the visit began, for both counts.
+        src = (ROOT / "index.html").read_text(encoding="utf-8")
+        writes = [m.start() for m in re.finditer(r"dbWrite\(`seen/", src)]
+        inside = bool(writes) and all(src.rfind("\nfunction ", 0, w) == src.find("\nfunction markSeen(") for w in writes)
+        first = await reader("wdn")
+        mark = await mark_of("wdn")
+        base = await first.evaluate("S.seenBase")
+        await first.close()
+        check("a first visit's seen mark goes through markSeen(), the only place that writes one, and starts both counts where the visit began",
+              len(writes) == 1 and inside and mark and mark.get("updates") == base and mark.get("chat") == base and isinstance(mark.get("ahead"), dict), f"{len(writes)} {inside} {mark} {base}")
+        await ctxw.close()
+        # A plain CSV import: the lines read as added by the one importing them, are not news to her, keep
+        # their times, and do not come back as news on every later change.
+        for pg in (v9, n9):
+            await pg.click("#bellBtn")
+            await pg.wait_for_timeout(200)
+            await close_sheet(pg)
+        await open_data(v9)
+        await v9.fill("#importText", "cell,text\nf2-c1,Imported line one\nf2-c1,Imported line two\n")
+        await v9.click("#importCheck")
+        await v9.wait_for_timeout(200)
+        await v9.click("#importPlan .btn >> text=Import (")
+        await v9.wait_for_timeout(500)
+        await close_sheet(v9)
+        mine9 = await v9.evaluate("updates().filter(i => i.text.startsWith('Imported line')).length")
+        theirs = await n9.evaluate("updates().filter(i => i.text.startsWith('Imported line')).map(updLine).sort()")
+        times = await v9.evaluate("[...S.items.values()].filter(i => i.text.startsWith('Imported line')).map(i => i.editedAt || 0)")
+        hide_ping = "document.getElementById('ping').hidden = true"
+        ping_text = "(() => { const p = document.getElementById('ping'); return p.hidden ? null : p.innerText.replace(/\\n/g, ' '); })()"
+        await v9.evaluate(hide_ping)
+        await n9.evaluate(hide_ping)
+        await v9.fill("#newText", "Typed after the import")
+        await v9.press("#newText", "Enter")
+        await until(n9, "[...S.items.values()].some(i => i.text === 'Typed after the import')")
+        await n9.wait_for_timeout(200)
+        pings = [await v9.evaluate(ping_text), await n9.evaluate(ping_text)]
+        check("an imported CSV line reads as added by the one importing it, is not news to her, keeps its times, and is not news again later",
+              mine9 == 0 and theirs == ["Vida added “Imported line one”", "Vida added “Imported line two”"] and times == [0, 0]
+              and pings[0] is None and (pings[1] or "").endswith("Vida added “Typed after the import”"), f"{mine9} {theirs} {times} {pings}")
+        # "Keep it" (the owner starts afresh after a no) is not news: no note and no line for a teammate.
+        await v9.fill("#newText", "Kept after a no")
+        await v9.press("#newText", "Enter")
+        await v9.wait_for_timeout(300)
+        kid9 = await v9.evaluate("[...S.items.values()].find(i => i.text === 'Kept after a no').id")
+        await v9.evaluate(f"askHand('{kid9}', 'anand', '')")
+        await until(n9, f"answersMe(S.items.get('{kid9}'))")
+        await n9.evaluate(f"answerHand('{kid9}', false)")
+        await until(v9, f"declinedForMe(S.items.get('{kid9}'))")
+        await n9.evaluate(hide_ping)
+        await v9.evaluate(f"keepIt('{kid9}')")
+        await until(n9, f"S.items.get('{kid9}').act === 'keep'")
+        await n9.wait_for_timeout(200)
+        check("“Keep it” is not news: a teammate gets no note and no line in the updates",
+              await n9.evaluate(ping_text) is None and not await n9.evaluate(f"updates().some(i => i.id === '{kid9}')"), str(await n9.evaluate(ping_text)))
+        # Updates group one space at a time and name it; a long group says how many it does not list.
+        await n9.evaluate("""(async () => { const pause = () => new Promise(r => setTimeout(r, 5));   /* one change per millisecond at most */
+          for (const c of ['f0-c0', 'f2-c2', 'f3-c1', 'f5-c3']) { await addItem('Across ' + c, c); await pause(); }
+          for (const i of [...S.items.values()].filter(i => i.text.startsWith('Across '))) { await patchItem(i.id, { done: true }); await pause(); }
+          for (let k = 1; k <= 5; k++) { await addItem('Batch line ' + k, 'f4-c0'); await pause(); } })()""")
+        await until(v9, "[...S.items.values()].filter(i => (i.text.startsWith('Across ') && i.done) || i.text.startsWith('Batch line')).length === 9")
+        await v9.click("#bellBtn")
+        await v9.wait_for_timeout(300)
+        rows9 = [t.replace("\n", " | ") for t in await v9.locator("#updList > li").all_inner_texts()]
+        finished = [t for t in rows9 if " finished " in t]
+        batch = next((t for t in rows9 if "added 5 to-dos" in t), "")
+        check("updates group one space at a time and name it; a long group says how many it does not list",
+              len(finished) == 4 and all(any(s in t for t in finished) for s in ("Pilots ›", "Technology ›", "Marketing ›", "Branding ›")) and "and 2 more" in batch, str(rows9)[:300])
+        # A change that comes in while the updates list is open is on screen: closing does not count it again.
+        await n9.evaluate("patchItem([...S.items.values()].find(i => i.text === 'Batch line 1').id, { done: true })")
+        await until(v9, "document.getElementById('updList').innerText.includes('finished “Batch line 1”')")
+        await v9.evaluate("closeSheets()")
+        await v9.wait_for_timeout(200)
+        check("a change that came in while the updates list was open is not counted again after closing it", not await v9.locator("#bellBadge").is_visible(),
+              str(await v9.evaluate("unreadUpdates()")))
+        # Keyboard and screen readers. The 15 s tick draws the updates list again: a row that did not change
+        # is left in place, focus and all. In the menu, a city button keeps focus through a teammate's clock
+        # and the tick, and a search result through a teammate's change.
+        await v9.click("#bellBtn")
+        await v9.wait_for_timeout(300)
+        await v9.focus("#updList > li:nth-child(2) > button")
+        row_kept = await v9.evaluate("(() => { const a = document.activeElement; keepFocus(renderUpdates); return document.activeElement === a && a.isConnected; })()")
+        await close_sheet(v9)
+        await menu(v9)
+        await v9.focus("#team li:nth-child(2) .city")
+        await n9.evaluate("pauseClock()")
+        await until(v9, "!!S.clocks.get('cb9a') && !S.clocks.get('cb9a').openSince")
+        await v9.wait_for_timeout(200)
+        city_kept = await v9.evaluate("(() => { const a = document.activeElement; if (!a || a.getAttribute('aria-label') !== 'Anand: choose a city') return false; renderTeam(); return document.activeElement === a && a.isConnected; })()")
+        await n9.evaluate("startClock()")
+        await v9.fill("#search", "Batch line")
+        await v9.wait_for_timeout(200)
+        await v9.focus("#resultsList li:nth-child(2) button")
+        hit = await v9.evaluate("document.activeElement.textContent")
+        await n9.evaluate("addItem('A change while searching', 'f3-c0')")
+        await until(v9, "[...S.items.values()].some(i => i.text === 'A change while searching')")
+        await v9.wait_for_timeout(200)
+        hit_kept = await v9.evaluate("(() => { const a = document.activeElement; return a && a.closest('#resultsList') ? a.textContent : null; })()")
+        await v9.fill("#search", "")
+        await close_sheet(v9)
+        check("keyboard: the tick leaves an update row that did not change in place, with its focus", row_kept is True)
+        check("keyboard: in the menu a city button keeps focus through a teammate's clock and the tick, a search result through a teammate's change",
+              city_kept is True and hit_kept == hit, f"{city_kept} {hit} | {hit_kept}")
+        await ctx9.close()
         if SHOTS:
             await a.set_viewport_size({"width": 390, "height": 844})
             await a.click("#chatBtn"); await a.wait_for_timeout(400)
@@ -1789,6 +3185,77 @@ async def main():
         check("remote: no request blocked by the security headers and no script error on the later phones",
               await P.evaluate("window.__csp.length") == 0 and not rerrs, "; ".join(rerrs[:2]))
         await P.context.close()
+        sb("reset", {})
+
+        # A hand-off tap reads the to-do from the server before it writes, so a teammate's change that has
+        # not reached this phone yet (its next poll is a minute away) is never written over, and the page
+        # says the to-do changed. (a) Anand accepted Vida's 13-hour-old request; on her old copy she taps
+        # Obama's card. (b) Obama offered to take Anand's to-do, with a note; on her old copy Vida taps
+        # "I'll do it". (c) Vida took back her request to Obama; on his old copy he taps Accept in For you.
+        # Real taps on a touch phone.
+        users = {u["email"].split("@")[0]: u["id"] for u in sb("dump")["users"]}
+        tok = {w: sb_token(f"{w}@test.invalid", f"{w}-pass-1") for w in ("vida", "anand", "obama")}
+        rpc = lambda w, fn, args: sb_api("POST", f"/rest/v1/rpc/{fn}", args, tok[w])[0]
+        ms = lambda: int(time.time() * 1000)
+        t0 = ms()
+        for w in ("vida", "anand", "obama"):
+            rpc(w, "doc_set", {"p_path": f"people/{users[w]}", "p_data": {"who": w, "at": t0 - 86400000}})
+        todo = lambda who, text, **more: {"cell": "f2-c1", "text": text, "url": "", "who": who, "done": False, "deps": [], "by": users[who], "at": t0 - 72000000,
+                                          "act": "add", "editedBy": users[who], "editedAt": t0 - 72000000, **more}
+        ask = lambda to, give, frm, by, at, note="": {"to": to, "give": give, "from": frm, "by": users[by], "at": at, "note": note}
+        rpc("vida", "doc_set", {"p_path": "items/ho1", "p_data": todo("vida", "A made-up hand-off one", ask=ask("anand", "anand", "vida", "vida", t0 - 13 * 3600000), act="ask", editedAt=t0 - 13 * 3600000)})
+        rpc("anand", "doc_set", {"p_path": "items/ho2", "p_data": todo("anand", "A made-up hand-off two")})
+        rpc("vida", "doc_set", {"p_path": "items/ho3", "p_data": todo("vida", "A made-up hand-off three", ask=ask("obama", "obama", "vida", "vida", t0 - 60000), act="ask", editedAt=t0 - 60000)})
+
+        async def slow_phone(email, password):
+            """A touch phone of its own (a sign-in is shared by the tabs of one browser) that asks the
+            server for changes once a minute."""
+            pg = await (await b8.new_context(viewport={"width": 390, "height": 844}, has_touch=True, is_mobile=True)).new_page()
+            pg.on("pageerror", lambda e: (errors.append(str(e)), rerrs.append(str(e))))
+            await pg.goto(f"{R}&poll=60000#f2-c1")
+            await sign_in(pg, email, password)
+            await until(pg, "S.loaded && S.peopleReady && S.items.has('ho3') && !!document.querySelector(\"[data-fkey='w:ho1']\")", 8000)
+            await pg.wait_for_timeout(300)
+            return pg
+        V = await slow_phone("vida@test.invalid", "vida-pass-1")
+        changed = "(() => { const m = document.querySelector('#handBody [data-fkey=\"hb:changed\"]'); return !!m && m === document.activeElement; })()"
+        race = {}
+        await tap(V, "[data-fkey='w:ho1']")
+        await until(V, "S.sheet === 'handSheet'", 3000)
+        await V.wait_for_timeout(300)
+        rpc("anand", "doc_update", {"p_path": "items/ho1", "p_patch": {"who": "anand", "ask": None, "nope": [], "declined": None, "act": "accept", "editedBy": users["anand"], "editedAt": ms()}})
+        old = await V.evaluate("S.items.get('ho1').who")
+        await tap(V, "#handBody [data-fkey='hc:obama']")
+        await V.wait_for_timeout(700)
+        row = sb_row("items/ho1")["data"]
+        race["a"] = [old, row["who"], row.get("ask"), await V.evaluate(changed), "Owner: Anand" in await V.inner_text("#handBody")]
+        await tap(V, "#handSheet [data-close]")
+        await V.wait_for_timeout(300)
+        await tap(V, "[data-fkey='w:ho2']")
+        await until(V, "S.sheet === 'handSheet'", 3000)
+        await V.wait_for_timeout(300)
+        rpc("obama", "doc_update", {"p_path": "items/ho2", "p_patch": {"ask": ask("anand", "obama", "anand", "obama", ms(), "A made-up note"), "declined": None, "act": "ask", "editedBy": users["obama"], "editedAt": ms()}})
+        old = await V.evaluate("!!S.items.get('ho2').ask")
+        await tap(V, "#handBody [data-fkey='hb:offer']")
+        await V.wait_for_timeout(700)
+        row = sb_row("items/ho2")["data"]
+        race["b"] = [old, {k: row["ask"][k] for k in ("give", "note")}, await V.evaluate(changed), "Obama offered" in await V.inner_text("#handBody")]
+        O = await slow_phone("obama@test.invalid", "obama-pass-1")
+        await tap(O, "#bellBtn")
+        await until(O, "S.sheet === 'updatesSheet' && !!document.querySelector(\"#forYou [data-fkey='ya:ho3']\")", 3000)
+        await O.wait_for_timeout(300)
+        rpc("vida", "doc_update", {"p_path": "items/ho3", "p_patch": {"ask": None, "act": "cancel", "editedBy": users["vida"], "editedAt": ms()}})
+        await tap(O, "#forYou [data-fkey='ya:ho3']")
+        await O.wait_for_timeout(700)
+        row = sb_row("items/ho3")["data"]
+        race["c"] = [row["who"], row.get("ask"), await O.evaluate("document.getElementById('toast').hidden ? null : document.getElementById('toastText').textContent"),
+                     await O.evaluate("!!document.querySelector(\"#forYou [data-fkey='ya:ho3']\")")]
+        for pg in (V, O):
+            await pg.context.close()
+        check("remote: a hand-off tap on a copy a teammate's change has not reached yet writes nothing and says the to-do changed (a request accepted meanwhile, an offer made meanwhile)",
+              race["a"] == ["vida", "anand", None, True, True] and race["b"] == [False, {"give": "obama", "note": "A made-up note"}, True, True], str(race))
+        check("remote: Accept in For you on a request taken back meanwhile writes nothing and says the to-do changed",
+              race["c"] == ["vida", None, "This to-do changed meanwhile, so nothing was saved. Check it and tap again.", False], str(race["c"]))
         sb("reset", {})
 
         # In Claude (fake-claude): once meta/home names the new home, this copy is read-only and links

@@ -16,8 +16,11 @@ dependencies beyond the two Google Fonts (no supabase-js either).
   drops it.)
 - Collections: `faces`, `items`, `people`, `clock`, `chat` (messages:
   `{by: account id, text, at}`), `team` (`team/<vida|anand|obama>`: `{city, tz}`
-  for the world clock), `seen` (`seen/<account id>`: when that person last
-  looked at updates and chat), `meta` (`meta/home`: `{url, at?}`, written by
+  for the world clock), `seen` (`seen/<account id>`: `{updates, chat, ahead}`,
+  up to when that person has looked, taken from the newest change or message
+  on screen, never from the reader's clock; `ahead` lists what was on screen
+  but dated after the mark, from a phone with a wrong date; a mark more than
+  2 minutes ahead of now is not trusted), `meta` (`meta/home`: `{url, at?}`, written by
   the owner once the team has moved; the Claude copy then turns read-only and
   links there. The page never writes `meta`).
 - Archive rules (Claude copy only): nothing is written and nobody is asked who
@@ -117,7 +120,10 @@ The team works mostly from phones, through Claude sessions on this repository.
   each one through `dbWrite()` (one write at a time per document, one retry on
   `unavailable`). The one exception is `markSeen()`: a `seen/<id>` mark is not
   the person's work, so it uses `dbWrite()` alone and a lost one only brings a
-  count back. A failed save keeps the person's text on screen and says so.
+  count back. It is the only place that writes `seen/` (a first visit's mark
+  too, through `seenStart()`). A failed save keeps the person's text on screen
+  and says so (`sayFailed()`): in the status line, and also at the top of an
+  open sheet or the login, or under the full-screen graph's bar, which cover it.
   Changing a to-do is `patchItem()`, a merge of the changed fields, never a
   rewrite of the cached document. No write before the data has loaded
   (`canWriteNow()`), and no clock write before that person's clock has loaded.
@@ -171,7 +177,13 @@ strings, so routing uses `#f2` and `#f2-c1`.
   It is not a password: the account (the Vercel sign-in, the Claude account,
   or this browser) is the identity. "Switch person" in the menu brings it back.
 - Sheets (`openSheet`/`closeSheets`) make the page under them inert; Escape
-  closes them. Only one is open at a time.
+  closes them. Only one is open at a time. Where the page owns its history
+  (Vercel, top level), an open sheet holds one history step, so the phone's
+  back gesture closes it and the next one leaves; closing it any other way
+  takes the step back off. Inside Claude's frame no step is added. A space
+  opened from a sheet opens only after that step is off (`sheetNext`).
+- A toast with Undo belongs to the page and stays under the sheets; only a
+  toast said inside a sheet (no Undo) shows over it, and lets taps through.
 
 ## Product stance
 
@@ -185,7 +197,12 @@ strings, so routing uses `#f2` and `#f2-c1`.
   wants a teammate's to-do offers to take it. The one asked accepts or
   declines; until then the owner stays. `ask` holds the open request, `nope`
   who declined since the owner last changed, `declined` the last no. Only the
-  person asked answers (`answerHand`); accept writes `who`.
+  person asked answers (`answerHand`); accept writes `who`. One request at a
+  time: while one is open, only the one who made it can take it back or ask
+  someone else (`mayAsk`). A new owner or a tick ends a request (`tickOf`,
+  also on import). A hand-off tap acts on what was drawn: it checks the to-do
+  as this page has it, then as the store has it now (`freshItem()`, a server
+  read on Vercel), and writes nothing if it changed meanwhile.
 - Deciding fast: the sheet suggests whom to ask and writes why (`rankFor`:
   the side's person, the kind of work, awake now by their local time, open
   to-dos; whoever declined goes last). No answer for 12 hours offers the other
@@ -218,7 +235,10 @@ strings, so routing uses `#f2` and `#f2-c1`.
   loop is the one dashed card). Status is always a mark and a word: graph cards
   use the SVG icons (`statusIcon()`, `aria-hidden`) beside the status word.
   Hover styles sit in `@media (hover: hover)`; reduced motion turns the graph's
-  transitions off. It zooms and opens full screen. Its bar says what is done
+  transitions off. It zooms and opens full screen; `syncFull()` works out the
+  lock and the inert page under it from the state after every draw and route,
+  and moves a failed save and the away question under the graph's bar while
+  full screen is on. Its bar says what is done
   ("Done 2/41 · 5%") and whether the plan is on time (due by today = what the
   milestones dated today or earlier need). Nothing stores when a to-do was
   ticked, so it never invents a history.
@@ -228,6 +248,8 @@ strings, so routing uses `#f2` and `#f2-c1`.
 - Chat is one shared conversation. Updates are worked out from the to-dos
   (who changed one last, when, and `act`: add, done, undone, owner, move,
   edit, ask, accept, decline, cancel); the bell counts what is new since
-  `seen/<id>` plus requests waiting for this person. Alerts show while the
+  `seen/<id>` plus requests waiting for this person (a request counts once).
+  A first visit counts as a look. A viewer who cannot write gets no box to
+  write in; the chat and the menu say why. Alerts show while the
   page is open; phone alerts while it is closed come with Telegram.
 - Integrations (Telegram, Proton) come later; see `docs/ROADMAP.md`.

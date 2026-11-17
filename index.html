@@ -16,7 +16,7 @@
   --bg: #F5F5F7; --sunk: #FFFFFF;
   --ink: #1D1D1F; --ink-2: #6E6E73;
   --line: #1D1D1F; --hair: #E3E3E8;
-  --accent: #0071E3; --accent-fill: #0071E3; --on-accent: #FFFFFF; --warm: #FFB800; --good: #188038; --on-good: #FFFFFF; --bad: #C5221F; --away: #B25E00;
+  --accent: #0066CC; --accent-fill: #0071E3; --on-accent: #FFFFFF; --warm: #FFB800; --good: #188038; --on-good: #FFFFFF; --bad: #C5221F; --away: #B25E00;
   --bad-fill: #D93025; --on-bad: #FFFFFF;
   --f0: #FF6B5B; --fi0: #1D1D1F;  --f1: #4DA3FF; --fi1: #0B1B33;  --f2: #FFC93C; --fi2: #1D1D1F;
   --f3: #3CCB97; --fi3: #0B2A1F;  --f4: #A78BFA; --fi4: #1D1D1F;  --f5: #FF8FB1; --fi5: #1D1D1F;
@@ -201,6 +201,7 @@ select.field { padding: 8px 10px; font-size: 16px; }
 .x:hover { background: var(--bad-fill); color: var(--on-bad); }
 .empty { color: var(--ink-2); font-size: 15px; padding: 8px 0; margin: 0; }
 .err { color: var(--bad); font-size: 14px; font-weight: 700; margin: 0; }
+.leftover { display: flex; flex-direction: column; gap: 8px; }
 .ok { color: var(--good); font-size: 14px; font-weight: 700; margin: 0; }
 .recent { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .recent li + li { border-top: 1px solid var(--hair); }
@@ -208,6 +209,9 @@ select.field { padding: 8px 10px; font-size: 16px; }
 .recent b { font-weight: 500; overflow-wrap: anywhere; }
 .recent small { color: var(--ink-2); font-size: 13px; }
 .toast { position: fixed; left: 16px; right: 16px; bottom: 18px; margin: 0 auto; max-width: 480px; background: var(--ink); color: var(--bg); border-left: 6px solid var(--accent); padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 15px; z-index: 10; }
+/* Said inside a sheet (an answer in For you): shown over it, under the login, and never in the way of
+   the sheet's own controls (a tap goes through). A toast with Undo is never raised: it belongs to the page. */
+.toast.over { z-index: 22; pointer-events: none; }
 .toast button { border: 0; background: transparent; color: inherit; font-weight: 700; text-decoration: underline; padding: 6px; }
 @media (prefers-reduced-motion: reduce) { .cube, .todo { transition: none; } }
 
@@ -341,7 +345,9 @@ details.build[open] > summary::after { content: '－'; }
 .top { position: sticky; top: 0; z-index: 6; display: flex; align-items: center; justify-content: space-between; gap: 10px;
   margin: -18px -16px -8px; padding: 12px 16px 10px; background: color-mix(in srgb, var(--bg) 86%, transparent);
   -webkit-backdrop-filter: saturate(1.4) blur(14px); backdrop-filter: saturate(1.4) blur(14px); }
-.top .mark { font-size: 30px; line-height: 1; letter-spacing: -.03em; }
+.top .mark { font-size: 30px; line-height: 1; letter-spacing: -.03em; white-space: nowrap; }
+/* Focus moved up a long list lands below the sticky bar (and the status line under it), never behind it. */
+html { scroll-padding-top: 84px; }
 .top-tools { display: flex; align-items: center; gap: 8px; }
 .tool { position: relative; min-width: 40px; height: 40px; padding: 0 12px; display: inline-grid; place-items: center; border-radius: 999px; }
 .tool.icon { width: 40px; padding: 0; }
@@ -351,10 +357,15 @@ details.build[open] > summary::after { content: '－'; }
 .avatar { position: relative; width: 40px; height: 40px; border: 0; border-radius: 50%; display: grid; place-items: center; font: 900 17px/1 var(--display); background: var(--ink); color: var(--bg); }
 .avatar[data-who="vida"], .avatar[data-who="anand"], .avatar[data-who="obama"] { color: var(--p-ink); }
 .avatar[data-who="vida"] { background: var(--p-vida); } .avatar[data-who="anand"] { background: var(--p-anand); } .avatar[data-who="obama"] { background: var(--p-obama); }
-.avatar i { position: absolute; right: -1px; bottom: -1px; width: 12px; height: 12px; border-radius: 50%; background: var(--hair); box-shadow: 0 0 0 2px var(--bg); }
-.avatar i.on { background: var(--good); } .avatar i.away { background: var(--away); }
-.sync { position: absolute; left: 16px; top: calc(100% - 6px); font-size: 12px; min-height: 0; }
-#home { display: grid; place-items: center; min-height: calc(100dvh - 110px); }
+/* The timer's state on the person, by shape as well as colour (the label says it in words): a filled
+   dot while it runs, a ring while away, nothing when stopped. */
+.avatar i { display: none; position: absolute; right: -1px; bottom: -1px; width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 2px var(--bg); }
+.avatar i.on { display: block; background: var(--good); } .avatar i.away { display: block; background: var(--bg); box-shadow: inset 0 0 0 3px var(--away), 0 0 0 2px var(--bg); }
+/* The status line hangs under the bar; on its own background it stays readable over the glow and over
+   rows scrolling under it. */
+.sync { position: absolute; left: 10px; top: calc(100% - 6px); font-size: 12px; min-height: 0; padding: 0 6px; border-radius: 999px; background: var(--bg); }
+/* Home is the cube alone, on one screen: 132px is the rest of the page (padding, the bar, the gap). */
+#home { display: grid; place-items: center; min-height: calc(100dvh - 132px); }
 #home .scene { --size: min(80vw, 380px, 54dvh); margin: 8px 0 44px; }
 #home .stage { gap: 0; }
 
@@ -369,6 +380,8 @@ details.build[open] > summary::after { content: '－'; }
 .sheet-title { margin: 0; font: 900 25px/1.1 var(--display); letter-spacing: -.02em; }
 .sheet-body { overflow: auto; padding: 16px 16px 28px; display: flex; flex-direction: column; gap: 16px; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 .x-btn { flex: 0 0 auto; width: 40px; height: 40px; border: 0; border-radius: 50%; background: color-mix(in srgb, var(--ink) 8%, transparent); font-size: 16px; }
+/* A failed save, said at the top of the sheet that covers the status line. */
+.sheet > .save-err { padding: 10px 16px 0; }
 body.locked { overflow: hidden; }
 .sheet .card { box-shadow: none; background: var(--sunk); padding: 14px; }
 .sheet details.card > summary { cursor: pointer; list-style: none; }
@@ -402,17 +415,20 @@ body.locked { overflow: hidden; }
 .bubble { background: var(--sunk); border-radius: 18px 18px 18px 6px; padding: 8px 12px; box-shadow: var(--shadow); min-width: 0; }
 .msg.mine .bubble { background: var(--accent-fill); color: var(--on-accent); border-radius: 18px 18px 6px 18px; }
 .bubble small { display: block; font-size: 12px; font-weight: 600; color: var(--ink-2); margin-bottom: 2px; }
-.msg.mine .bubble small { color: var(--on-accent); opacity: .92; }
+.msg.mine .bubble small { color: var(--on-accent); }   /* plain white on --accent-fill: 4.5:1 in both themes */
 .bubble p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .day-sep { text-align: center; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
 .chat-form { display: flex; gap: 8px; align-items: flex-end; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--hair); }
 .chat-form textarea.field { flex: 1; min-height: 46px; max-height: 140px; resize: none; font-family: var(--body); }
 #chatErr { padding: 0 16px 8px; }
 .chat-ro { margin: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--hair); overflow-wrap: anywhere; }
-.chat-ro a { color: var(--accent); font-weight: 700; }
+.chat-ro a, .me-ro a { color: var(--accent); font-weight: 700; }
+.me-ro { margin: 10px 0 0; overflow-wrap: anywhere; }
+/* Read by screen readers, not shown: the chat's line for a message that just came in. */
+.vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
 .ping-box { position: fixed; z-index: 15; top: 66px; left: 16px; right: 16px; max-width: 480px; margin: 0 auto; pointer-events: none; }
 .ping { pointer-events: auto; width: 100%; display: grid; grid-template-columns: 32px 1fr; gap: 10px; align-items: center; text-align: left; border: 0; border-radius: var(--r); padding: 10px 14px; background: var(--sunk); color: var(--ink); box-shadow: var(--shadow), 0 0 0 1px var(--hair); font-size: 14px; animation: drop .55s var(--spring) both; }
-.ping span { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.ping span:not(.who) { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 @keyframes drop { from { transform: translateY(-24px) scale(.94); opacity: 0; } }
 
 /* Login: pick who you are */
@@ -420,7 +436,8 @@ body.locked { overflow: hidden; }
   background: radial-gradient(130% 60% at 50% 0%, var(--glow), transparent 70%) no-repeat, var(--bg); }
 .login .mark { font-size: clamp(56px, 18vw, 96px); }
 .login h2 { margin: 0; font: 900 28px/1.1 var(--display); letter-spacing: -.02em; text-align: center; outline: none; }
-.login p { margin: 0; max-width: 380px; text-align: center; color: var(--ink-2); font-size: 15px; }
+/* Ink, not grey: the glow and the cards' shadow behind these lines would take grey under 4.5:1. */
+.login p { margin: 0; max-width: 380px; text-align: center; color: var(--ink); font-size: 15px; }
 .login-cards { width: 100%; max-width: 440px; display: grid; gap: 12px; }
 .login-card { display: grid; grid-template-columns: 56px 1fr auto; gap: 14px; align-items: center; text-align: left; border: 0; border-radius: var(--r); padding: 14px 16px; background: var(--sunk); color: var(--ink); box-shadow: var(--shadow); transition: transform .45s var(--spring); }
 .login-card:active { transform: scale(.96); transition-duration: .08s; }
@@ -589,6 +606,9 @@ svg.ring { display: block; width: 100%; height: 12px; flex: 0 0 12px; overflow: 
 .flow.full .flow-bar { padding-top: max(12px, env(safe-area-inset-top)); }
 .flow.full .flow-scroll { flex: 1; height: auto; }
 .flow.full .gdetail { max-height: 42vh; overflow: auto; padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+/* Under the full-screen bar: a failed save and the away question (the page's own place is covered). */
+.flow.full > .save-err { padding: 10px 14px; border-bottom: 1px solid var(--g-rule); }
+.flow.full > .away-box { flex: none; margin: 10px 14px; }
 @media (prefers-reduced-motion: reduce) { .gnode, .zoom button, .flow-btn, .flow .gfilter { transition: none; } }
 .flow-tag.ms-late { color: var(--bad); } .flow-tag.ms-soon { color: var(--away); } .flow-tag.ms-done { color: var(--good); } .flow-tag.ms-ahead { color: var(--ink-2); }
 .flow-tag[class*="ms-"] { font-variant-numeric: tabular-nums; }
@@ -602,6 +622,8 @@ svg.ring { display: block; width: 100%; height: 12px; flex: 0 0 12px; overflow: 
 .cand .who { width: 40px; height: 40px; font: 900 17px/1 var(--display); }
 .cand b { font-weight: 700; } .cand small { display: block; color: var(--ink-2); font-size: 13px; }
 .cand .tag { display: block; color: var(--accent); font-weight: 700; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; }
+/* The one already asked: not a button to press, and it says so in words. */
+.cand:disabled { background: transparent; cursor: default; } .cand:disabled .tag { color: var(--ink-2); }
 .ask-box { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: var(--r-sm); font-size: 14px; background: color-mix(in srgb, var(--accent) 9%, var(--sunk)); }
 .ask-box q { quotes: '«' '»'; color: var(--ink-2); }
 .fy { display: flex; flex-direction: column; gap: 14px; }
@@ -668,6 +690,7 @@ button.flow-tag { border: 0; background: transparent; padding: 2px 0; text-align
           <button class="btn" type="submit" id="addBtn" data-t="add">Add</button>
         </div>
         <p class="err" id="captureErr" hidden></p>
+        <div class="leftover" id="leftover" hidden></div>
       </form>
       <ul class="items" id="items"></ul>
       <div id="planView" hidden></div>
@@ -683,6 +706,7 @@ button.flow-tag { border: 0; background: transparent; padding: 2px 0; text-align
   <div class="sheet-body">
     <section class="card" id="meBar" aria-label="You and your time" data-t-al="meAria">
       <div class="me-row"><span class="who" id="meAvatar" aria-hidden="true"></span><div><b id="meWho"></b><small id="meRole"></small></div></div>
+      <p class="fine me-ro" id="meRo" hidden></p>
       <div class="me clock">
         <span class="dot" id="meClockDot" aria-hidden="true"></span>
         <span class="clock-time" id="meTime">0 min</span>
@@ -769,7 +793,8 @@ button.flow-tag { border: 0; background: transparent; padding: 2px 0; text-align
 <section class="sheet" id="chatSheet" hidden role="dialog" aria-modal="true" aria-labelledby="chatTitle">
   <div class="sheet-head"><h2 class="sheet-title" id="chatTitle" data-t="chat">Chat</h2><button type="button" class="x-btn" data-close aria-label="Close" data-t-al="close">✕</button></div>
   <div class="wclock" id="chatClocks" aria-label="World clock" data-t-al="worldClock"></div>
-  <div class="sheet-body" id="chatScroll"><ol class="chat" id="chatList" aria-live="polite"></ol></div>
+  <div class="sheet-body" id="chatScroll"><ol class="chat" id="chatList"></ol></div>
+  <p class="vh" id="chatLive" aria-live="polite"></p>
   <p class="err" id="chatErr" hidden></p>
   <p class="fine chat-ro" id="chatRo" hidden></p>
   <form class="chat-form" id="chatForm" autocomplete="off">
@@ -880,6 +905,7 @@ Object.assign(L.en, {
   notifNote: 'Alerts show while this page is open. Phone alerts while it is closed come later, with Telegram.',
   chatPh: 'Write a message', send: 'Send', chatEmpty: 'No messages yet. Write the first one.', chatFailed: 'Not sent. Your text is still here.',
   chatWait: 'The data is still loading. Wait a moment and send again.', chatNoId: 'We could not tell who you are, so you cannot write here.', yesterday: 'Yesterday',
+  chatNone: 'No messages yet.', chatDown: 'The chat could not load.', chatDownSend: 'Not sent: the chat could not load.', chatSays: (n, t) => `${n}: ${t}`, andMore: n => `and ${n} more`,
   worldClock: 'World clock', night: 'night', dayPlus: '+1 day', dayMinus: '−1 day', cityOf: n => `${n}: choose a city`, noCity: 'Choose a city',
   zoomIn: 'Zoom in', zoomOut: 'Zoom out', fullScreen: '⛶ Full screen', exitFull: '✕ Close', noMsCol: 'No milestone',
   tlHelp: 'Each group of columns is one milestone, in date order. Each to-do sits before the first milestone that needs it. The line marked Today shows where today falls. Tap a node to light up its chain.',
@@ -899,10 +925,14 @@ Object.assign(L.en, {
   accept: 'Accept', decline: 'Decline', acceptX: t => `Accept: ${t}`, declineX: t => `Decline: ${t}`,
   takeBack: 'Take back', askInstead: n => `Ask ${n}`, keepIt: 'Keep it', talkChat: 'Decide in chat', chatAbout: t => `“${t}” — who takes this?`,
   askSent: n => `Request sent to ${n}.`, tookIt: 'It is yours now.', saidNoDone: 'Declined.', handFailed: 'Not saved. Please try again.',
+  offerBy: (n, to, t) => `→ ${n} offered: ${to} decides · ${t}`, askBusy: n => `${n} is already waiting for an answer.`, askedTag: 'Already asked',
+  gotIt: 'OK', keptIt: 'It stays with you.', tookBack: 'Request taken back.', droppedOwner: 'It has no owner now.', gaveTo: n => `Given to ${n}.`,
+  handChanged: 'This to-do changed meanwhile, so nothing was saved. Check it and tap again.',
   reqIn: n => `Requests for you · ${n}`, reqOut: n => `Your requests · ${n}`, doNext: 'Do next', noNext: 'Nothing of yours can start right now.', unblocksN: n => `unblocks ${n}`,
   fromNote: t => `Note: ${t}`,
   u_ask: (n, to, t) => `${n} asked ${to} to take “${t}”`, u_askYou: (n, t) => `${n} asks you to take “${t}”`, u_offer: (n, t) => `${n} offered to take “${t}”`, u_offerYou: (n, t) => `${n} offers to take your “${t}”`,
   u_accept: (n, t) => `${n} took “${t}”`, u_decline: (n, t) => `${n} declined “${t}”`, u_cancel: (n, t) => `${n} took back the request for “${t}”`,
+  u_gave: (n, t, to) => `${n} gave “${t}” to ${to}`, u_offerOk: (n, t) => `${n} accepted your offer: “${t}”`,
   updMany: (n, verb, k) => `${n} ${verb} ${k} to-dos`,
 });
 
@@ -927,6 +957,9 @@ Object.assign(L.en, {
   backupHintDl: 'Backup: tap “Save JSON”. The file goes to Downloads; move it to Proton Drive. Once a week.',
 });
 
+/* The timer's state, said on the person in the top bar. */
+Object.assign(L.en, { timerOn: 'Timer on' });
+
 const S = {
   lastInput: Date.now(),
   db: null, user: null, me: null, canWrite: true, loaded: false, local: false,
@@ -934,7 +967,7 @@ const S = {
   items: new Map(), people: new Map(), clocks: new Map(), clockReady: false, peopleReady: false,
   chat: [], chatReady: false, team: new Map(), seen: null, seenReady: false,
   face: 0, cell: null, rx: 0, ry: 0,
-  pending: 0, renderQueued: false, sheet: null, leftover: null,
+  pending: 0, renderQueued: false, sheet: null, leftover: [],
 };
 /* What a to-do says in the screen language: its English version in English while that still
    matches the text, else the text as written. */
@@ -953,6 +986,20 @@ const el = (tag, props = {}, kids = []) => {
   (Array.isArray(kids) ? kids : [kids]).forEach(c => c != null && n.append(c));
   return n;
 };
+/* Puts freshly drawn rows (`kids`, elements) in `box`. A row already there with the same shape (the
+   same elements and attributes) stays, and only its changed words are copied in: a redraw that only
+   moves a time on ("2 min ago", the 15 s tick) moves nothing under keyboard focus or a screen reader.
+   A row that differs is replaced (callers keep focus with keepFocus). Only for rows whose buttons act
+   on what their attributes say, or look the to-do up when tapped, so a kept row never acts on old data. */
+function putKids(box, kids) {
+  const same = (a, b) => a.nodeType === b.nodeType && (a.nodeType !== 1 || (a.tagName === b.tagName
+    && a.attributes.length === b.attributes.length && [...a.attributes].every(x => b.getAttribute(x.name) === x.value)
+    && a.childNodes.length === b.childNodes.length && [...a.childNodes].every((c, k) => same(c, b.childNodes[k]))));
+  const words = (a, b) => { if (a.nodeType === 3) { if (a.data !== b.data) a.data = b.data; } else a.childNodes.forEach((c, k) => words(c, b.childNodes[k])); };
+  const old = [...box.childNodes];
+  if (old.length !== kids.length) { box.replaceChildren(...kids); return; }
+  kids.forEach((k, n) => { if (same(old[n], k)) words(old[n], k); else old[n].replaceWith(k); });
+}
 const cellKey = (f, c) => `f${f}-c${c}`;
 const CELL_RE = /^f[0-5]-c[0-3]$/;
 const faceStyle = f => `--fc:var(--f${f});--fi:var(--fi${f})`;
@@ -987,21 +1034,51 @@ function dbWrite(path, op, data) {
   return next;
 }
 const failText = e => (e && e.code === 'quota_exceeded' ? tr('saveQuota') : e && (e.code === 'revoked' || e.code === 'not_granted') ? tr('saveRevoked') : tr('saveFailed'));
+/* A failed save is said where the person is looking: in the status line, and, while a sheet, the
+   login or the full-screen graph covers that line (and makes it inert), also at the top of that
+   sheet or login, or under the graph's own bar. The words are kept (S.failWords) for a login drawn
+   again after its own save failed, and for each redraw of the full-screen graph. */
+function sayFailed(text) {
+  setSync('failed', text); S.failWords = text;
+  const host = S.sheet ? $(S.sheet) : loginOpen() && !S.authOpen ? $('login') : null;
+  sayInFull(!host);
+  const head = host && (host.querySelector(':scope > .sheet-head') || host.querySelector('#loginTitle'));
+  if (!head) return;
+  let line = host.querySelector('.save-err');
+  if (!line) { line = el('p', { class: 'err save-err', role: 'alert' }); head.after(line); }
+  line.textContent = text;
+}
+const clearFailed = () => { S.failWords = ''; document.querySelectorAll('.save-err').forEach(n => n.remove()); };
+/* The line under the full-screen graph's bar. One node, put back into each redraw of the graph
+   (syncFull): announced (role alert) when the failure is new, never again on a redraw. */
+let fullErr = null;
+function sayInFull(fresh) {
+  const bar = G.full && S.failWords ? $('planView').querySelector(':scope > .flow.full > .flow-bar') : null;
+  if (!bar) { if (fullErr) fullErr.remove(); return; }
+  if (!fullErr) fullErr = el('p', { class: 'err save-err' });
+  if (fresh) fullErr.setAttribute('role', 'alert'); else if (!fullErr.isConnected) fullErr.removeAttribute('role');
+  if (fresh || fullErr.textContent !== S.failWords) fullErr.textContent = S.failWords;
+  if (bar.nextElementSibling !== fullErr) bar.after(fullErr);
+}
 async function save(fn) {
   /* A copy that turned read-only (archived, or writes refused) takes nothing, not even from an edit
      box that was open before: the text stays there and the line says why. */
-  if (!S.canWrite || !S.db || !metaKnown()) { setSync('failed', tr(S.canWrite ? 'captureWait' : 'saveReadOnly')); return false; }
-  S.pending += 1; setSync('saving', tr('saving'));
+  if (!S.canWrite || !S.db || !metaKnown()) { sayFailed(tr(S.canWrite ? 'captureWait' : 'saveReadOnly')); return false; }
+  S.pending += 1; setSync('saving', tr('saving')); clearFailed();
   try { await fn(); S.pending -= 1; S.wroteOnce = true; if (!S.pending) setSync('saved', tr('saved')); return true; }
-  catch (e) { S.pending -= 1; if (refusedWrite(e)) setSync('', ''); else { setSync('failed', failText(e)); verifyRefusal(e); } return false; }
+  catch (e) { S.pending -= 1; if (refusedWrite(e)) sayFailed(tr('saveReadOnly')); else { sayFailed(failText(e)); verifyRefusal(e); } return false; }
 }
 /* When the host does not say whether this viewer may write (can() is null), the first refused write
-   says it: the page turns read-only instead of failing on every tap. */
+   says it: the page turns read-only instead of failing on every tap. The notice says why; the status
+   line says only what the person tried and could not save (never "try again"). Nothing they typed is
+   redrawn away: an edit box open now keeps its text and its own "not saved" line, and the redraw
+   waits until it closes (queueRender), as when the copy is archived. */
 const mayBeRefused = e => !!(e && e.code === 'invalid_argument' && S.canSaid !== true && !S.wroteOnce && S.canWrite);
 function turnReadOnly() {
   S.canWrite = false;
   hideLogin(); $('awayBox').hidden = true;
-  refreshNotice(); initData(); renderAll(); renderClock();
+  clearFailed(); setSync('', '');
+  refreshNotice(); initData(); queueRender(); renderClock();
 }
 function refusedWrite(e) {
   if (!mayBeRefused(e) || e.op !== 'set') return false;
@@ -1014,7 +1091,7 @@ async function verifyRefusal(e) {
   if (!mayBeRefused(e) || (e.op !== 'update' && e.op !== 'delete') || !e.path || !S.db) return;
   try {
     const snap = await S.db.doc(e.path).get();
-    if (snap && snap.exists && mayBeRefused(e)) turnReadOnly();
+    if (snap && snap.exists && mayBeRefused(e)) { turnReadOnly(); sayFailed(tr('saveReadOnly')); }
   } catch (x) { /* cannot tell: keep the controls */ }
 }
 /* The notice line, worked out from the state with the most important first, so a later event never
@@ -1045,11 +1122,25 @@ function withLink(node, text, url) {
   const [before, after = ''] = String(text).split('{link}');
   node.replaceChildren(before, el('a', { href: url, target: '_blank', rel: 'noopener noreferrer', text: url }), after);
 }
+/* Where this viewer cannot write (read-only access, or this copy archived), a line in a sheet says
+   so in plain words, where the notice under the sheet cannot be seen. Drawn again only when it
+   changes, so a focused link in it stays. */
+function sayReadOnly(node) {
+  const ro = !!S.db && !S.canWrite, key = ro ? S.homeUrl || 'ro' : '';
+  node.hidden = !ro;
+  if (node.dataset.ro === key) return;
+  node.dataset.ro = key;
+  if (ro) withLink(node, S.homeUrl ? tr('nMoved') : tr('nReadOnly'), S.homeUrl); else node.textContent = '';
+}
 let undoTimer = null;
 /* The message (and its undo) stays while focus or a finger is on it, then 7 s. */
 function toast(text, undo) {
   const t = $('toast');
   $('toastText').textContent = text; t.hidden = false;
+  /* Over the open sheet only when said in it and without Undo. An Undo (a delete, a move) is the
+     page's, even when its write answers after a sheet has opened: it stays under the sheets, so a tap
+     on a sheet's Send or bottom row never lands on it, and it is still there once the sheet closes. */
+  t.classList.toggle('over', !!S.sheet && !undo);
   $('toastUndo').hidden = !undo;
   $('toastUndo').onclick = () => { t.hidden = true; if (undo) undo(); };
   const later = ms => { clearTimeout(undoTimer); undoTimer = setTimeout(() => { if (!t.matches(':focus-within, :hover')) t.hidden = true; else later(2000); }, ms); };
@@ -1065,23 +1156,36 @@ const isMine = uid => !!uid && (uid === S.me || (!!whoOf(S.me) && whoOf(uid) ===
 /* ── Login: the Claude account (or this browser, off Claude) says who is here; the person picks
    which of the three they are, once. "Switch person" brings the page back. ── */
 const loginOpen = () => !$('login').hidden;
-/* While the sign-in page (Vercel copy) is up, the who-picker waits: closeAuth() takes it down. */
-function hideLogin() { const box = $('login'); if (box.hidden || S.authOpen) return; box.hidden = true; box.replaceChildren(); $('page').inert = false; }
-function showLogin(force) {
+/* While the sign-in page (Vercel copy) is up, the who-picker waits: closeAuth() takes it down. A sheet
+   that was open under the login (the people data came late) is inert until then, and gets focus back. */
+let loginOpener = null;
+function hideLogin() {
+  const box = $('login'); if (box.hidden || S.authOpen) return;
+  box.hidden = true; box.replaceChildren(); $('page').inert = !!S.sheet;
+  document.querySelectorAll('.sheet').forEach(s => { s.inert = false; });
+  const back = loginOpener; loginOpener = null;
+  if (S.sheet) (back && back.isConnected && $(S.sheet).contains(back) ? back : $(S.sheet).querySelector('[data-close]')).focus({ preventScroll: true });
+}
+/* `why`: the words of a failed save of the name, said on the login drawn again. */
+function showLogin(force, why) {
   if (!S.me || !S.canWrite || !S.db || S.authOpen || !metaKnown()) return;
   if (!force && (whoOf(S.me) || S.loginSkipped)) return;
   S.loginForced = !!force;
-  const box = $('login'); box.hidden = false; $('page').inert = true;
+  const box = $('login');
+  if (box.hidden) loginOpener = document.activeElement;
+  box.hidden = false; $('page').inert = true;
+  document.querySelectorAll('.sheet').forEach(s => { s.inert = true; });
   const pick = async m => {
     const prev = S.people.get(S.me);
     hideLogin(); S.people.set(S.me, { who: m.id }); renderAll(); renderClock();
     const ok = await save(() => dbWrite(`people/${S.me}`, 'set', { who: m.id, at: Date.now() }));
-    if (!ok) { if (prev) S.people.set(S.me, prev); else S.people.delete(S.me); renderAll(); renderClock(); if (S.canWrite) showLogin(true); }
+    if (!ok) { if (prev) S.people.set(S.me, prev); else S.people.delete(S.me); renderAll(); renderClock(); if (S.canWrite) showLogin(true, S.failWords || tr('saveFailed')); }
   };
   const mine = whoOf(S.me);
-  box.replaceChildren(
+  box.replaceChildren(...[
     el('div', { class: 'mark', 'aria-hidden': 'true', text: 'CUBIC' }),
     el('h2', { id: 'loginTitle', tabindex: '-1', text: tr('loginTitle') }),
+    why ? el('p', { class: 'err save-err', role: 'alert', text: why }) : null,
     el('p', { text: tr('loginSub') }),
     el('div', { class: 'login-cards' }, TEAM.map(m => el('button', { type: 'button', class: 'login-card', 'data-who': m.id, 'aria-label': tr('loginAs', m.name), 'aria-current': mine === m.id ? 'true' : null, onclick: () => pick(m) }, [
       el('span', { class: 'who', 'data-who': m.id, 'aria-hidden': 'true', text: m.name[0] }),
@@ -1090,8 +1194,10 @@ function showLogin(force) {
     ]))),
     el('p', { class: 'fine', text: S.local ? tr('loginLocal') : S.remote ? tr('loginRemote') : tr('loginClaude') }),
     el('div', { class: 'login-foot' }, [
-      el('button', { type: 'button', class: 'btn ghost', text: force && mine ? tr('cancel') : tr('loginSkip'), onclick: () => { S.loginSkipped = true; hideLogin(); renderClock(); } }),
-    ]));
+      /* "Cancel" (a name is already chosen) is also what Escape does; it goes back to the menu button. */
+      el('button', { type: 'button', class: 'btn ghost', 'data-cancel': !!(force && mine), text: force && mine ? tr('cancel') : tr('loginSkip'), onclick: () => {
+        S.loginSkipped = true; const sheet = S.sheet; hideLogin(); renderClock(); if (force && mine && !sheet) $('meBtn').focus({ preventScroll: true }); } }),
+    ])].filter(Boolean));
   $('loginTitle').focus({ preventScroll: true });
 }
 const askWho = () => showLogin(true);
@@ -1217,7 +1323,7 @@ async function addLines(lines, cell) {
 const actOf = patch => ('done' in patch ? (patch.done ? 'done' : 'undone') : 'cell' in patch ? 'move' : 'who' in patch ? 'owner' : 'edit');
 function patchItem(id, patch, act) {
   if (!S.items.has(id)) return Promise.resolve(false);
-  if (!S.loaded && S.canWrite) { setSync('failed', tr('captureWait')); return Promise.resolve(false); }
+  if (!S.loaded && S.canWrite) { sayFailed(tr('captureWait')); return Promise.resolve(false); }
   return save(() => dbWrite(`items/${id}`, 'update', { ...patch, act: act || actOf(patch), ...stamp() }));
 }
 /* Writes only the fields the editor changed (text, cell, deps; in English, the English version). */
@@ -1361,11 +1467,11 @@ function plan() {
     dated.sort((a, b) => b.d - a.d);
     const name = dated.length ? dated[0].id : members[members.length - 1];
     const fresh = Math.max(...members.map(id => Math.max(S.items.get(id).at || 0, S.items.get(id).editedAt || 0)));
-    return { key: name, label: S.items.get(name).text, members: new Set(members), size: members.length, fresh };
+    return { key: name, members: new Set(members), size: members.length, fresh };
   }).sort((a, b) => b.size - a.size || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));   /* a stable order for the chips */
   const groupOf = new Map();
   groups.forEach(g => g.members.forEach(id => groupOf.set(id, g.key)));
-  return { ids, order, layer, loop, stuck, stuckLayer: stuck.size ? top : -1, deps, direct, implied, groups, groupOf };
+  return { ids, order, layer, loop, stuck, sccOf, stuckLayer: stuck.size ? top : -1, deps, direct, implied, groups, groupOf };
 }
 /* The plan picked on the graph and the timeline. Groups under GROUP_MIN to-dos share "Other". */
 const GROUP_MIN = 5;
@@ -1385,8 +1491,9 @@ function groupChips(P, picked, redraw) {
   const big = P.groups.filter(g => g.size >= GROUP_MIN);
   const rest = P.groups.filter(g => g.size < GROUP_MIN).reduce((t, g) => t + g.size, 0);
   const chip = (key, text, on) => el('button', { type: 'button', class: 'gchip', 'data-fkey': `p:${key}`, 'aria-pressed': String(on), onclick: () => { G.group = key; G.pick = null; redraw(); } }, text);
+  /* A plan is named in the words its card shows (an older to-do's English version, txt()). */
   return el('div', { class: 'gchips', role: 'group', 'aria-label': tr('pickPlan') }, [
-    ...big.map(g => chip(g.key, `${short(g.label, 30)} · ${g.size}`, !!picked && picked.key === g.key)),
+    ...big.map(g => chip(g.key, `${short(txt(S.items.get(g.key)), 30)} · ${g.size}`, !!picked && picked.key === g.key)),
     rest ? chip('other', tr('otherN', rest), !!picked && picked.key === 'other') : null,
     chip('all', tr('allN', P.ids.length), !picked),
   ].filter(Boolean));
@@ -1528,7 +1635,9 @@ function renderSearch() {
   $('results').hidden = !q; if (!q) return;
   const hits = [...S.items.values()].filter(i => `${i.text} ${hasEn(i) ? i.en : ''} ${i.url || ''}`.toLowerCase().includes(q)).slice(0, 30);
   $('resultsTitle').textContent = hits.length ? tr('nHits', hits.length) : tr('noHits');
-  $('resultsList').replaceChildren(...hits.map(i => el('li', {}, el('button', { type: 'button', onclick: () => openKey(i.cell) },
+  /* A teammate's change redraws the results: a result with focus keeps it (data-fkey), and one that
+     did not change stays where it is (putKids); a tap opens where the to-do is now. */
+  putKids($('resultsList'), hits.map(i => el('li', {}, el('button', { type: 'button', 'data-fkey': `s:${i.id}`, onclick: () => openKey((S.items.get(i.id) || i).cell) },
     [el('b', { text: txt(i) }), el('small', { text: whereIs(i.cell) })]))));
 }
 
@@ -1585,16 +1694,17 @@ function renderArea() {
   $('itemsEmpty').textContent = !S.db ? '' : S.loaded ? tr('noTodos') : tr('loading');
   $('swipeHint').hidden = !S.canWrite || !list.length;
   const opened = ROWS.cell !== S.cell;
-  /* A leftover from a failed paste stays on screen (it names its space) until it is saved or closed. */
-  if (opened) { ROWS.cell = S.cell; ROWS.seen = new Set(); ROWS.done = new Set(list.filter(i => i.done).map(i => i.id)); if (S.leftover) showLeftover(S.leftover.lines, S.leftover.cell); else $('captureErr').hidden = true; }
+  /* A one-time message belongs to the space it was said in; the lines of a failed paste stay on
+     screen (each group names its space) until they are saved or closed. */
+  if (opened) { ROWS.cell = S.cell; ROWS.seen = new Set(); ROWS.done = new Set(list.filter(i => i.done).map(i => i.id)); $('captureErr').hidden = true; drawLeftover(); }
   /* Keyboard focus survives the redraw: back to the same control, or to the next row after a delete. */
   const active = document.activeElement, itemsBox = $('items');
   const fkey = active && itemsBox.contains(active) && active.dataset ? active.dataset.fkey || null : null;
-  const fRow = fkey ? [...itemsBox.querySelectorAll('[data-fkey^="c:"]')].findIndex(n => n.dataset.fkey === `c:${fkey.slice(2)}`) : -1;
+  const fRow = fkey ? [...itemsBox.querySelectorAll('[data-fkey^="c:"]')].findIndex(n => n.dataset.fkey === `c:${fkey.slice(fkey.indexOf(':') + 1)}`) : -1;   /* the id after the kind (c:, ya:, …) */
   $('items').replaceChildren(...list.map((i, k) => {
     const shown = txt(i);
     const chk = el('input', { type: 'checkbox', id: `chk-${i.id}`, 'data-fkey': `c:${i.id}`, 'aria-label': tr('doneOf', shown), disabled: !S.canWrite });
-    chk.checked = !!i.done; chk.addEventListener('change', () => patchItem(i.id, { done: chk.checked }));
+    chk.checked = !!i.done; chk.addEventListener('change', () => patchItem(i.id, tickOf(i.id, chk.checked)));
     const main = el('div', { class: 'item-main' });
     const textHost = el('div');
     /* The editor edits what is on screen. A to-do written in Mongolian earlier shows its English
@@ -1633,14 +1743,37 @@ function renderArea() {
     if (back) back.focus({ preventScroll: true });
   }
 }
+/* Lines of a paste that were not saved: one group per space in S.leftover, drawn under the box in
+   every list space until they are saved or closed. Nothing else replaces them: a later paste adds
+   its own failed lines to its space's group, a one-time message has its own line (#captureErr), and
+   "Try again" saves the lines it showed (a second tap meanwhile does nothing), then keeps what still
+   failed and anything added meanwhile. */
 function showLeftover(lines, cell) {
-  const err = $('captureErr');
-  S.leftover = lines.length ? { lines, cell } : null;
-  if (!lines.length) { err.hidden = true; return; }
-  err.hidden = false; delete err.dataset.key;
-  err.replaceChildren(el('span', { text: tr('leftover', lines.length, whereIs(cell), lines.join(' · ')) }),
-    el('button', { type: 'button', class: 'btn ghost', text: tr('retry'), onclick: async () => showLeftover(await addLines(lines, cell), cell) }),
-    el('button', { type: 'button', class: 'btn ghost', text: tr('close'), onclick: () => showLeftover([], cell) }));
+  if (lines.length) {
+    const g = S.leftover.find(x => x.cell === cell);
+    if (g) g.lines.push(...lines); else S.leftover.push({ cell, lines: lines.slice(), busy: false });
+  }
+  drawLeftover();
+}
+async function retryLeftover(g) {
+  if (g.busy) return;
+  const lines = g.lines.slice();
+  g.busy = true;
+  const left = await addLines(lines, g.cell);
+  g.busy = false; g.lines = [...left, ...g.lines.slice(lines.length)];
+  if (!g.lines.length) S.leftover = S.leftover.filter(x => x !== g);
+  drawLeftover();
+}
+function drawLeftover() {
+  const box = $('leftover'), a = document.activeElement, back = a && box.contains(a) ? a : null, keys = !!back && back.matches(':focus-visible');
+  box.hidden = !S.leftover.length;
+  box.replaceChildren(...S.leftover.map(g => el('p', { class: 'err' }, [
+    el('span', { text: tr('leftover', g.lines.length, whereIs(g.cell), g.lines.join(' · ')) }),
+    el('button', { type: 'button', class: 'btn ghost', 'data-fkey': `lr:${g.cell}`, text: tr('retry'), onclick: () => retryLeftover(g) }),
+    el('button', { type: 'button', class: 'btn ghost', 'data-fkey': `lc:${g.cell}`, text: tr('close'), onclick: () => { S.leftover = S.leftover.filter(x => x !== g); drawLeftover(); } })])));
+  /* Focus stays on the same button; once its group is gone, a keyboard user goes back to the box. */
+  const same = back && box.querySelector(`[data-fkey="${back.dataset.fkey}"]`);
+  if (same) same.focus({ preventScroll: true }); else if (keys) $('newText').focus({ preventScroll: true });
 }
 /* A message that is re-worded when the language changes: it keeps its key. */
 function say(node, key, ...args) { node.hidden = !key; node.dataset.key = key || ''; node.dataset.args = JSON.stringify(args); node.textContent = key ? tr(key, ...args) : ''; }
@@ -1649,9 +1782,9 @@ function initCapture() {
   $('capture').addEventListener('submit', async e => {
     e.preventDefault();
     const box = $('newText'), text = box.value.trim(), err = $('captureErr'), cell = S.cell;
-    if (!S.leftover) err.hidden = true;
+    say(err, '');   /* a message from before goes (a paste's leftover lines have their own place) */
     if (!text) { box.focus(); return; }
-    if (!canWriteNow() || !cell) { say(err, 'captureWait'); return; }
+    if (!canWriteNow() || !cell) { say(err, S.db && !S.canWrite ? 'saveReadOnly' : 'captureWait'); return; }
     $('addBtn').disabled = true;
     const ok = await addItem(text, cell);
     $('addBtn').disabled = false;
@@ -1665,7 +1798,8 @@ function initCapture() {
     if (lines.length < 2) return;
     e.preventDefault();
     const cell = S.cell, err = $('captureErr');
-    if (!canWriteNow() || !cell) { say(err, 'pasteWait'); return; }
+    say(err, '');
+    if (!canWriteNow() || !cell) { say(err, S.db && !S.canWrite ? 'saveReadOnly' : 'pasteWait'); return; }
     showLeftover(await addLines(lines, cell), cell);
   });
 }
@@ -1729,17 +1863,19 @@ let clockChain = Promise.resolve();
    Claude, never before the meta answer either: an archived copy must not start a timer. */
 function writeClock(mutate) {
   if (!S.db || !S.me || !S.canWrite || !S.clockReady || !metaKnown()) return Promise.resolve(false);
+  /* The team card is redrawn as the tick does: in the open menu, never under an open city picker. */
+  const team = () => { if (S.sheet === 'menuSheet' && !isEditing()) renderTeam(); };
   clockChain = clockChain.then(async () => {
     const prev = myClock();
     const cur = JSON.parse(JSON.stringify(prev || { days: {} }));
     mutate(cur);
-    S.clocks.set(S.me, cur); renderClock(); renderTeam();
-    try { await dbWrite(`clock/${S.me}`, 'set', cur); S.wroteOnce = true; return true; }
+    S.clocks.set(S.me, cur); renderClock(); team();
+    try { await dbWrite(`clock/${S.me}`, 'set', cur); S.wroteOnce = true; if (S.failWords === tr('clockFailed')) { clearFailed(); setSync('', ''); } return true; }
     catch (e) {
       /* What was not stored is not shown: put the previous clock back. */
       if (prev) S.clocks.set(S.me, prev); else S.clocks.delete(S.me);
-      if (!refusedWrite(e)) setSync('failed', tr('clockFailed'));
-      renderClock(); renderTeam();
+      if (!refusedWrite(e)) sayFailed(tr('clockFailed'));
+      renderClock(); team();
       return false;
     }
   });
@@ -1792,11 +1928,15 @@ function renderClock() {
   btn.dataset.who = m ? m.id : '';
   $('meInitial').textContent = m ? m.name[0] : '☰';
   $('meDot').className = !S.me || !S.db ? '' : away ? 'away' : running ? 'on' : '';
-  btn.setAttribute('aria-label', m ? tr('menuOf', m.name) : tr('menu'));
+  /* The dot's state in words too (once this person's clock is known). */
+  const timer = !S.me || !S.db || !S.clockReady ? '' : away ? tr('awayFor', fmt(Date.now() - leftOf(c))) : running ? tr('timerOn') : tr('clockStopped');
+  btn.setAttribute('aria-label', [m ? tr('menuOf', m.name) : tr('menu'), timer].filter(Boolean).join(' · '));
   $('meBar').hidden = !S.me || !S.db;
   if (!S.me || !S.db) return;
   $('meAvatar').dataset.who = m ? m.id : ''; $('meAvatar').textContent = m ? m.name[0] : '?';
-  $('meWho').textContent = m ? m.name : tr('noName');
+  /* Someone who cannot write cannot pick a name either: the card says why instead of asking. */
+  $('meWho').textContent = m ? m.name : S.canWrite ? tr('noName') : tr('you');
+  sayReadOnly($('meRo'));
   $('meRole').textContent = m ? `${tr(m.role)}${cityLine(m.id) ? ' · ' + cityLine(m.id) : ''}` : '';
   $('meClockDot').className = `dot${away ? ' away' : running ? ' on' : ''}`;
   $('meTime').textContent = tr('todayT', fmt(c ? liveMs(c, dayKey(Date.now())) : 0));
@@ -1810,7 +1950,10 @@ function renderClock() {
 /* One row per team member: role, city and local time, status, open to-dos, time today and over 7
    days. Time is shown per person, never as a ranking. */
 function renderTeam() {
-  $('team').replaceChildren(...TEAM.map(m => {
+  /* Redrawn by the 15 s tick and by a teammate's clock or city: a row whose words alone changed stays
+     (putKids), and a city button with focus keeps it (data-fkey, also on the open city list). With
+     the cities unreadable (S.teamFailed) none is offered: a pick would write over one not seen. */
+  keepFocus(() => putKids($('team'), TEAM.map(m => {
     const uids = [...S.people.entries()].filter(([, v]) => v.who === m.id).map(([k]) => k);
     const clocks = uids.map(u => S.clocks.get(u)).filter(Boolean);
     const live = liveClock(clocks) || clocks[0] || null;
@@ -1818,14 +1961,14 @@ function renderTeam() {
     const today = personMs(clocks, dayKey(Date.now())), week = personWeekMs(clocks);
     let open = 0; S.items.forEach(i => { if (i.who === m.id && !i.done) open += 1; });
     const zone = S.team.get(m.id);
-    const city = S.canWrite && S.db ? el('button', { type: 'button', class: 'city', 'aria-label': tr('cityOf', m.name), onclick: e => pickCity(m, e.currentTarget) }, zone ? cityLine(m.id) : tr('noCity'))
+    const city = S.canWrite && S.db && !S.teamFailed ? el('button', { type: 'button', class: 'city', 'data-fkey': `city:${m.id}`, 'aria-label': tr('cityOf', m.name), onclick: e => pickCity(m, e.currentTarget) }, zone ? cityLine(m.id) : tr('noCity'))
       : el('span', { class: 'city', text: zone ? cityLine(m.id) : '' });
     return el('li', {}, [el('span', { class: 'who', 'data-who': m.id, 'aria-hidden': 'true', text: m.name[0] }),
       el('div', {}, [el('b', { text: m.name }), el('small', { class: 'role', text: tr(m.role) }),
         el('small', {}, [city, zone ? el('span', { class: 'lt', 'data-clock': m.id, text: ` · ${localTime(m.id)}` }) : null]),
         el('small', { text: !S.db ? '' : S.loaded && S.peopleReady && S.clockReady ? `${st.text} · ${tr('nTodos', open)}` : tr('loading') })]),
       el('div', { class: 'nums' }, [el('div', { text: fmt(today) }), el('small', { text: tr('weekT', fmt(week)) })])]);
-  }));
+  })));
 }
 function renderSpaceTime() {
   const box = $('spaceTime'); if (!S.cell) return;
@@ -1840,7 +1983,10 @@ function renderSpaceTime() {
   box.hidden = !parts.length; box.textContent = parts.length ? tr('inSpace', parts.join(' · ')) : '';
 }
 /* Opening the workspace starts the timer. Coming back to it (another app, the screen locked) keeps
-   a pause the person chose. */
+   a pause the person chose. Time away is decided by how long it was, never by a tap or key on this
+   device: the tap that brings the person back (after a sleep, on the device that stayed in front, on
+   a tab opened in the background, under the question) says nothing about the time before it. Over
+   12 hours is cut at the leave time, under 10 minutes is kept, and in between the person is asked. */
 function reconcileClock(opening) {
   if (!S.clockReady || !S.me || !S.canWrite || document.hidden || !metaKnown()) return;
   const c = myClock(), box = $('awayBox');
@@ -1853,9 +1999,6 @@ function reconcileClock(opening) {
   const leftAt = leftOf(c), gone = leftAt ? Date.now() - leftAt : 0;
   const keep = () => { S.myOpenSince = (myClock() || {}).openSince || null; moveClock(); };
   if (!leftAt) { box.hidden = true; if (c.leftAt) writeClock(x => { x.leftAt = null; }).then(keep); else keep(); return; }
-  /* This device was used after that leftAt was written (another device of the same account wrote
-     it, or it is old): the person was here, not away. */
-  if (!opening && S.lastInput > leftAt + 1000) { box.hidden = true; writeClock(x => { x.leftAt = null; }).then(keep); return; }
   if (gone > AWAY_MAX_MS) { box.hidden = true; writeClock(x => { closeStretch(x, leftAt); }).then(startClock); return; }
   if (gone < AWAY_ASK_MS) { box.hidden = true; writeClock(x => { x.leftAt = null; }).then(keep); return; }
   renderAway(leftAt);
@@ -1869,17 +2012,20 @@ function renderAway(leftAt) {
   box.replaceChildren(
     el('span', { text: tr('awayQ', fmt(Date.now() - leftAt)) }),
     el('div', {}, [
-      el('button', { type: 'button', class: 'btn', text: tr('awayYes'), onclick: () => { if (!still()) return; box.hidden = true; writeClock(x => { x.leftAt = null; }).then(() => { S.myOpenSince = (myClock() || {}).openSince || null; moveClock(); }); } }),
-      el('button', { type: 'button', class: 'btn ghost', text: tr('awayNo'), onclick: () => { if (!still()) return; box.hidden = true; writeClock(x => { closeStretch(x, leftAt); }).then(startClock); } }),
+      el('button', { type: 'button', class: 'btn', 'data-fkey': 'aw:yes', text: tr('awayYes'), onclick: () => { if (!still()) return; box.hidden = true; writeClock(x => { x.leftAt = null; }).then(() => { S.myOpenSince = (myClock() || {}).openSince || null; moveClock(); }); } }),
+      el('button', { type: 'button', class: 'btn ghost', 'data-fkey': 'aw:no', text: tr('awayNo'), onclick: () => { if (!still()) return; box.hidden = true; writeClock(x => { closeStretch(x, leftAt); }).then(startClock); } }),
     ]));
 }
 /* A gap between ticks (a laptop asleep with the page in front): read the stored clock fresh and
-   write leftAt only onto the stretch this device is part of, never over another device's. */
+   write leftAt only onto the stretch this device is part of, never over another device's. The person
+   left at the last tick, or just after the stretch began when it began after that tick (opening a
+   space, Back, Start, then the lid closed): a leftAt at the stretch's own start would not count as
+   leaving (leftOf), and the whole sleep would be kept. */
 async function sleepGap(since) {
   let stored = null;
   try { const snap = await S.db.doc(`clock/${S.me}`).get(); stored = snap && snap.exists ? cleanClock(snap.data()) : null; } catch (e) { stored = null; }
   if (stored) S.clocks.set(S.me, stored);
-  if (stored && stored.openSince && !leftOf(stored) && stored.openSince === S.myOpenSince) await writeClock(x => { x.leftAt = Math.max(since, x.openSince); });
+  if (stored && stored.openSince && !leftOf(stored) && stored.openSince === S.myOpenSince) await writeClock(x => { x.leftAt = Math.max(since, x.openSince + 1); });
   reconcileClock(false);
 }
 function initClock() {
@@ -1902,7 +2048,7 @@ function initClock() {
     renderClock(); tickClocks();
     if (S.sheet === 'menuSheet' && !isEditing()) renderTeam();
     if (S.cell) renderSpaceTime();
-    if (S.sheet === 'updatesSheet') renderUpdates();
+    if (S.sheet === 'updatesSheet') keepFocus(renderUpdates);   /* the "ago" times; focus stays where it was */
   }, 15000);
   /* Input on this device while its clock says "away" (another device of the same account went
      hidden, or this one slept) takes the clock back; reconcileClock decides what to ask. */
@@ -1916,9 +2062,14 @@ function initClock() {
 
 /* ── Export and import ──
    Export: every collection in one JSON file (it can be imported again), or the to-dos as CSV.
-   Import: first shows what will change, and deletes nothing. A to-do or side name with the same id
-   is replaced only if the imported one is newer. People and time records are added only if missing. */
+   Import: first shows what will change, and deletes nothing. A side name with the same id is
+   replaced only if the imported one is newer; a to-do with the same id is then updated with what the
+   file holds, and keeps the rest (an English version a CSV cannot carry, an open hand-off request).
+   People and time records are added only if missing. */
 const ITEM_FIELDS = ['cell', 'text', 'en', 'enSrc', 'url', 'who', 'done', 'deps', 'by', 'at', 'editedBy', 'editedAt'];
+/* The fields a record in a file really holds (`v` as read, `body` as cleanItem() made it): cleanItem
+   fills in the rest for a new to-do, but an update writes only these. */
+const heldBy = (v, body) => ITEM_FIELDS.filter(k => (k === 'en' || k === 'enSrc' ? 'en' in body : k === 'at' ? +v.at > 0 : v[k] !== undefined));
 const todayStamp = () => dayKey(Date.now());
 function exportData() {
   const items = [...S.items.values()].map(({ id, ...v }) => ({ id, ...v }));
@@ -1971,7 +2122,10 @@ function readImport(text) {
     if (Array.isArray(d)) d = { items: d };
     if (!d || typeof d !== 'object') throw plainError(tr('impNotCubic'));
     if (d.app && d.app !== 'cubic') throw plainError(tr('impNotCubic'));
-    const raw = (Array.isArray(d.items) ? d.items : []).filter(v => v && typeof v === 'object').map(v => ({ id: v && typeof v.id === 'string' && /^[^/\s]{1,120}$/.test(v.id) ? v.id : null, body: cleanItem(v) }));
+    const raw = (Array.isArray(d.items) ? d.items : []).filter(v => v && typeof v === 'object').map(v => {
+      const body = cleanItem(v);
+      return { id: typeof v.id === 'string' && /^[^/\s]{1,120}$/.test(v.id) ? v.id : null, body, has: body ? heldBy(v, body) : [] };
+    });
     const items = raw.filter(x => x.body), skipped = raw.length - items.length;
     const faces = (Array.isArray(d.faces) ? d.faces : []).filter(f => f && typeof f === 'object').map((f, i) => {
       const k = /^f([0-5])$/.exec((f && f.id) || `f${i}`); if (!k || !f) return null;
@@ -1991,8 +2145,12 @@ function readImport(text) {
   const items = rows.map(r => {
     const g = name => (col(name) >= 0 ? (r[col(name)] || '').trim().replace(/^'(?=[=+\-@\t\r])/, '') : '');
     const id = g('id');
-    const deps = col('deps') >= 0 ? g('deps').split(/\s+/).filter(Boolean) : undefined;
-    return { id: /^[^/\s]{1,120}$/.test(id) ? id : null, body: cleanItem({ cell: g('cell'), text: g('text'), who: g('owner'), done: g('done'), url: g('url'), at: g('at'), editedAt: g('editedat'), deps, by: g('by'), editedBy: g('editedby') }) };
+    /* Only the columns the file has: a missing one is not an empty value (it is kept on update). */
+    const v = { cell: g('cell'), text: g('text') };
+    [['owner', 'who'], ['done', 'done'], ['url', 'url'], ['at', 'at'], ['editedat', 'editedAt'], ['by', 'by'], ['editedby', 'editedBy']].forEach(([c, k]) => { if (col(c) >= 0) v[k] = g(c); });
+    if (col('deps') >= 0) v.deps = g('deps').split(/\s+/).filter(Boolean);
+    const body = cleanItem(v);
+    return { id: /^[^/\s]{1,120}$/.test(id) ? id : null, body, has: body ? heldBy(v, body) : [] };
   });
   const kept = items.filter(x => x.body);
   if (!kept.length) throw plainError(tr('impNoTodos'));
@@ -2000,15 +2158,22 @@ function readImport(text) {
 }
 function planImport(d) {
   const plan = { add: [], update: [], same: 0, older: 0, skipped: d.skipped || 0, faces: [], people: [], clock: [] };
-  const sameItem = (a, b) => ITEM_FIELDS.filter(k => !['editedAt', 'editedBy', 'by', 'at'].includes(k)).every(k => (k === 'deps' ? JSON.stringify(a.deps || []) === JSON.stringify(b.deps || []) : (a[k] ?? '') === (b[k] ?? '')));
-  d.items.forEach(({ id, body: given }) => {
+  /* Same when every field the file holds matches (a CSV of to-dos with an English version, checked
+     back in, is the same: it cannot hold that version). Dependencies as they would be written. */
+  const sameItem = (a, b, has) => ITEM_FIELDS.filter(k => !['editedAt', 'editedBy', 'by', 'at'].includes(k) && (k === 'deps' || has.includes(k)))
+    .every(k => (k === 'deps' ? JSON.stringify(a.deps || []) === JSON.stringify(b.deps || []) : (a[k] ?? '') === (b[k] ?? '')));
+  d.items.forEach(({ id, body: given, has = ITEM_FIELDS }) => {
     const cur = id && S.items.get(id);
     /* A row without a deps column (an older CSV) keeps the to-do's dependencies. */
     const body = { ...given, deps: Array.isArray(given.deps) ? given.deps : cur && Array.isArray(cur.deps) ? cur.deps.slice() : [],
       by: given.by || (cur && cur.by) || null, editedBy: given.editedBy || (cur && cur.editedBy) || null };
+    /* A to-do new here that does not say who made it (a plain CSV) was added by the one importing it:
+       the updates read "Vida added …", not "Someone changed …", and not as news to Vida herself. Its
+       times stay as given: they decide which copy is newer. */
+    if (!cur && !body.by && !body.editedBy) { body.by = S.me || null; body.act = 'add'; }
     if (!cur) plan.add.push({ id: id || S.db.collection('items').doc().id, body });
-    else if (sameItem(cur, body)) plan.same += 1;
-    else if ((body.editedAt || 0) > (cur.editedAt || 0)) plan.update.push({ id, body });
+    else if (sameItem(cur, body, has)) plan.same += 1;
+    else if ((body.editedAt || 0) > (cur.editedAt || 0)) plan.update.push({ id, body, has });
     else plan.older += 1;
   });
   d.faces.forEach(x => {
@@ -2062,6 +2227,20 @@ function dropImportLoops(incoming) {
   return dropped;
 }
 const planSize = p => p.add.length + p.update.length + p.faces.length + p.people.length + p.clock.length;
+/* An imported update: what the file's record holds, its dependencies (after the loop guard), who
+   changed it and when, and what kind of change it is here (the updates list words it from `act`).
+   A new owner ends an open hand-off, as every change of owner does; a tick or a reopening ends its
+   request and puts its "no" away, as a tick on the row does (tickOf). */
+function importPatch(cur, x) {
+  const b = x.body, patch = { deps: b.deps, by: b.by, editedBy: b.editedBy, editedAt: b.editedAt };
+  (x.has || ITEM_FIELDS).forEach(k => { if (k in b && !(k in patch)) patch[k] = b[k]; });
+  const differs = k => (k === 'done' ? !!patch.done !== !!cur.done : (patch[k] || '') !== (cur[k] || ''));
+  const changed = Object.fromEntries(['done', 'cell', 'who'].filter(k => k in patch && differs(k)).map(k => [k, patch[k]]));
+  patch.act = actOf(changed);
+  if ('who' in changed) Object.assign(patch, { ask: null, nope: [], declined: null });
+  else if ('done' in changed && (cur.ask || cur.declined)) Object.assign(patch, { ask: null, declined: null });
+  return patch;
+}
 /* The plan may sit on screen for a while: every write is checked again against the data as it is
    when written, so a teammate's newer edit, or a record that appeared meanwhile, is not overwritten.
    p.written counts what was actually written. */
@@ -2082,7 +2261,13 @@ async function applyImport(p) {
       x.wrote = true; p.written += 1;
     }
     for (const x of p.add) { if (x.wrote) continue; if (S.items.has(x.id)) continue; await dbWrite(`items/${x.id}`, 'set', x.body); x.wrote = true; p.written += 1; }
-    for (const x of p.update) { const cur = S.items.get(x.id); if (x.wrote || (cur && (cur.editedAt || 0) >= (x.body.editedAt || 0))) continue; await dbWrite(`items/${x.id}`, 'set', x.body); x.wrote = true; p.written += 1; }
+    /* A to-do that is still here is updated as a merge of what the file holds, so nothing the file
+       does not carry is lost; one deleted while the plan was on screen comes back as the file has it. */
+    for (const x of p.update) {
+      const cur = S.items.get(x.id); if (x.wrote || (cur && (cur.editedAt || 0) >= (x.body.editedAt || 0))) continue;
+      if (cur) await dbWrite(`items/${x.id}`, 'update', importPatch(cur, x)); else await dbWrite(`items/${x.id}`, 'set', x.body);
+      x.wrote = true; p.written += 1;
+    }
     for (const [k, v] of p.people) { if (S.people.has(k)) continue; await dbWrite(`people/${k}`, 'set', v); S.people.set(k, v); p.written += 1; }
     for (const [k, v] of p.clock) { if (S.clocks.has(k)) continue; await dbWrite(`clock/${k}`, 'set', v); S.clocks.set(k, v); p.written += 1; }
   });
@@ -2283,14 +2468,18 @@ function renderGraph() { keepFocus(() => drawFlow('graph')); }
 function renderTimeline() { keepFocus(() => drawFlow('time')); }
 function drawFlow(kind) {
   const time = kind === 'time';
-  const host = $('planView'), old = host.querySelector('.flow-scroll');
+  /* The scroll is kept across redraws of the same view only: the other view's box may still be here. */
+  const host = $('planView'), old = host.dataset.kind === kind ? host.querySelector('.flow-scroll') : null;
   const keep = old ? { x: old.scrollLeft, y: old.scrollTop } : null;
+  host.dataset.kind = kind;
+  parkAway();   /* never thrown away with the old graph; syncFull() puts it back */
   const fl = flow(), P = plan(), picked = pickedGroup(P);
   const has = id => !picked || picked.has(id);
   const md = milestoneData(P, picked, fl), stones = md.stones;
-  if (time && !md.all.length) { host.replaceChildren(el('p', { class: 'empty', text: tr('tlEmpty') })); return; }
+  /* No graph to show (the last milestone went): no full screen either. */
+  if (time && !md.all.length) { G.full = false; host.replaceChildren(el('p', { class: 'empty', text: tr('tlEmpty') })); syncFull(); return; }
   const chips = groupChips(P, picked, time ? renderTimeline : renderGraph);
-  if (time && !stones.length) { host.replaceChildren(...[chips, el('p', { class: 'empty', text: tr('tlNoneInPlan') })].filter(Boolean)); return; }
+  if (time && !stones.length) { G.full = false; host.replaceChildren(...[chips, el('p', { class: 'empty', text: tr('tlNoneInPlan') })].filter(Boolean)); syncFull(); return; }
   const stoneOf = new Map(stones.map(st => [st.i.id, st]));
   /* Which nodes, and in which column. */
   let nodes, colOf, gapAfter, top, gi = null;
@@ -2302,7 +2491,16 @@ function drawFlow(kind) {
     stones.forEach(st => { if (!P.layer.has(st.i.id)) ids.push(st.i.id); });   /* a milestone with no links yet */
     nodes = ids.map(id => S.items.get(id));
     const none = stones.length;
-    colOf = id => (gi.has(id) ? gi.get(id) : none) * 1000 + (P.layer.get(id) || 0);
+    /* What waits behind a loop (stuck, not in it) goes columns after what it waits for, so its links
+       run forward; only the links inside a loop turn back. Loops are counted as one (sccOf). */
+    const inScc = new Map(), behind = new Map();
+    P.stuck.forEach(id => { const c = P.sccOf.get(id); if (!inScc.has(c)) inScc.set(c, []); inScc.get(c).push(id); });
+    const after = id => {
+      const c = P.sccOf.get(id); if (c === undefined) return 0;
+      if (!behind.has(c)) { behind.set(c, 0); behind.set(c, Math.max(0, ...inScc.get(c).flatMap(v => P.deps.get(v).filter(w => P.sccOf.has(w) && P.sccOf.get(w) !== c).map(w => after(w) + 1)))); }
+      return behind.get(c);
+    };
+    colOf = id => (gi.has(id) ? gi.get(id) : none) * 1000 + (P.layer.get(id) || 0) + after(id);
     gapAfter = (a, b) => Math.floor(a / 1000) !== Math.floor(b / 1000);
     top = 100;   /* room for the date ruler and each milestone's header: name, progress bar, count */
   } else {
@@ -2392,7 +2590,8 @@ function drawFlow(kind) {
       onclick: () => { G.pick = G.pick === n.id ? null : n.id; time ? renderTimeline() : renderGraph(); } }, kids));
   });
   const zoomBox = el('div', { class: 'flow-zoom', style: `width:${Math.ceil(lay.w * G.zoom) + 28}px;height:${Math.ceil(lay.h * G.zoom) + 28}px` }, canvas);
-  const scroll = el('div', { class: 'flow-scroll', tabindex: '0', 'aria-label': tr('graphAria') }, zoomBox);
+  /* data-fkey on everything that takes focus here, so a teammate's change (a redraw) keeps it in place. */
+  const scroll = el('div', { class: 'flow-scroll', tabindex: '0', 'data-fkey': 'z:scroll', 'aria-label': tr('graphAria') }, zoomBox);
 
   /* The bar over the graph: what is done and whether the plan is on time (Timeline), or the status
    filters (Dependency graph); zoom; full screen. */
@@ -2439,11 +2638,15 @@ function drawFlow(kind) {
         : `${STATE[x.state]} · ${layerName(n.id)} · ${whereIs(n.cell)}${member(n.who) ? ' · ' + member(n.who).name : ''}` }),
       x.waits.length ? el('span', { text: tr('waitsFor', names(x.waits)) }) : null,
       x.holds.length ? el('span', { text: tr('holdsUp', names(x.holds)) }) : null,
-      ready.length ? el('ul', {}, ready.slice(0, 6).map(r => el('li', {}, el('button', { type: 'button', onclick: () => openKey(r.cell) }, [el('b', {}, [statusIcon(fl.get(r.id).state), ` ${txt(r)}`]), el('small', { text: ` · ${whereIs(r.cell)}${member(r.who) ? ' · ' + member(r.who).name : ''}` })])))) : null,
+      ready.length ? el('ul', {}, ready.slice(0, 6).map(r => el('li', {}, el('button', { type: 'button', 'data-fkey': `r:${r.id}`, onclick: () => openKey(r.cell) }, [el('b', {}, [statusIcon(fl.get(r.id).state), ` ${txt(r)}`]), el('small', { text: ` · ${whereIs(r.cell)}${member(r.who) ? ' · ' + member(r.who).name : ''}` })])))) : null,
       ready.length > 6 ? el('small', { text: tr('moreReady', ready.length - 6) }) : null,
-      el('div', { class: 'btns' }, [el('button', { type: 'button', class: 'btn', text: tr('openSpace'), onclick: () => openKey(n.cell) }),
-        S.canWrite && n.cell !== MILESTONE_CELL ? el('button', { type: 'button', class: 'btn ghost', text: tr('handTitle'), onclick: () => openHand(n.id) }) : null,
-        el('button', { type: 'button', class: 'btn ghost', text: tr('unpick'), onclick: () => { G.pick = null; redraw(); } })])]);
+      /* The Owner button's key names its to-do: closing the owner sheet gives focus back to it (sheetKey). */
+      el('div', { class: 'btns' }, [el('button', { type: 'button', class: 'btn', 'data-fkey': 'd:open', text: tr('openSpace'), onclick: () => openKey(n.cell) }),
+        S.canWrite && n.cell !== MILESTONE_CELL ? el('button', { type: 'button', class: 'btn ghost', 'data-fkey': `go:${n.id}`, text: tr('handTitle'), onclick: () => openHand(n.id) }) : null,
+        /* Clearing the selection gives focus back to the node that was picked. */
+        el('button', { type: 'button', class: 'btn ghost', 'data-fkey': 'd:unpick', text: tr('unpick'), onclick: () => {
+          const id = G.pick; G.pick = null; redraw();
+          const back = document.querySelector(`[data-fkey="g:${CSS.escape(id)}"]`); if (back) back.focus({ preventScroll: true }); } })])]);
   }
   const box = el('section', { class: `flow${G.full ? ' full' : ''}`, 'aria-label': tr('graphAria') },
     [el('div', { class: 'flow-bar' }, [barLead, ...tools]), lay.nodes.length ? scroll : el('p', { class: 'empty', style: 'padding:14px', text: tr('noDeps') }), detail]);
@@ -2451,7 +2654,7 @@ function drawFlow(kind) {
   const shownLoop = P.loop.filter(id => lay.pos.has(id));
   const loopNote = shownLoop.length ? el('div', { class: 'note gdetail', role: 'alert' }, [
     el('b', { text: tr('loopN', shownLoop.length) }), el('span', { text: tr('loopHelp') }),
-    el('ul', { class: 'recent' }, shownLoop.map(id => el('li', {}, el('button', { type: 'button', onclick: () => openKey(S.items.get(id).cell) },
+    el('ul', { class: 'recent' }, shownLoop.map(id => el('li', {}, el('button', { type: 'button', 'data-fkey': `lp:${id}`, onclick: () => openKey(S.items.get(id).cell) },
       [el('b', { text: txt(S.items.get(id)) }), el('small', { text: whereIs(S.items.get(id).cell) })]))))]) : null;
   const loose = S.items.size - P.ids.length;
   let lists = [];
@@ -2462,15 +2665,15 @@ function drawFlow(kind) {
     const ready = undone.filter(i => fl.get(i.id).state !== 'blocked')
       .map(i => ({ i, n: [...downstream(i.id)].filter(d => !S.items.get(d).done).length })).sort((a, b) => b.n - a.n || P.order.indexOf(a.i.id) - P.order.indexOf(b.i.id)).slice(0, 12);
     const stuck = undone.filter(i => fl.get(i.id).state === 'blocked');
-    const line = (i, sub) => el('li', {}, el('button', { type: 'button', onclick: () => openKey(i.cell) }, [el('b', { text: txt(i) }), el('small', { text: sub })]));
+    const line = (key, i, sub) => el('li', {}, el('button', { type: 'button', 'data-fkey': `${key}:${i.id}`, onclick: () => openKey(i.cell) }, [el('b', { text: txt(i) }), el('small', { text: sub })]));
     const layersShown = lay.keys.filter(l => l !== P.stuckLayer).length;
-    const fold = (key, open, label, mark, body) => el('details', { class: 'card build', open: !!G[key], ontoggle: e => { G[key] = e.target.open; } }, [el('summary', { class: 'label', 'data-n': mark, text: label }), body]);
+    const fold = (key, open, label, mark, body) => el('details', { class: 'card build', open: !!G[key], ontoggle: e => { G[key] = e.target.open; } }, [el('summary', { class: 'label', 'data-fkey': `fold:${key}`, 'data-n': mark, text: label }), body]);
     lists = [
-      fold('readyOpen', false, tr('canStart'), '▶', el('ul', { class: 'recent' }, ready.length ? ready.map(({ i, n }) => line(i, `${whereIs(i.cell)}${n ? tr('opensN', n) : ''}${member(i.who) ? ' · ' + member(i.who).name : ''}`)) : [el('li', {}, el('p', { class: 'empty', text: tr('none') }))])),
-      fold('stuckOpen', false, STATE.blocked, '■', el('ul', { class: 'recent' }, stuck.length ? stuck.map(i => line(i, tr('waitsFor', fl.get(i.id).waits.map(d => short(txt(S.items.get(d)), 30)).join(' · ')))) : [el('li', {}, el('p', { class: 'empty', text: tr('none') }))])),
+      fold('readyOpen', false, tr('canStart'), '▶', el('ul', { class: 'recent' }, ready.length ? ready.map(({ i, n }) => line('lr', i, `${whereIs(i.cell)}${n ? tr('opensN', n) : ''}${member(i.who) ? ' · ' + member(i.who).name : ''}`)) : [el('li', {}, el('p', { class: 'empty', text: tr('none') }))])),
+      fold('stuckOpen', false, STATE.blocked, '■', el('ul', { class: 'recent' }, stuck.length ? stuck.map(i => line('ls', i, tr('waitsFor', fl.get(i.id).waits.map(d => short(txt(S.items.get(d)), 30)).join(' · ')))) : [el('li', {}, el('p', { class: 'empty', text: tr('none') }))])),
       lay.nodes.length ? fold('buildOpen', false, tr('buildOrder', lay.nodes.length, layersShown), '↦', el('ol', { class: 'recent build-list' }, lay.nodes.map(n => {
         const x = fl.get(n.id);
-        return el('li', {}, el('button', { type: 'button', onclick: () => openKey(n.cell) }, [
+        return el('li', {}, el('button', { type: 'button', 'data-fkey': `lb:${n.id}`, onclick: () => openKey(n.cell) }, [
           el('b', { text: `${loops.has(n.id) ? '⟲' : STATE_MARK[x.state]} ${txt(n)}` }),
           el('small', { text: `${layerName(n.id)} · ${STATE[x.state]} · ${whereIs(n.cell)}${member(n.who) ? ' · ' + member(n.who).name : ''}` })]));
       }))) : null,
@@ -2478,15 +2681,37 @@ function drawFlow(kind) {
   }
   host.replaceChildren(...[chips, loopNote, box, el('p', { class: 'fine', text: time ? tr('tlHelp') : tr('graphHelp', implied, loose) }), ...lists].filter(Boolean));
   if (keep) { const now = host.querySelector('.flow-scroll'); if (now) { now.scrollLeft = keep.x; now.scrollTop = keep.y; } }
+  syncFull();
 }
-/* Full screen: the graph covers the page; Escape or "✕ Close" brings it back. */
-function setFull(on, redraw) { G.full = !!on; document.body.classList.toggle('locked', G.full || !!S.sheet); redraw(); }
+/* Full screen: the graph covers the page; Escape or "✕ Close" brings it back. While it is on, the
+   page under it does not scroll and the rest of the page is inert, so keyboard and screen-reader
+   focus stay in the graph (or a sheet opened over it). syncFull() works this out from the state; it
+   runs after every draw of the graph and every route, so nothing that ends full screen (Close,
+   Escape, a space opened from it, the back gesture, the graph going away) leaves the page locked. */
+function setFull(on, redraw) { G.full = !!on; redraw(); syncFull(); }
+/* The away question back in its own place on the page (from under the full-screen graph's bar). */
+function parkAway() { const away = $('awayBox'); if (away && away.parentNode !== $('page')) $('notice').after(away); }
+function syncFull() {
+  document.body.classList.toggle('locked', G.full || !!S.sheet);
+  document.querySelectorAll('[data-full-inert]').forEach(n => { n.inert = false; n.removeAttribute('data-full-inert'); });
+  const box = G.full && !$('area').hidden ? $('planView').querySelector(':scope > .flow.full') : null;
+  /* What the page would say over the graph is said under its bar instead: a failed save (sayInFull)
+     and the away question, which moves there while full screen is on and back after. */
+  const bar = box && box.querySelector(':scope > .flow-bar');
+  if (bar) { const away = $('awayBox'); if (away.parentNode !== box) bar.after(away); } else parkAway();
+  sayInFull(false);
+  for (let n = box; n && n !== $('page'); n = n.parentElement)
+    [...n.parentElement.children].forEach(s => { if (s !== n && !s.inert) { s.inert = true; s.setAttribute('data-full-inert', ''); } });
+}
 
 /* ── Routing: #f2 is a side, #f2-c1 a space ── */
-function setHash() { const h = S.cell || `f${S.face}`; if (location.hash !== `#${h}`) { try { history.replaceState(S.cell ? history.state : null, '', `#${h}`); } catch (e) { location.hash = h; } } }
-/* Opening a space adds a history step, so the phone's back gesture returns to the cube. */
+function setHash() { const h = S.cell || `f${S.face}`; if (location.hash !== `#${h}`) { try { history.replaceState(S.cell || atSheetStep() ? history.state : null, '', `#${h}`); } catch (e) { location.hash = h; } } }
+/* Opening a space adds a history step, so the phone's back gesture returns to the cube. From a sheet,
+   the sheet's own step comes off first and the space opens after (a step taken off and another put
+   on at once would lose the new one). */
 function openKey(key) {
   if (!CELL_RE.test(key || '')) return;
+  if (S.sheet && atSheetStep()) { sheetNext = key; closeSheets(true); return; }
   closeSheets(true); if (G.full) G.full = false;
   const fromHome = !S.cell;
   S.cell = key; S.face = +key[1];
@@ -2497,8 +2722,9 @@ function openKey(key) {
 function route() {
   const inArea = !!S.cell;
   $('home').hidden = inArea; $('area').hidden = !inArea;
-  if (G.full && !inArea) { G.full = false; document.body.classList.toggle('locked', !!S.sheet); }
+  if (G.full && !isViewCell(S.cell)) G.full = false;
   if (inArea) renderArea(); else { showFace(S.face); renderHome(); }
+  syncFull();
   moveClock();
 }
 function readHash() {
@@ -2516,27 +2742,55 @@ function renderSheets() {
   else if (S.sheet === 'handSheet') renderHand();
   renderBadges();
 }
-/* Redraws keep keyboard focus: a control with data-fkey gets it back if the redraw dropped it. */
+/* Redraws keep keyboard focus: a control with data-fkey gets it back if the redraw dropped it. The
+   same key can be on a row under an open sheet (inert) and in the sheet: the one that can take focus wins. */
+const liveKey = k => [...document.querySelectorAll(`[data-fkey="${CSS.escape(k)}"]`)].find(n => !n.closest('[inert], [hidden]')) || null;
 function keepFocus(draw) {
   const a = document.activeElement, k = a && a.dataset ? a.dataset.fkey : null;
   draw();
   if (k && (!document.activeElement || document.activeElement === document.body)) {
-    const n = document.querySelector(`[data-fkey="${CSS.escape(k)}"]`);
-    if (n && !n.closest('[inert], [hidden]')) n.focus({ preventScroll: true });
+    const n = liveKey(k);
+    if (n) n.focus({ preventScroll: true });
   }
 }
 function renderAll() { keepFocus(() => { if (S.cell) renderArea(); else renderHome(); renderSheets(); }); }
 
 /* ── Sheets: the menu, updates and chat. One open at a time; the page under it is inert. ── */
-let sheetOpener = null;
+/* The phone's back gesture closes the open sheet, and nothing else. Only where the page owns its
+   history (the top-level page, as on Vercel); inside Claude's frame the history is the host's, so
+   no step is added there. An open sheet holds one history step: switching to another sheet keeps
+   it, and closing the sheet any other way (✕, Escape, the backdrop, an action) takes it back off,
+   so Back is never wasted. The login and the sign-in page are not sheets and add none. */
+const OWN_HISTORY = (() => { try { return window.top === window; } catch (e) { return false; } })();
+const atSheetStep = () => OWN_HISTORY && !!(history.state && history.state.cubic === 'sheet');
+let stepOff = false, sheetNext = null;   /* a step this page is taking off; a space to open after it */
+function sheetStepOn() {
+  if (!OWN_HISTORY || stepOff || atSheetStep()) return;   /* while a step comes off, popstate gives the new sheet one */
+  try { history.pushState({ cubic: 'sheet' }, ''); } catch (e) { /* the gesture then leaves, as before */ }
+}
+/* After the current task, so a sheet opened right after this one closed keeps the step. */
+function sheetStepOff() {
+  queueMicrotask(() => { if (S.sheet || stepOff || !atSheetStep()) return; stepOff = true; history.back(); });
+}
+window.addEventListener('popstate', () => {
+  const ours = stepOff; stepOff = false;
+  if (atSheetStep()) { if (!S.sheet) history.back(); return; }   /* onto an old step (Forward, a reload): step over it */
+  if (S.sheet) { if (ours) sheetStepOn(); else closeSheets(); }   /* the back gesture closes the sheet */
+  if (sheetNext) { const k = sheetNext; sheetNext = null; openKey(k); }
+});
+/* Closing gives focus back to what opened the first of them, or, if a redraw replaced it, to the
+   control with its data-fkey. */
+let sheetOpener = null, sheetKey = null;
 function openSheet(id) {
   if (S.sheet === id) return;
+  if (!S.sheet) { sheetOpener = document.activeElement; sheetKey = sheetOpener && sheetOpener.dataset ? sheetOpener.dataset.fkey || null : null; }
   closeSheets(true);
-  sheetOpener = document.activeElement;
+  $('toast').classList.remove('over');   /* a toast said in an earlier sheet goes under this one, with the page */
   S.sheet = id; $(id).hidden = false; $('sheetBack').hidden = false; $('page').inert = true;
   document.body.classList.add('locked');
+  sheetStepOn();
   if (id === 'menuSheet') renderMenu();
-  else if (id === 'updatesSheet') { S.updSince = seenAt('updates'); renderUpdates(); markSeen('updates', Date.now()); }
+  else if (id === 'updatesSheet') { S.updSince = seenNow('updates'); renderUpdates(); markSeen('updates', S.updTop); }   /* "New" is what was new on opening */
   else if (id === 'chatSheet') { renderChat(true); markSeen('chat', lastChatAt()); }
   else if (id === 'handSheet') renderHand();
   renderBadges();
@@ -2548,11 +2802,16 @@ function closeSheets(quiet) {
   if (!S.sheet) return;
   const was = S.sheet;
   if (was === 'chatSheet') markSeen('chat', lastChatAt());
+  else if (was === 'updatesSheet') markSeen('updates', S.updTop);   /* a change that came in while it was open was on screen */
   $(was).hidden = true; $('sheetBack').hidden = true; $('page').inert = loginOpen(); S.sheet = null;
   document.body.classList.toggle('locked', G.full);
+  $(was).querySelectorAll('.save-err').forEach(n => n.remove());   /* the status line says it now */
+  sheetStepOff();
   if (S.renderQueued) setTimeout(() => queueRender(), 0);
   renderBadges();
-  if (!quiet && sheetOpener && document.contains(sheetOpener)) sheetOpener.focus({ preventScroll: true });
+  if (quiet) return;
+  const back = sheetOpener && document.contains(sheetOpener) && sheetOpener.getClientRects().length ? sheetOpener : sheetKey && liveKey(sheetKey);
+  if (back) back.focus({ preventScroll: true });
 }
 function renderMenu() {
   renderClock(); renderTeam(); renderSearch();
@@ -2566,16 +2825,63 @@ function renderMenu() {
    nothing extra is stored but the time this person last looked (seen/<id>). Deletions leave no
    to-do behind and are not listed. */
 const WEEK = 7 * 86400000;
+/* ── Seen marks: seen/<id> = { updates, chat, ahead } ──
+   `updates` and `chat`: up to when this person has looked, taken from what was on screen (its newest
+   change or message), and never later than now on the phone that marks it. `ahead`, by kind: what
+   was on screen then although dated after the mark (a phone with a wrong date wrote it "from
+   tomorrow"). It counts as seen, here, after a reload and on the person's other phone, although its
+   time is still to come. A stored mark is trusted up to SEEN_TOL after now (a phone a minute or two
+   fast). One further ahead would hide everything written after it: the page then counts from where
+   this visit began (S.seenBase) and stores a mark it can trust (seenStart, or the next look). */
+const SEEN_TOL = 120000, SEEN_KINDS = ['updates', 'chat'];
+const markOk = v => Number.isFinite(v) && v > 0 && v <= Date.now() + SEEN_TOL;
 function seenAt(kind) {
-  const v = S.seen && +S.seen[kind];
-  return Number.isFinite(v) && v > 0 ? v : (S.seenBase || Date.now());
+  const v = S.seen ? +S.seen[kind] : NaN;
+  return markOk(v) ? v : (S.seenBase || Date.now());
 }
+const aheadOf = kind => { const a = S.seen && S.seen.ahead && S.seen.ahead[kind]; return new Set(Array.isArray(a) ? a.filter(k => typeof k === 'string') : []); };
+/* A change is known by its time and its to-do (a later edit is news again); a message by its id. */
+const seenKey = (kind, x) => (kind === 'chat' ? x.id : `${whenOf(x)}:${x.id}`);
+const seenTime = (kind, x) => (kind === 'chat' ? x.at : whenOf(x));
+/* What can be news: the others' changes of the last 7 days (updates()), and the others' messages. */
+const seenList = kind => (kind === 'chat' ? S.chat.filter(m => !isMine(m.by)) : updates());
+const seenNow = kind => ({ at: seenAt(kind), ahead: aheadOf(kind) });
+/* What of `list` this person has not seen yet, from the mark `since` (the stored one if not given). */
+const unseen = (kind, list, since = seenNow(kind)) => list.filter(x => seenTime(kind, x) > since.at && !since.ahead.has(seenKey(kind, x)));
 /* Before this person has ever looked, nothing counts as new (the list still shows the last 7 days). */
 function seenInit() { if (!S.seenBase) S.seenBase = Date.now(); }
-function markSeen(kind, at) {
+/* That starting point is stored once, so what others write while this person is away counts as new
+   on the next visit, even before they open the bell; a stored mark that cannot be trusted is
+   replaced the same way. Only once the to-dos, the chat and the server's answer about the mark are
+   in, and never where this viewer cannot write (archived, read only). Through markSeen(), as every
+   mark is. */
+function seenStart() {
+  if (S.seenStarted || !S.me || !S.seenReady || !S.seenBase || !(S.chatReady || S.chatFailed) || !canWriteNow()) return;
+  S.seenStarted = true;
+  if (SEEN_KINDS.some(k => !markOk(S.seen ? +S.seen[k] : NaN))) markSeen('updates', seenAt('updates'), true);
+}
+/* This person has looked at `kind` (updates or chat) up to `at`, the newest thing on screen. The mark
+   is the newest change or message there that is not dated after now: a time from the data, so it
+   does not move on with the clock, and nothing is written again while nothing new came in. What is
+   on screen dated after the mark is seen too (ahead). `first`: a kind with no mark that can be
+   trusted starts at S.seenBase, with everything there now seen. A mark is not the person's work: it
+   goes through dbWrite() alone, and a lost one only brings a count back. */
+function markSeen(kind, at, first) {
   if (!S.me || !S.db || !S.seenReady || !at) return;
-  if (seenAt(kind) >= at) return;
-  const next = { updates: seenAt('updates'), chat: seenAt('chat'), [kind]: at };
+  const next = { ahead: {} }, upTo = Math.min(at, Date.now());
+  let moved = false;
+  SEEN_KINDS.forEach(k => {
+    const stored = S.seen ? +S.seen[k] : NaN, had = aheadOf(k), was = seenAt(k);
+    const mark = k === kind ? Math.max(was, ...seenList(k).map(x => seenTime(k, x)).filter(t => t <= upTo)) : was;
+    /* Dated after the mark, and on screen now (the kind looked at, or all of it for a kind that starts
+       afresh), or seen before and still there. A kind whose data is not here yet keeps its list. */
+    const ready = k === 'chat' ? S.chatReady : S.loaded;
+    const later = ready ? seenList(k).filter(x => seenTime(k, x) > mark).map(x => seenKey(k, x)) : null;
+    const keys = (!later ? [...had] : (k === kind && !first) || (first && !markOk(stored)) ? later : later.filter(x => had.has(x))).slice(0, 300);
+    next[k] = mark; next.ahead[k] = keys;
+    if (mark !== stored || keys.length !== had.size || keys.some(x => !had.has(x))) moved = true;
+  });
+  if (!moved) return;
   S.seen = next;
   if (canWriteNow()) dbWrite(`seen/${S.me}`, 'set', next).catch(() => { /* a mark only; the count comes back next time */ });
   renderBadges();
@@ -2588,8 +2894,9 @@ function updates() {
 }
 const QUIET = ['translate', 'keep'];   /* not news */
 const requestsForMe = () => (S.loaded ? [...S.items.values()].filter(answersMe) : []);
-const unreadUpdates = () => (S.loaded && S.seenReady ? updates().filter(i => whenOf(i) > seenAt('updates')).length : 0);
-const unreadChat = () => (S.chatReady && S.seenReady && S.sheet !== 'chatSheet' ? S.chat.filter(m => m.at > seenAt('chat') && !isMine(m.by)).length : 0);
+/* A request waiting for this person counts once on the bell, as a request (requestsForMe), not again as news. */
+const unreadUpdates = () => (S.loaded && S.seenReady ? unseen('updates', updates()).filter(i => !answersMe(i)).length : 0);
+const unreadChat = () => (S.chatReady && S.seenReady && S.sheet !== 'chatSheet' ? unseen('chat', seenList('chat')).length : 0);
 function ago(t) {
   const m = Math.floor((Date.now() - t) / 60000);
   return m < 1 ? tr('agoNow') : m < 60 ? tr('agoMin', m) : m < 1440 ? tr('agoH', Math.floor(m / 60)) : tr('agoD', Math.floor(m / 1440));
@@ -2598,49 +2905,57 @@ const ACTS = ['add', 'done', 'undone', 'owner', 'move', 'edit'];
 function updLine(i) {
   const n = nameOfUid(i.editedBy || i.by), t = short(txt(i), 70), a = askOf(i), mine = myWho();
   if (i.act === 'ask' && a) return offerOf(a) ? (a.to === mine ? tr('u_offerYou', n, t) : tr('u_offer', n, t)) : a.to === mine ? tr('u_askYou', n, t) : tr('u_ask', n, member(a.to).name, t);
+  /* An accepted offer: the one who answered gave the to-do away, so the line names who has it now. */
+  const to = member(i.who), by = whoOf(i.editedBy);
+  if (i.act === 'accept' && to && by && to.id !== by) return to.id === mine ? tr('u_offerOk', n, t) : tr('u_gave', n, t, to.name);
   if (i.act === 'accept' || i.act === 'decline' || i.act === 'cancel') return tr(`u_${i.act}`, n, t);
   const act = ACTS.includes(i.act) ? i.act : 'edit';
   return tr('upd', n, tr(`act_${act}`), t) + (act === 'owner' && member(i.who) ? tr('ownerTo', member(i.who).name) : '');
 }
-/* Many changes by one person in a row (a plan pasted, owners set) read as one line. */
+/* Many changes by one person in a row in one space (a plan pasted, owners set) read as one line,
+   which names that space and opens it. */
 function groupUpdates(list) {
   const out = [];
   list.forEach(i => {
     const by = i.editedBy || i.by || '', act = ACTS.includes(i.act) ? i.act : i.act || 'edit', last = out[out.length - 1];
-    if (last && last.by === by && last.act === act && ACTS.includes(act) && last.t - whenOf(i) < 30 * 60000) { last.items.push(i); last.t = whenOf(i); }
-    else out.push({ by, act, items: [i], t: whenOf(i) });
+    if (last && last.by === by && last.act === act && last.cell === i.cell && ACTS.includes(act) && last.t - whenOf(i) < 30 * 60000) { last.items.push(i); last.t = whenOf(i); }
+    else out.push({ by, act, cell: i.cell, items: [i], t: whenOf(i) });
   });
   return out;
 }
 /* "For you": requests to answer, your requests and their answers, what to do next, then updates. */
 function renderUpdates() {
-  const since = S.updSince || seenAt('updates'), mine = myWho();
+  const since = S.updSince || seenNow('updates'), mine = myWho();
   const sec = (title, n, kids) => el('section', {}, [el('h3', { class: 'label', 'data-n': String(n), text: title }), ...kids]);
-  const open = i => el('button', { type: 'button', class: 'open', onclick: () => openKey(i.cell) }, txt(i));
+  /* Keys by section (one to-do can be in two), so focus survives a redraw (keepFocus). A row that only
+     changed its words stays where it is (putKids): a tap opens where the to-do is now. */
+  const go = i => () => openKey((S.items.get(i.id) || i).cell);
+  const open = (i, s) => el('button', { type: 'button', class: 'open', 'data-fkey': `fy${s}:${i.id}`, onclick: go(i) }, txt(i));
   const parts = [];
   const incoming = requestsForMe();
   if (incoming.length) parts.push(sec(tr('reqIn', incoming.length), '↘', incoming.map(i => { const a = askOf(i);
-    return el('div', { class: 'fy-item' }, [open(i), handTag(i), a.note ? el('small', { text: tr('fromNote', a.note) }) : null, el('small', { text: `${ageOf(a.at)} · ${whereIs(i.cell)}` })]); })));
+    return el('div', { class: 'fy-item' }, [open(i, 'i'), handTag(i), a.note ? el('small', { text: tr('fromNote', a.note) }) : null, el('small', { text: `${ageOf(a.at)} · ${whereIs(i.cell)}` })]); })));
   const outgoing = mine ? [...S.items.values()].filter(i => waitsOnOthers(i) || declinedForMe(i)) : [];
-  if (outgoing.length) parts.push(sec(tr('reqOut', outgoing.length), '→', outgoing.map(i => el('div', { class: 'fy-item' }, [open(i), handTag(i), el('small', { text: whereIs(i.cell) })]))));
+  if (outgoing.length) parts.push(sec(tr('reqOut', outgoing.length), '→', outgoing.map(i => el('div', { class: 'fy-item' }, [open(i, 'o'), handTag(i), el('small', { text: whereIs(i.cell) })]))));
   if (mine) {
     const next = doNext(5);
-    parts.push(sec(tr('doNext'), '▶', next.length ? next.map(({ i, st, opens }) => el('div', { class: 'fy-item' }, [open(i),
+    parts.push(sec(tr('doNext'), '▶', next.length ? next.map(({ i, st, opens }) => el('div', { class: 'fy-item' }, [open(i, 'n'),
       el('small', { text: [st ? `${MARK[st.state]} ${st.short ? st.short + ' · ' : ''}${whenText(st)}` : null, opens ? tr('unblocksN', opens) : null, whereIs(i.cell)].filter(Boolean).join(' · ') })]))
       : [el('p', { class: 'empty', text: tr('noNext') })]));
   }
-  $('forYou').replaceChildren(...parts);
+  putKids($('forYou'), parts);
   const groups = groupUpdates(updates().slice(0, 200)).slice(0, 40);
-  $('updList').replaceChildren(...(groups.length ? groups.map(g => {
-    const i = g.items[0], who = member(whoOf(g.by)), fresh = g.items.some(x => whenOf(x) > since);
+  S.updTop = groups.length ? whenOf(groups[0].items[0]) : 0;   /* the newest change on screen (closeSheets marks it seen) */
+  putKids($('updList'), groups.length ? groups.map(g => {
+    const i = g.items[0], who = member(whoOf(g.by)), fresh = unseen('updates', g.items, since).length > 0;
     const line = g.items.length >= 4 ? tr('updMany', nameOfUid(g.by), tr(`act_${g.act}`), g.items.length) : null;
-    return el('li', {}, el('button', { type: 'button', onclick: () => openKey(i.cell) }, [
+    return el('li', {}, el('button', { type: 'button', 'data-fkey': `fyu:${i.id}`, onclick: go(i) }, [
       el('span', { class: 'who', 'data-who': who ? who.id : '', 'aria-hidden': 'true', text: who ? who.name[0] : '·' }),
       el('span', {}, [el('b', { text: line || updLine(i) }),
-        line ? el('ul', {}, g.items.slice(0, 3).map(x => el('li', { text: short(txt(x), 60) }))) : null,
+        line ? el('ul', {}, [...g.items.slice(0, 3).map(x => el('li', { text: short(txt(x), 60) })), g.items.length > 3 ? el('li', { text: tr('andMore', g.items.length - 3) }) : null]) : null,
         !line && g.items.length > 1 ? el('ul', {}, g.items.slice(1).map(x => el('li', { text: updLine(x) }))) : null,
         el('small', {}, [fresh ? el('span', { class: 'new', text: `${tr('newTag')} · ` }) : null, `${ago(g.items[0] ? whenOf(g.items[0]) : 0)} · ${whereIs(i.cell)}`])])]));
-  }) : [el('li', {}, el('p', { class: 'empty', text: tr('noUpdates') }))]));
+  }) : [el('li', {}, el('p', { class: 'empty', text: tr('noUpdates') }))]);
 }
 function renderBadges() {
   const u = unreadUpdates() + requestsForMe().length, c = unreadChat();
@@ -2654,22 +2969,34 @@ function renderBadges() {
 let pingTimer = null;
 function ping(who, text, open) {
   const b = $('ping'); if (S.sheet || loginOpen()) return;
+  /* Under the top bar, but below the row that leads away (a space's Back, the full-screen graph's own
+     bar, and what is said under that bar: a failed save, the away question) while that row is on
+     screen, so a tap meant for it never opens Updates instead. */
+  const row = !S.cell ? null : G.full ? [...document.querySelectorAll('#planView .flow.full > :is(.flow-bar, .save-err, .away-box:not([hidden]))')].pop() : document.querySelector('#area .crumb');
+  const r = row ? row.getBoundingClientRect() : null;
+  b.parentNode.style.top = r && r.bottom > 58 ? `${Math.round(r.bottom + 8)}px` : '';
   b.hidden = false;
   b.replaceChildren(el('span', { class: 'who', 'data-who': who ? who.id : '', 'aria-hidden': 'true', text: who ? who.name[0] : '·' }), el('span', { text }));
   b.onclick = () => { b.hidden = true; openSheet(open); };
-  clearTimeout(pingTimer); pingTimer = setTimeout(() => { if (!b.matches(':hover, :focus')) b.hidden = true; }, 6000);
+  /* It stays while a finger or focus is on it, then goes (asked again, as the toast is). */
+  const later = ms => { clearTimeout(pingTimer); pingTimer = setTimeout(() => { if (!b.matches(':hover, :focus')) b.hidden = true; else later(2000); }, ms); };
+  later(6000);
 }
-/* Called with the to-dos as they were before a snapshot: any change by someone else is news. */
+/* Called with the to-dos as they were before a snapshot: any change by someone else is news. A to-do
+   is news once, when its time moves on (one with no edit time, as imported, has only `at`). */
 function noticeChanges(before) {
-  if (!S.loaded || !S.seenReady) return;
-  const fresh = [...S.items.values()].filter(i => !isMine(i.editedBy || i.by) && i.act !== 'translate' && whenOf(i) > ((before.get(i.id) || {}).editedAt || 0) && whenOf(i) > Date.now() - 600000);
+  if (!S.loaded || !(S.seenReady || S.seenFailed)) return;
+  const fresh = [...S.items.values()].filter(i => !isMine(i.editedBy || i.by) && !QUIET.includes(i.act) && whenOf(i) > whenOf(before.get(i.id) || {}) && whenOf(i) > Date.now() - 600000);
   if (!fresh.length) return;
   const last = fresh.sort((a, b) => whenOf(b) - whenOf(a))[0];
   ping(member(whoOf(last.editedBy || last.by)), fresh.length > 1 ? `${updLine(last)} (+${fresh.length - 1})` : updLine(last), 'updatesSheet');
 }
 
 /* ── Chat: one shared conversation for the three. A message stores the writer's id, never a name. ── */
-const lastChatAt = () => (S.chat.length ? S.chat[S.chat.length - 1].at : 0);
+/* The newest message from someone else, for the seen mark (one's own never counts). One dated after
+   now (a phone with a wrong date) is seen all the same: markSeen() marks up to the newest one that is
+   not dated ahead, and keeps that one as seen (ahead). */
+const lastChatAt = () => { for (let k = S.chat.length - 1; k >= 0; k -= 1) if (!isMine(S.chat[k].by)) return S.chat[k].at; return 0; };
 function cleanMsg(id, v) { return v && typeof v.text === 'string' && v.text.trim() && isMs(v.at) ? { id, by: typeof v.by === 'string' ? v.by : '', text: v.text.slice(0, 1000), at: v.at } : null; }
 function renderChat(toEnd) {
   const box = $('chatScroll'), near = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
@@ -2682,37 +3009,45 @@ function renderChat(toEnd) {
     items.push(el('li', { class: `msg${mine ? ' mine' : ''}` }, [mine ? null : el('span', { class: 'who', 'data-who': who ? who.id : '', 'aria-hidden': 'true', text: who ? who.name[0] : '·' }),
       el('div', { class: 'bubble' }, [el('small', { text: `${mine ? tr('you') : nameOfUid(m.by)} · ${hm}` }), el('p', { text: m.text })])]));
   });
-  $('chatList').replaceChildren(...(items.length ? items : [el('li', { class: 'empty', text: S.chatReady ? tr('chatEmpty') : tr('loading') })]));
+  /* Nobody who cannot write is asked to write the first one; a chat that could not load says so below. */
+  const none = S.chatFailed ? null : !S.chatReady ? tr('loading') : S.canWrite && S.me ? tr('chatEmpty') : tr('chatNone');
+  $('chatList').replaceChildren(...(items.length ? items : none ? [el('li', { class: 'empty', text: none })] : []));
   renderWorldClocks(); renderChatForm();
   if (toEnd || near) box.scrollTop = box.scrollHeight;
 }
-/* Where this copy takes no writes (archived, or read only for this viewer) there is no box to write
-   in: the sheet says why instead, and where the team talks now. */
+/* Where the box cannot work (this viewer cannot write: archived or read only; or the chat could not
+   load) there is none: a line says why instead, and where the team talks now. Text typed before
+   stays on screen to copy (no silent loss), without a Send button. */
 function renderChatForm() {
-  const ro = !!S.db && !S.canWrite;
-  $('chatForm').hidden = ro;
-  const line = $('chatRo'); line.hidden = !ro;
-  if (ro) withLink(line, S.homeUrl ? tr('nMoved') : tr('nReadOnly'), S.homeUrl);
-  if (ro && $('chatErr').dataset.key !== 'chatReadOnly') say($('chatErr'), '');   /* an older "still loading" no longer holds */
+  const ro = !!S.db && !S.canWrite, down = !ro && !!S.chatFailed, line = $('chatRo'), err = $('chatErr');
+  $('chatForm').hidden = (ro || down) && !$('chatText').value.trim();
+  $('chatSend').hidden = ro || down;
+  if (down) { line.hidden = false; line.dataset.ro = 'down'; line.textContent = tr('chatDown'); } else sayReadOnly(line);
+  /* An older "still loading" no longer holds once the data is in, or the box cannot work. */
+  if (ro ? err.dataset.key !== 'chatReadOnly' : err.dataset.key === 'chatWait' && (down || (canWriteNow() && S.chatReady))) say(err, '');
 }
 function initChat() {
   const form = $('chatForm'), box = $('chatText'), err = $('chatErr');
-  const grow = () => { box.style.height = 'auto'; box.style.height = `${Math.min(140, box.scrollHeight)}px`; };
+  /* The box grows with its text, borders included, so the last line is never cut. */
+  const grow = () => { box.style.height = 'auto'; box.style.height = `${Math.min(140, box.scrollHeight + box.offsetHeight - box.clientHeight)}px`; };
   box.addEventListener('input', grow);
   box.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); } });
+  let sending = false;
   form.addEventListener('submit', async e => {
     e.preventDefault();
+    if (sending) return;   /* Enter again while a message is on its way (requestSubmit passes a disabled Send): it goes once */
     const text = box.value.trim(); if (!text) return;
     if (S.db && !S.canWrite) { say(err, 'chatReadOnly'); return; }   /* the data has loaded; this copy takes no writes */
+    if (S.chatFailed) { say(err, 'chatDownSend'); return; }
     if (!S.me) { say(err, 'chatNoId'); return; }
     if (!canWriteNow() || !S.chatReady) { say(err, 'chatWait'); return; }
     say(err, '');
-    $('chatSend').disabled = true;
+    sending = true; $('chatSend').disabled = true;
     const msg = { by: S.me, text, at: Date.now() };
     const ok = await save(() => dbWrite(`chat/${S.db.collection('chat').doc().id}`, 'set', msg));
-    $('chatSend').disabled = false;
-    if (ok) { const now = box.value; box.value = now.trim() === text ? '' : now.startsWith(text) ? now.slice(text.length).trimStart() : now; grow(); markSeen('chat', msg.at); box.focus(); }
-    else say(err, 'chatFailed');
+    sending = false; $('chatSend').disabled = false;
+    if (ok) { const now = box.value; box.value = now.trim() === text ? '' : now.startsWith(text) ? now.slice(text.length).trimStart() : now; grow(); markSeen('chat', lastChatAt()); box.focus(); }
+    else say(err, S.canWrite ? 'chatFailed' : 'chatReadOnly');   /* refused just now: the copy turned read-only; the text stays */
   });
 }
 
@@ -2722,16 +3057,21 @@ const ZONES = [['Ulaanbaatar', 'Asia/Ulaanbaatar'], ['Shanghai', 'Asia/Shanghai'
   ['Chicago', 'America/Chicago'], ['Denver', 'America/Denver'], ['Seattle', 'America/Los_Angeles'], ['San Francisco', 'America/Los_Angeles'], ['Los Angeles', 'America/Los_Angeles'], ['Honolulu', 'Pacific/Honolulu']];
 const zoneOk = tz => { try { new Intl.DateTimeFormat('en', { timeZone: tz }); return true; } catch (e) { return false; } };
 function cityLine(id) { const z = S.team.get(id); return z ? z.city : ''; }
+/* Night there: from 22:00 to 06:00. One rule for the world clock's ☾ and the owner sheet's words. */
+const nightHour = h => h < 6 || h >= 22;
 /* "21:14", with ☾ at night there, and the day when it differs from here (`bare`: no night mark). */
 function localTime(id, bare) {
   const z = S.team.get(id); if (!z) return '';
   const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: z.tz, hour: '2-digit', minute: '2-digit', hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date()).map(p => [p.type, p.value]));
   const h = +parts.hour % 24, there = `${parts.year}-${parts.month}-${parts.day}`, here = dayKey(Date.now());
   const day = there > here ? ` ${tr('dayPlus')}` : there < here ? ` ${tr('dayMinus')}` : '';
-  return `${String(h).padStart(2, '0')}:${parts.minute}${!bare && (h < 6 || h >= 22) ? ` ☾ ${tr('night')}` : ''}${day}`;
+  return `${String(h).padStart(2, '0')}:${parts.minute}${!bare && nightHour(h) ? ` ☾ ${tr('night')}` : ''}${day}`;
 }
+/* Times, and the cities next to them on the login's cards: the team's cities may arrive after the
+   cards were drawn. */
 function tickClocks() {
   document.querySelectorAll('[data-clock]').forEach(n => { const t = localTime(n.dataset.clock); n.textContent = n.closest('.team') ? (t ? ` · ${t}` : '') : t; });
+  document.querySelectorAll('[data-zone]').forEach(n => { n.textContent = cityLine(n.dataset.zone); });
 }
 function renderWorldClocks() {
   $('chatClocks').replaceChildren(...TEAM.filter(m => S.team.get(m.id)).map(m => el('span', { class: 'wc' }, [
@@ -2739,7 +3079,7 @@ function renderWorldClocks() {
   $('chatClocks').hidden = !$('chatClocks').children.length;
 }
 function pickCity(m, btn) {
-  const sel = el('select', { class: 'field', 'aria-label': tr('cityOf', m.name), 'data-editing': '1' }, [el('option', { value: '', text: tr('noCity') }),
+  const sel = el('select', { class: 'field', 'aria-label': tr('cityOf', m.name), 'data-editing': '1', 'data-fkey': `city:${m.id}` }, [el('option', { value: '', text: tr('noCity') }),
     ...ZONES.map(([city, tz], k) => el('option', { value: String(k), text: city }))]);
   const cur = S.team.get(m.id); if (cur) { const k = ZONES.findIndex(([c, tz]) => c === cur.city && tz === cur.tz); if (k >= 0) sel.value = String(k); }
   btn.replaceWith(sel); sel.focus();
@@ -2780,28 +3120,41 @@ function declinedOf(i) {
 }
 const offerOf = a => !!a && a.to !== a.give;
 const ageOf = t => { const m = Math.max(0, Math.floor((Date.now() - t) / 60000)); return m < 60 ? tr('min', m) : fmt(Date.now() - t); };
-/* My part in a to-do's request: I answer it, I asked (or it is my to-do), or none. */
+/* My part in a to-do's request: I answer it, I asked (or it is my to-do), or none. Two accounts of
+   one person count as one (isMine). A "no" is for the one who asked, never for the one who said it. */
 const answersMe = i => { const a = askOf(i); return !!a && a.to === myWho(); };
-const waitsOnOthers = i => { const a = askOf(i); return !!a && a.to !== myWho() && (a.by === S.me || i.who === myWho()); };
-const declinedForMe = i => { const d = declinedOf(i); return !!d && (d.askBy === S.me || (i.who || '') === myWho()); };
+const waitsOnOthers = i => { const a = askOf(i), mine = myWho(); return !!a && !!mine && a.to !== mine && (isMine(a.by) || i.who === mine); };
+const declinedForMe = i => { const d = declinedOf(i), mine = myWho(); return !!d && !!mine && d.by !== mine && (isMine(d.askBy) || (i.who || '') === mine); };
+/* One request at a time: while one is open, only the one who made it may replace it. */
+const mayAsk = i => { const a = askOf(i); return !a || isMine(a.by); };
+/* Who waits for a request's answer: the one who offered, or the one who asked. */
+const askerOf = a => member(offerOf(a) ? a.give : whoOf(a.by) || a.from);
 
+/* Each of these checks the to-do as it is now, so a tap on something drawn before a teammate's
+   change writes nothing it did not show. */
 function askHand(id, give, note) {
   const i = S.items.get(id), mine = myWho(); if (!i || !mine || !member(give) || !canWriteNow()) return Promise.resolve(false);
   const owner = i.who || '';
+  if (!mayAsk(i) || (owner && owner !== mine && give !== mine)) return Promise.resolve(false);   /* a teammate's to-do: offer only yourself */
   const to = owner && owner !== mine ? owner : give;   /* an offer goes to the owner; a hand-off to the one asked */
   return patchItem(id, { ask: { to, give, from: owner, by: S.me, at: Date.now(), note: (note || '').trim().slice(0, 200) }, declined: null }, 'ask');
 }
-function answerHand(id, yes) {
+/* `at`: the request the person saw. A newer one is not answered by a tap on the old one. */
+function answerHand(id, yes, at) {
   const i = S.items.get(id), a = askOf(i), mine = myWho();
-  if (!a || a.to !== mine || !canWriteNow()) return Promise.resolve(false);
+  if (!a || a.to !== mine || (at && a.at !== at) || !canWriteNow()) return Promise.resolve(false);
   if (yes) return patchItem(id, { who: a.give, ask: null, nope: [], declined: null }, 'accept');
   const nope = offerOf(a) ? nopeOf(i) : [...new Set([...nopeOf(i), mine])];
   return patchItem(id, { ask: null, nope, declined: { by: mine, give: a.give, askBy: a.by, at: Date.now() } }, 'decline');
 }
-const takeBack = id => patchItem(id, { ask: null }, 'cancel');
-const keepIt = id => patchItem(id, { nope: [], declined: null }, 'keep');
-const takeIt = id => patchItem(id, { who: myWho(), ask: null, nope: [], declined: null }, 'owner');
-const dropOwner = id => patchItem(id, { who: '', ask: null, nope: [], declined: null }, 'owner');
+const takeBack = id => (waitsOnOthers(S.items.get(id)) ? patchItem(id, { ask: null }, 'cancel') : Promise.resolve(false));
+/* The owner keeps it and starts afresh; anyone else only puts the "no" away (who declined stays). */
+const keepIt = id => { const i = S.items.get(id); return !declinedForMe(i) ? Promise.resolve(false) : patchItem(id, i.who === myWho() ? { nope: [], declined: null } : { declined: null }, 'keep'); };
+const takeIt = id => { const i = S.items.get(id); return i && !i.who && myWho() && mayAsk(i) ? patchItem(id, { who: myWho(), ask: null, nope: [], declined: null }, 'owner') : Promise.resolve(false); };
+const dropOwner = id => { const i = S.items.get(id); return i && i.who && i.who === myWho() && mayAsk(i) ? patchItem(id, { who: '', ask: null, nope: [], declined: null }, 'owner') : Promise.resolve(false); };
+/* Ticking a to-do (or reopening it) ends its open request and puts its "no" away: a request is for
+   an open to-do, and an old one must not come back, with its old time, when the to-do is reopened. */
+const tickOf = (id, done) => { const i = S.items.get(id); return i && (i.ask || i.declined) ? { done, ask: null, declined: null } : { done }; };
 
 /* Who to ask: the side's own person first, then the kind of work (technology: Vida and Anand;
    business, marketing, branding: Obama), then someone awake now, then fewer open to-dos. Whoever
@@ -2812,7 +3165,9 @@ function hourAt(id) {
   const z = S.team.get(id); if (!z) return null;
   try { return +new Intl.DateTimeFormat('en-US', { timeZone: z.tz, hour: 'numeric', hourCycle: 'h23' }).format(new Date()) % 24; } catch (e) { return null; }
 }
-const awakeAt = id => { const h = hourAt(id); return h === null ? null : h >= 8 && h < 22; };
+/* Awake there from 08:00 to 22:00; night as the world clock says it (nightHour). In the early morning
+   between, the page says neither: null, as when the city is not known. */
+const awakeAt = id => { const h = hourAt(id); return h === null ? null : nightHour(h) ? false : h >= 8 ? true : null; };
 function loadOf(id) {
   let n = 0;
   S.items.forEach(i => { if (i.done || isViewCell(i.cell) || i.cell === MILESTONE_CELL) return; if (i.who === id) n += 1; else { const a = askOf(i); if (a && a.give === id) n += 1; } });
@@ -2842,21 +3197,26 @@ function doNext(limit) {
     .slice(0, limit);
 }
 
-/* The line under a to-do that has a request or a "no" on it. */
+/* The line under a to-do that has a request or a "no" on it, in words for the one looking: the one
+   asked answers it; "your offer" only for the one who made it, anyone else reads who offered. */
 function handTag(i) {
   const a = askOf(i), mine = myWho();
   if (a && a.to === mine) {
-    const from = member(offerOf(a) ? a.give : whoOf(a.by) || a.from);
-    return el('div', { class: 'tag-row' }, [el('span', { class: 'flow-tag ask-in', text: offerOf(a) ? tr('offerYou', from ? from.name : tr('someone')) : tr('askedYou', from ? from.name : tr('someone')) }),
-      el('button', { type: 'button', class: 'mini', 'data-fkey': `ya:${i.id}`, 'aria-label': tr('acceptX', txt(i)), text: tr('accept'), onclick: () => answer(i.id, true) }),
-      el('button', { type: 'button', class: 'mini ghost', 'data-fkey': `na:${i.id}`, 'aria-label': tr('declineX', txt(i)), text: tr('decline'), onclick: () => answer(i.id, false) })]);
+    const from = askerOf(a), n = from ? from.name : tr('someone');
+    const line = el('span', { class: 'flow-tag ask-in', text: offerOf(a) ? tr('offerYou', n) : tr('askedYou', n) });
+    if (!S.canWrite) return line;   /* read-only: the request in words, no buttons that would do nothing */
+    /* data-at names the request they answer: a newer one is a new button, never an old one kept (putKids). */
+    return el('div', { class: 'tag-row' }, [line,
+      el('button', { type: 'button', class: 'mini', 'data-fkey': `ya:${i.id}`, 'data-at': String(a.at), 'aria-label': tr('acceptX', txt(i)), text: tr('accept'), onclick: () => answer(i.id, true, a.at) }),
+      el('button', { type: 'button', class: 'mini ghost', 'data-fkey': `na:${i.id}`, 'data-at': String(a.at), 'aria-label': tr('declineX', txt(i)), text: tr('decline'), onclick: () => answer(i.id, false, a.at) })]);
   }
   if (a) {
-    const to = member(a.to), stale = Date.now() - a.at > ASK_STALE_MS;
-    const text = (offerOf(a) ? tr('offerWait', to.name, ageOf(a.at)) : tr('waitFor', to.name, ageOf(a.at))) + (stale ? tr('noAnswer', Math.floor((Date.now() - a.at) / 3600000)) : awakeAt(a.to) === false ? tr('nightNow') : '');
-    return el(S.canWrite ? 'button' : 'span', { type: S.canWrite ? 'button' : null, class: 'flow-tag ask-out', text, onclick: S.canWrite ? () => openHand(i.id) : null });
+    const to = member(a.to), stale = Date.now() - a.at > ASK_STALE_MS, from = askerOf(a), t = ageOf(a.at);
+    const text = (!offerOf(a) ? tr('waitFor', to.name, t) : isMine(a.by) ? tr('offerWait', to.name, t) : tr('offerBy', from ? from.name : tr('someone'), to.name, t))
+      + (stale ? tr('noAnswer', Math.floor((Date.now() - a.at) / 3600000)) : awakeAt(a.to) === false ? tr('nightNow') : '');
+    return el(S.canWrite ? 'button' : 'span', { type: S.canWrite ? 'button' : null, class: 'flow-tag ask-out', 'data-fkey': `h:${i.id}`, text, onclick: S.canWrite ? () => openHand(i.id) : null });
   }
-  if (declinedForMe(i)) return el(S.canWrite ? 'button' : 'span', { type: S.canWrite ? 'button' : null, class: 'flow-tag ask-no', text: noText(i), onclick: S.canWrite ? () => openHand(i.id) : null });
+  if (declinedForMe(i)) return el(S.canWrite ? 'button' : 'span', { type: S.canWrite ? 'button' : null, class: 'flow-tag ask-no', 'data-fkey': `h:${i.id}`, text: noText(i), onclick: S.canWrite ? () => openHand(i.id) : null });
   return null;
 }
 function noText(i) {
@@ -2864,61 +3224,141 @@ function noText(i) {
   if (d && d.give && d.give !== d.by) return tr('offerNo', member(d.by).name);
   return others.length && others.every(x => nopeOf(i).includes(x)) ? tr('bothNo') : tr('saidNoBy', member(d.by).name);
 }
-async function answer(id, yes) {
-  const ok = await answerHand(id, yes);
-  if (ok) toast(yes ? tr('tookIt') : tr('saidNoDone'));
+/* The to-do as the store has it now. On Vercel this asks the server for the row (and brings this
+   page's copy up to date); Claude's db and this browser's store answer from what they hold. A
+   hand-off tap checks it before writing, so a teammate's change that has not reached this page yet
+   (the next poll) is not written over. It shrinks the window to one round trip. undefined: it could
+   not be read; the write then goes ahead, and says so if it fails. */
+async function freshItem(id) {
+  try {
+    const snap = await S.db.doc(`items/${id}`).get(), v = snap && snap.exists ? snap.data() : null;
+    return v && typeof v.text === 'string' ? { id, ...v } : null;
+  } catch (e) { return undefined; }
+}
+/* From a row or For you. Accepting an offer gives the to-do to the one who offered, and says so. A
+   second tap while the first is being checked or saved does nothing. */
+const answering = new Set();
+async function answer(id, yes, at) {
+  const cur = S.items.get(id), a = askOf(cur), drawn = cur ? handKey(cur) : '';
+  const gone = () => { toast(tr('handChanged')); queueRender(); };   /* drawn before a change: nothing written */
+  if (!a || a.to !== myWho() || (at && a.at !== at)) { gone(); return; }
+  if (answering.has(id)) return;
+  answering.add(id);
+  let ok = false;
+  try {
+    const fresh = await freshItem(id), now = S.items.get(id);
+    if (fresh === null || (fresh && handKey(fresh) !== drawn) || !now || handKey(now) !== drawn) { gone(); return; }
+    ok = await answerHand(id, yes, at);
+  } finally { answering.delete(id); }
+  if (ok) toast(!yes ? tr('saidNoDone') : offerOf(a) ? tr('gaveTo', member(a.give).name) : tr('tookIt'));
+  /* Answered in For you: the request leaves the list, so focus moves to the next one (or the close button). */
+  if (S.sheet === 'updatesSheet' && (!document.activeElement || document.activeElement === document.body)) {
+    const n = $('forYou').querySelector('.mini') || $('updatesSheet').querySelector('[data-close]'); if (n) n.focus({ preventScroll: true });
+  }
+}
+/* "Decide in chat": the question goes after what is already written there (an unsent message stays), once. */
+function toChat(i) {
+  const t = $('chatText'), q = tr('chatAbout', txt(i));
+  openSheet('chatSheet');
+  if (!t.value.includes(q)) t.value = t.value.trim() ? `${t.value.trimEnd()}\n${q}` : q;
+  t.dispatchEvent(new Event('input')); t.focus(); t.setSelectionRange(t.value.length, t.value.length);
 }
 
-/* The owner sheet: who has it, the request on it, and what this person may do. */
-function openHand(id) { if (!S.items.has(id)) return; S.handId = id; openSheet('handSheet'); }
+/* The owner sheet: who has it, the request on it, and what this person may do. A tap acts on what
+   the sheet shows: if the to-do changed meanwhile, nothing is written, the sheet is drawn again and
+   a line says so (S.hand.changed). The note being typed is never redrawn under the person: the sheet
+   catches up once it loses focus, with the same line if the to-do changed. What was typed stays
+   across redraws (S.hand.note). */
+const handKey = i => JSON.stringify([i.who || '', askOf(i), declinedOf(i), nopeOf(i), !!i.done]);
+function openHand(id) {
+  if (!S.items.has(id)) return;
+  S.hand = { note: S.hand && S.hand.id === id ? S.hand.note : null, id, changed: false, late: false, drawn: '' };
+  S.handId = id; openSheet('handSheet');
+}
 function renderHand() {
-  const i = S.items.get(S.handId), body = $('handBody');
+  const i = S.items.get(S.handId), body = $('handBody'), H = S.hand && S.hand.id === S.handId ? S.hand : (S.hand = { id: S.handId, note: null, changed: false, late: false, drawn: '' });
   if (!i) { closeSheets(true); return; }
-  if (body.querySelector('input:focus')) return;   /* never redraw under the note being typed */
-  const mine = myWho(), owner = i.who || '', om = member(owner), a = askOf(i), can = canWriteNow() && !!mine && !i.done;
+  if (body.querySelector('input:focus')) { S.renderQueued = true; H.late = true; return; }
+  const mine = myWho(), owner = i.who || '', om = member(owner), a = askOf(i), can = canWriteNow() && !!mine && !i.done, drawn = handKey(i);
+  if (H.late && H.drawn && H.drawn !== drawn) H.changed = true;
+  H.late = false; H.drawn = drawn;
   const kids = [el('div', { class: 'hand-task' }, [el('b', { text: txt(i) }), el('small', { text: `${whereIs(i.cell)} · ${tr('owner')}: ${om ? om.name : tr('nobody')}` })])];
-  const run = async (fn, okText) => { const ok = await fn(); if (ok) { closeSheets(true); toast(okText); } else { const e = body.querySelector('.err') || body.appendChild(el('p', { class: 'err' })); e.textContent = tr('handFailed'); } };
+  if (H.changed) kids.push(el('p', { class: 'err', tabindex: '-1', 'data-fkey': 'hb:changed', text: tr('handChanged') }));
+  /* The to-do is checked as this page has it, then as the store has it now (freshItem: a teammate's
+     change that has not reached this page yet); only then is anything written. One tap at a time. */
+  const changed = () => {
+    if (S.sheet !== 'handSheet' || S.handId !== i.id) { toast(tr('handChanged')); return; }   /* the sheet was closed meanwhile */
+    H.changed = true; renderHand(); const m = body.querySelector('[data-fkey="hb:changed"]'); if (m) m.focus();
+  };
+  const run = async (fn, okText) => {
+    if (H.busy) return;
+    const now = S.items.get(i.id);
+    if (!now || handKey(now) !== drawn) { changed(); return; }
+    H.busy = true;
+    let ok = false;
+    try {
+      const fresh = await freshItem(i.id), cur = S.items.get(i.id);
+      if (fresh === null || (fresh && handKey(fresh) !== drawn) || !cur || handKey(cur) !== drawn) { changed(); return; }
+      ok = await fn();
+    } finally { H.busy = false; }
+    if (ok) { H.note = null; H.changed = false; if (S.sheet === 'handSheet' && S.handId === i.id) closeSheets(); if (okText) toast(okText); }
+    /* Said once, at the top of the sheet, where it stays on screen: when the write itself failed,
+       save() has said it there already (sayFailed); a tap refused before any write says it the same
+       way, and on a copy that turned read-only meanwhile it says that, never "try again". */
+    else if (!$('handSheet').querySelector('.save-err')) sayFailed(tr(S.canWrite ? 'handFailed' : 'saveReadOnly'));
+  };
+  /* The note: what was typed here, else the note of this person's own open request. */
+  const asking = can && (!owner || owner === mine) && mayAsk(i);
+  const field = () => {
+    const n = el('input', { class: 'field', maxlength: '200', placeholder: tr('notePh'), 'aria-label': tr('notePh') });
+    n.value = H.note !== null ? H.note : a && isMine(a.by) && a.note ? a.note : '';
+    n.addEventListener('input', () => { H.note = n.value; });
+    return n;
+  };
+  const note = asking || (can && owner && owner !== mine && !a) ? field() : null;
+  /* Someone else's request is open: say who waits for its answer (one request at a time). */
+  const busy = () => { const w = askerOf(a); return el('p', { class: 'fine', text: tr('askBusy', w ? w.name : tr('someone')) }); };
   if (a) {
     const box = el('div', { class: 'ask-box' });
     if (a.to === mine) {
-      const from = member(offerOf(a) ? a.give : whoOf(a.by) || a.from);
-      box.append(el('b', { text: offerOf(a) ? tr('offerYou', from ? from.name : tr('someone')) : tr('askedYou', from ? from.name : tr('someone')) }),
+      const from = askerOf(a), n = from ? from.name : tr('someone'), took = offerOf(a) ? tr('gaveTo', member(a.give).name) : tr('tookIt');
+      box.append(...[el('b', { text: offerOf(a) ? tr('offerYou', n) : tr('askedYou', n) }),
         a.note ? el('span', { text: tr('fromNote', a.note) }) : null, el('small', { text: ageOf(a.at) }),
-        can ? el('div', { class: 'btns' }, [el('button', { type: 'button', class: 'btn', text: tr('accept'), onclick: () => run(() => answerHand(i.id, true), tr('tookIt')) }),
-          el('button', { type: 'button', class: 'btn ghost', text: tr('decline'), onclick: () => run(() => answerHand(i.id, false), tr('saidNoDone')) })]) : null);
+        can ? el('div', { class: 'btns' }, [el('button', { type: 'button', class: 'btn', 'data-fkey': 'hb:yes', text: tr('accept'), onclick: () => run(() => answerHand(i.id, true, a.at), took) }),
+          el('button', { type: 'button', class: 'btn ghost', 'data-fkey': 'hb:no', text: tr('decline'), onclick: () => run(() => answerHand(i.id, false, a.at), tr('saidNoDone')) })]) : null].filter(Boolean));
     } else {
-      const tag = handTag(i); box.append(el('span', { text: tag ? tag.textContent : '' }), a.note ? el('span', { text: tr('fromNote', a.note) }) : null);
-      const mayCancel = can && (a.by === S.me || owner === mine);
+      const tag = handTag(i); box.append(...[el('span', { text: tag ? tag.textContent : '' }), a.note ? el('span', { text: tr('fromNote', a.note) }) : null].filter(Boolean));
+      const mayCancel = can && waitsOnOthers(i);
       const stale = Date.now() - a.at > ASK_STALE_MS || awakeAt(a.to) === false;
-      const other = !offerOf(a) && stale && can && (owner === mine || !owner) ? rankFor(i).find(c => c.m.id !== a.to && !c.no) : null;
-      box.append(el('div', { class: 'btns' }, [other ? el('button', { type: 'button', class: 'btn', text: tr('askInstead', other.m.name), onclick: () => run(() => askHand(i.id, other.m.id, a.note), tr('askSent', other.m.name)) }) : null,
-        mayCancel ? el('button', { type: 'button', class: 'btn ghost', text: tr('takeBack'), onclick: () => run(() => takeBack(i.id), tr('takeBack')) }) : null].filter(Boolean)));
+      const other = !offerOf(a) && stale && asking ? rankFor(i).find(c => c.m.id !== a.to && !c.no) : null;
+      const btns = [other ? el('button', { type: 'button', class: 'btn', 'data-fkey': 'hb:instead', text: tr('askInstead', other.m.name), onclick: () => run(() => askHand(i.id, other.m.id, note ? note.value : a.note), tr('askSent', other.m.name)) }) : null,
+        mayCancel ? el('button', { type: 'button', class: 'btn ghost', 'data-fkey': 'hb:back', text: tr('takeBack'), onclick: () => run(() => takeBack(i.id), tr('tookBack')) }) : null].filter(Boolean);
+      if (btns.length) box.append(el('div', { class: 'btns' }, btns));
     }
     kids.push(box);
   } else if (declinedForMe(i)) {
-    const both = noText(i) === tr('bothNo');
+    const both = noText(i) === tr('bothNo'), keep = owner === mine;   /* only the owner keeps it; anyone else puts the "no" away */
     kids.push(el('div', { class: 'ask-box' }, [el('b', { text: noText(i) }), can ? el('div', { class: 'btns' }, [
-      both ? el('button', { type: 'button', class: 'btn', text: tr('talkChat'), onclick: () => { closeSheets(true); openSheet('chatSheet'); $('chatText').value = tr('chatAbout', txt(i)); $('chatText').focus(); } }) : null,
-      el('button', { type: 'button', class: 'btn ghost', text: tr('keepIt'), onclick: () => run(() => keepIt(i.id), tr('keepIt')) })].filter(Boolean)) : null]));
+      both ? el('button', { type: 'button', class: 'btn', 'data-fkey': 'hb:chat', text: tr('talkChat'), onclick: () => toChat(i) }) : null,
+      el('button', { type: 'button', class: 'btn ghost', 'data-fkey': 'hb:keep', text: keep ? tr('keepIt') : tr('gotIt'), onclick: () => run(() => keepIt(i.id), keep ? tr('keptIt') : '') })].filter(Boolean)) : null]));
   }
   if (!S.canWrite) { /* read-only: the owner and the request only */ }
-  else if (!mine) kids.push(el('p', { class: 'fine', text: tr('pickNameFirst') }), el('div', { class: 'btns' }, el('button', { type: 'button', class: 'btn', text: tr('switchPerson'), onclick: () => { closeSheets(true); askWho(); } })));
+  else if (!mine) kids.push(el('p', { class: 'fine', text: tr('pickNameFirst') }), el('div', { class: 'btns' }, el('button', { type: 'button', class: 'btn', 'data-fkey': 'hb:who', text: tr('switchPerson'), onclick: () => { closeSheets(true); askWho(); } })));
   else if (can && owner && owner !== mine) {
-    if (!a || a.give !== mine) {
-      const note = el('input', { class: 'field', maxlength: '200', placeholder: tr('notePh'), 'aria-label': tr('notePh') });
-      kids.push(note, el('div', { class: 'btns' }, el('button', { type: 'button', class: 'btn', text: tr('offerTake', om.name), onclick: () => run(() => askHand(i.id, mine, note.value), tr('askSent', om.name)) })));
-    }
+    if (!a) kids.push(note, el('div', { class: 'btns' }, el('button', { type: 'button', class: 'btn', 'data-fkey': 'hb:offer', text: tr('offerTake', om.name), onclick: () => run(() => askHand(i.id, mine, note.value), tr('askSent', om.name)) })));
+    else if (a.to !== mine && !isMine(a.by)) kids.push(busy());
+  } else if (can && !asking) {
+    if (a.to !== mine) kids.push(busy());
   } else if (can) {
-    const note = el('input', { class: 'field', maxlength: '200', placeholder: tr('notePh'), 'aria-label': tr('notePh') });
-    if (a && a.note) note.value = a.note;
-    const ranked = rankFor(i), best = ranked[0] && !ranked[0].no ? ranked[0].m.id : null;
+    const ranked = rankFor(i), asked = a ? a.give : '', top = ranked.find(c => !c.no && c.m.id !== asked), best = top ? top.m.id : null;
     kids.push(el('h3', { class: 'label', 'data-n': '→', text: tr('askWhom') }), note,
-      ...ranked.map(c => el('button', { type: 'button', class: `cand${c.m.id === best ? ' best' : ''}`, 'data-who': c.m.id, disabled: a && a.give === c.m.id,
+      ...ranked.map(c => el('button', { type: 'button', class: `cand${c.m.id === best ? ' best' : ''}`, 'data-who': c.m.id, 'data-fkey': `hc:${c.m.id}`, disabled: c.m.id === asked,
         onclick: () => run(() => askHand(i.id, c.m.id, note.value), tr('askSent', c.m.name)) }, [
         el('span', { class: 'who', 'data-who': c.m.id, 'aria-hidden': 'true', text: c.m.name[0] }),
-        el('span', {}, [c.m.id === best ? el('span', { class: 'tag', text: tr('suggested') }) : null, el('b', { text: c.m.name }), el('small', { text: tr(c.m.role) }), el('small', { text: whyText(c) })])])),
-      el('div', { class: 'btns' }, [!owner ? el('button', { type: 'button', class: 'btn ghost', text: tr('takeMine'), onclick: () => run(() => takeIt(i.id), tr('tookIt')) }) : null,
-        owner === mine ? el('button', { type: 'button', class: 'btn ghost', text: tr('dropOwner'), onclick: () => run(() => dropOwner(i.id), tr('dropOwner')) }) : null].filter(Boolean)));
+        el('span', {}, [c.m.id === asked ? el('span', { class: 'tag', text: tr('askedTag') }) : c.m.id === best ? el('span', { class: 'tag', text: tr('suggested') }) : null,
+          el('b', { text: c.m.name }), el('small', { text: tr(c.m.role) }), el('small', { text: whyText(c) })])])),
+      el('div', { class: 'btns' }, [!owner ? el('button', { type: 'button', class: 'btn ghost', 'data-fkey': 'hb:take', text: tr('takeMine'), onclick: () => run(() => takeIt(i.id), tr('tookIt')) }) : null,
+        owner === mine ? el('button', { type: 'button', class: 'btn ghost', 'data-fkey': 'hb:drop', text: tr('dropOwner'), onclick: () => run(() => dropOwner(i.id), tr('droppedOwner')) }) : null].filter(Boolean)));
   }
   body.replaceChildren(...kids.filter(Boolean));
 }
@@ -3545,7 +3985,7 @@ async function connect() {
   /* The page counts as loaded when both the sides and the to-dos have arrived from the server. */
   const arrived = () => {
     if (S.loaded || !S.facesReady || !S.itemsReady) return;
-    S.loaded = true; clearTimeout(slow); refreshNotice(); initData(); seenInit();
+    S.loaded = true; clearTimeout(slow); refreshNotice(); initData(); seenInit(); seenStart();
   };
   const failed = () => { clearTimeout(slow); S.lost = true; refreshNotice(); };
   /* Once the team has moved, the owner writes meta/home { url, at } (`at`, when, is optional; the
@@ -3573,7 +4013,7 @@ async function connect() {
     S.homeUrl = url;
     S.homeAt = !url ? 0 : isMs(v.at) && v.at > 0 && v.at <= Date.now() ? v.at : S.homeAt || Date.now();
     refreshNotice(); initData(); renderClock(); queueRender();
-    if (!url && S.canWrite) { if (S.peopleReady && S.me && !whoOf(S.me)) showLogin(false); reconcileClock(true); }
+    if (!url && S.canWrite) { if (S.peopleReady && S.me && !whoOf(S.me)) showLogin(false); reconcileClock(true); seenStart(); }
   }, failed);
   db.collection('faces').onSnapshot(snap => {
     snap.docs.forEach(d => {
@@ -3614,32 +4054,42 @@ async function connect() {
     if (!$('awayBox').hidden && !(myClock() && leftOf(myClock()))) $('awayBox').hidden = true;
     renderClock(); if (S.sheet === 'menuSheet' && !isEditing()) renderTeam(); if (S.cell) renderSpaceTime();
   }, failed);
-  /* The chat (its newest messages), the team's cities, and when each person last looked. */
+  /* The chat (its newest messages), the team's cities, and when each person last looked. These are
+     extras: one that cannot be read turns off only itself, says so where it shows, and leaves the
+     page's own notice (and its "cannot reach" timer) to the to-dos and what they need. */
   const chatCol = db.collection('chat');
   (typeof chatCol.orderBy === 'function' ? chatCol.orderBy('at', 'desc').limit(300) : chatCol).onSnapshot(snap => {
     const prev = S.chat, wasReady = S.chatReady;
     S.chat = snap.docs.map(d => cleanMsg(d.id, d.data())).filter(Boolean).sort((a, b) => a.at - b.at);
-    if (!snap.metadata.fromCache) S.chatReady = true;
-    if (wasReady && S.sheet !== 'chatSheet') {
-      const known = new Set(prev.map(m => m.id)), news = S.chat.filter(m => !known.has(m.id) && !isMine(m.by));
-      if (news.length) { const m = news[news.length - 1]; ping(member(whoOf(m.by)), `${nameOfUid(m.by)}: ${short(m.text, 90)}`, 'chatSheet'); }
+    if (!snap.metadata.fromCache && !S.chatReady) { S.chatReady = true; seenStart(); }
+    const known = new Set(prev.map(m => m.id)), news = wasReady ? S.chat.filter(m => !known.has(m.id) && !isMine(m.by)) : [];
+    if (news.length && S.sheet !== 'chatSheet') { const m = news[news.length - 1]; ping(member(whoOf(m.by)), tr('chatSays', nameOfUid(m.by), short(m.text, 90)), 'chatSheet'); }
+    if (S.sheet === 'chatSheet') {
+      renderChat(); markSeen('chat', lastChatAt());
+      /* A screen reader hears only a message that just came in, never the whole conversation again. */
+      if (news.length) $('chatLive').replaceChildren(el('span', { text: news.slice(-3).map(m => tr('chatSays', nameOfUid(m.by), m.text)).join(' ') }));
     }
-    if (S.sheet === 'chatSheet') { renderChat(); markSeen('chat', lastChatAt()); }
     renderBadges();
-  }, failed);
+  }, () => { S.chatFailed = true; if (S.sheet === 'chatSheet') renderChat(); renderBadges(); seenStart(); });
   db.collection('team').onSnapshot(snap => {
     S.team = new Map(snap.docs.map(d => [d.id, d.data()]).filter(([k, v]) => member(k) && v && typeof v.city === 'string' && typeof v.tz === 'string' && zoneOk(v.tz)).map(([k, v]) => [k, { city: v.city.slice(0, 60), tz: v.tz }]));
     renderClock(); if (S.sheet === 'menuSheet' && !isEditing()) renderTeam(); if (S.sheet === 'chatSheet') renderWorldClocks();
     if (loginOpen()) tickClocks();
-  }, failed);
+  }, () => { S.teamFailed = true; if (S.sheet === 'menuSheet' && !isEditing()) renderTeam(); });
   db.collection('seen').onSnapshot(snap => {
     const mine = S.me && snap.docs.find(d => d.id === S.me);
     const v = mine ? mine.data() : null;
-    /* Never move a mark back: this page may already have written a newer one. */
-    if (v) S.seen = { updates: Math.max(+v.updates || 0, (S.seen && S.seen.updates) || 0), chat: Math.max(+v.chat || 0, (S.seen && S.seen.chat) || 0) };
-    if (!snap.metadata.fromCache) S.seenReady = true;
+    /* Never move a mark back (this page may already have written a newer one), and never take one
+       that cannot be trusted (markOk): seenAt() then counts from where this visit began. What was
+       seen ahead is kept from both. */
+    if (v && typeof v === 'object') {
+      const mark = k => Math.max(...[+v[k], S.seen ? +S.seen[k] : NaN].map(x => (markOk(x) ? x : 0))) || null;
+      const keys = k => { const a = v.ahead && Array.isArray(v.ahead[k]) ? v.ahead[k].filter(x => typeof x === 'string') : []; return [...new Set([...aheadOf(k), ...a])].slice(0, 300); };
+      S.seen = { updates: mark('updates'), chat: mark('chat'), ahead: { updates: keys('updates'), chat: keys('chat') } };
+    }
+    if (!snap.metadata.fromCache) { S.seenReady = true; seenStart(); }
     renderBadges();
-  }, failed);
+  }, () => { S.seenFailed = true; });   /* no counts then (nor marks written over one not read); the notes still show */
   if (S.remote) S.remote.start();
 }
 
@@ -3651,6 +4101,8 @@ async function connect() {
   applyStatic();
   $('themeBtn').addEventListener('click', () => setTheme(isDark() ? 'light' : 'dark'));
   try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', showThemeBtn); } catch (e) { /* older browsers */ }
+  /* A reload with a sheet's step on top (no sheet is open now): step back over it. */
+  if (atSheetStep()) { stepOff = true; history.back(); }
   readHash(); initCubeInput(); initCapture(); initClock(); initChat(); initAccount(); route(); renderClock(); renderBadges();
   $('meBtn').addEventListener('click', () => openSheet('menuSheet'));
   $('bellBtn').addEventListener('click', () => openSheet('updatesSheet'));
@@ -3664,6 +4116,8 @@ async function connect() {
   });
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape' || e.defaultPrevented || S.authOpen || (e.target.closest && e.target.closest('[data-editing]'))) return;
+    /* The login is on top of everything: Escape is its Cancel when it has one, and never reaches a sheet under it. */
+    if (loginOpen()) { const c = $('login').querySelector('[data-cancel]'); if (c) { e.preventDefault(); c.click(); } return; }
     if (S.sheet) { e.preventDefault(); closeSheets(); }
     else if (G.full) { e.preventDefault(); setFull(false, S.cell === GRAPH_CELL ? renderGraph : renderTimeline); }
   });
