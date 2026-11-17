@@ -206,6 +206,26 @@ def dict_check():
     ok = not dup and not missing and len(keys) > 150
     return ok, f"en {len(keys)} dup {dup} missing {missing[:8]}"
 
+def token_check():
+    """The plan graph's colours: every --g-* token has a light value in :root and the same dark value
+    in both dark blocks (the media query and [data-theme="dark"]); nothing uses an undefined one; and
+    the old screen's --hud-* tokens are gone."""
+    src = (ROOT / "index.html").read_text(encoding="utf-8")
+    css = src[src.index("<style>"):src.index("</style>")]
+    blocks = [re.search(r"\n:root \{(.*?)\n\}", css, re.S), re.search(r':root:not\(\[data-theme="light"\]\) \{(.*?)\n  \}', css, re.S),
+              re.search(r'\n:root\[data-theme="dark"\] \{(.*?)\n\}', css, re.S)]
+    light, dark, forced = [dict(re.findall(r"(--g-[\w-]+):\s*([^;]+);", m.group(1))) if m else {} for m in blocks]
+    used = set(re.findall(r"var\((--g-[\w-]+)", css)) - {"--g-fill"}      # --g-fill: a card's own colour, set on the card
+    ok = "--hud-" not in src and light and set(light) == set(dark) and dark == forced and used <= set(light)
+    return ok, f"hud {src.count('--hud-')} light {len(light)} dark {len(dark)} forced {len(forced)} undefined {sorted(used - set(light))}"
+
+
+# A token's colour as the page computes it, to compare with what an element shows; and contrast.
+PROBE = "const probe = v => { const t = document.createElement('i'); t.style.color = `var(${v})`; document.body.append(t); const c = getComputedStyle(t).color; t.remove(); return c; };"
+RATIO = ("const lum = c => { const [r, g, b] = c.match(/[\\d.]+/g).slice(0, 3).map(Number).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); "
+         "return 0.2126 * r + 0.7152 * g + 0.0722 * b; }; const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };")
+
+
 def cyrillic_check():
     """English only: no Mongolian letters in index.html, except the pattern that still reads an
     old milestone tag (М1) in data written before."""
@@ -390,7 +410,12 @@ async def main():
         await pg.wait_for_timeout(400)
         tl = await pg.inner_text("#planView")
         node = await pg.inner_text(".gnode.ms")
-        check("the timeline is a graph: the milestone node carries its date and progress", await pg.locator(".gnode.ms").count() == 1 and await pg.locator(".gnode").count() == 3 and "0/2 done" in node and "days left" in node.lower() and "DONE 0/2" in tl, node.replace("\n", " | "))
+        check("the timeline is a graph: the milestone node carries its date and progress", await pg.locator(".gnode.ms").count() == 1 and await pg.locator(".gnode").count() == 3 and "0/2 done" in node and "days left" in node.lower() and "Done 0/2 · 0%" in tl, node.replace("\n", " | "))
+        bar = await pg.evaluate("(() => { " + PROBE + """ const b = document.querySelector('.flow-sum b'), k = b && b.querySelector('.k'); if (!k) return null;
+          const ck = getComputedStyle(k), cb = getComputedStyle(b);
+          return { text: b.innerText, k: k.textContent, label: [ck.fontSize, ck.fontWeight, ck.color === probe('--ink-2')], nums: [cb.fontSize, cb.fontWeight, cb.color === probe('--ink'), cb.textTransform] }; })()""")
+        check("the bar's total reads “Done 0/2 · 0%”: “Done” a quiet label, the numbers plain, no capitals",
+              bar and bar["text"] == "Done 0/2 · 0%" and bar["k"] == "Done" and bar["label"] == ["13px", "600", True] and bar["nums"] == ["15px", "600", True, "none"], str(bar))
         await pg.click(".gnode.ms")
         await pg.wait_for_timeout(200)
         check("tapping a milestone node says what it needs", "0 of 2 done" in await pg.inner_text(".gdetail") and "1 blocked" in await pg.inner_text(".gdetail"))
@@ -562,6 +587,10 @@ async def main():
         await pg4.wait_for_timeout(600)
         check("the Vercel security headers block nothing the page uses", await pg4.evaluate("window.__csp.length") == 0, str(await pg4.evaluate("window.__csp")))
         check("a loop made outside the editor is named on the graph", "loop" in (await pg4.inner_text("#planView")).lower() and await pg4.locator(".gnode.loop").count() >= 2)
+        borders = await pg4.evaluate("""(() => { const st = sel => [...document.querySelectorAll(sel)].map(n => getComputedStyle(n).borderTopStyle);
+          return { loop: st('.gnode.loop'), blocked: st('.gnode.s-blocked:not(.loop)') }; })()""")
+        check("a loop is the one dashed card; blocked cards keep a solid border (their word says it)",
+              borders["loop"] and set(borders["loop"]) == {"dashed"} and borders["blocked"] and set(borders["blocked"]) == {"solid"}, str({k: (len(v), sorted(set(v))) for k, v in borders.items()}))
         if SHOTS:
             await pg4.evaluate("S.db.doc('items/tp-01').set({ ...S.items.get('tp-01'), id: undefined, deps: [] })")
             await pg4.goto(f"{BASE}/?bare=1#f1-c3")
@@ -570,6 +599,40 @@ async def main():
             await pg4.goto(f"{BASE}/?bare=1#f1-c0")
             await pg4.wait_for_timeout(600)
             await pg4.screenshot(path=f"{SHOTS}/plan_timeline.png")
+        # A picked chain: 08 waits for 01 (done, in the chain); 03 is done too but not in it, so it is dimmed.
+        await pg4.evaluate("""(async () => { await S.db.doc('items/tp-01').update({ deps: [] });
+          for (const id of ['tp-01', 'tp-03']) await S.db.doc('items/' + id).update({ done: true }); })()""")
+        await pg4.goto(f"{BASE}/?bare=1#f1-c3")
+        await pg4.wait_for_timeout(600)
+        await pg4.evaluate("G.pick = 'tp-08'; renderGraph()")
+        await pg4.wait_for_timeout(200)
+        chain = await pg4.evaluate("(() => { " + PROBE + """ const look = id => { const n = document.querySelector(`[data-fkey="g:${id}"]`); return n ? { cls: n.className, border: getComputedStyle(n).borderTopColor, words: getComputedStyle(n.querySelector('.t')).color } : null; };
+          return { ink: probe('--ink'), accent: probe('--accent'), in01: look('tp-01'), out03: look('tp-03'), picked: look('tp-08') }; })()""")
+        check("with a chain picked, a done to-do in it has an ink outline and ink words, a done one outside it does not, and the picked card keeps its accent",
+              chain["in01"] and chain["out03"] and "dim" not in chain["in01"]["cls"] and "dim" in chain["out03"]["cls"]
+              and chain["in01"]["border"] == chain["in01"]["words"] == chain["ink"] and chain["out03"]["border"] != chain["ink"] and chain["out03"]["words"] != chain["ink"]
+              and chain["picked"]["border"] == chain["accent"], str(chain))
+        await pg4.evaluate("G.pick = null; renderGraph()")
+        # Milestones on the Timeline (made-up dates and names): M1 12 days late with 10 of its 16 to-dos
+        # done, M2 written with a period after its date, M3 with a long name.
+        await pg4.evaluate("""(async () => { const md = d => { const x = new Date(Date.now() + d * 86400000); return `${x.getMonth() + 1}/${x.getDate()}`; };
+          await S.db.doc('items/tp-m1').update({ text: md(-12) + ' · Milestone M1' });
+          await S.db.doc('items/tp-m2').update({ text: md(5) + '. Launch day' });
+          await S.db.doc('items/tp-m3').update({ text: md(10) + ' · Milestone M3: first three test sites take orders' });
+          for (const k of ['02', '04', '05', '06', '07', '08', '09', '10']) await S.db.doc('items/tp-' + k).update({ done: true }); })()""")
+        await pg4.goto(f"{BASE}/?bare=1#f1-c0")
+        await pg4.wait_for_timeout(600)
+        ms = await pg4.evaluate("""(() => { const m1 = document.querySelector('[data-fkey="g:tp-m1"]'), em = m1 && m1.querySelector('.ms-txt em'), names = [...document.querySelectorAll('.gband .gb-name')];
+          const n3 = names.find(n => n.textContent.includes('first three')), head = n3 && n3.closest('.gb-head').getBoundingClientRect();
+          return { em: em && em.textContent, emWhole: !!em && em.scrollWidth <= em.clientWidth, count: m1 && m1.querySelector('.ms-txt i').textContent, label: m1 && m1.getAttribute('aria-label'),
+            names: names.map(n => n.textContent), lines: n3 ? Math.round(n3.clientHeight / parseFloat(getComputedStyle(n3).lineHeight)) : 0, whole: !!n3 && n3.scrollHeight <= n3.clientHeight + 1 && n3.scrollWidth <= n3.clientWidth,
+            above: !!head && head.bottom <= Math.min(...[...document.querySelectorAll('.gnode')].map(c => c.getBoundingClientRect().top)) }; })()""")
+        check("a milestone card never cuts its date state: “▲ 12 days late” stays whole beside “10/16 done”, and its label keeps both",
+              ms["em"] == "▲ 12 days late" and ms["emWhole"] and ms["count"] == "10/16 done" and "12 days late" in (ms["label"] or "") and "10/16 done" in (ms["label"] or ""), str({k: ms[k] for k in ("em", "emWhole", "count", "label")}))
+        check("a long milestone name takes two whole lines in its group header, above the cards",
+              ms["lines"] == 2 and ms["whole"] and ms["above"], str({k: ms[k] for k in ("lines", "whole", "above")}))
+        check("a milestone written “MM/DD. Launch day” is named “Launch day” in its group header, with no stray mark",
+              "Launch day" in ms["names"] and not any(n.endswith("Launch day") and n != "Launch day" for n in ms["names"]), str(ms["names"][:4]))
         await b2.close()
 
     # Data and time: fixes that must not come back.
@@ -842,7 +905,7 @@ async def main():
         check("a milestone date may be followed by a period", await q.evaluate("!!milestoneDate('11/22. Launch') && milestoneDate('1.5 days') === null"))
         await b5.close()
 
-    # Language, theme, the timeline HUD, and the graph adapting live to changes in the data.
+    # Language, theme, the timeline, and the graph adapting live to changes in the data.
     async with async_playwright() as p6:
         b6 = await p6.chromium.launch(executable_path=CHROME, args=["--no-sandbox"])
         ctx6 = await b6.new_context(viewport={"width": 390, "height": 844})
@@ -883,16 +946,75 @@ async def main():
         await g.evaluate("S.db.doc('items/a2').update({ done: true })")
         await g.wait_for_timeout(400)
         check("ticking a to-do updates the graph's counts live", "1" in await g.inner_text(".gfilter.s-done"))
+        icons = await g.evaluate("""(() => [...document.querySelectorAll('.gnode:not(.ms) small')].map(s => { const i = s.querySelector('svg.gi');
+          return { icon: !!i && i.getAttribute('aria-hidden') === 'true', word: (s.querySelector('.sw') || {}).textContent || '', sign: /[▶■○✓⟲]/.test(s.textContent) }; }))()""")
+        check("graph cards mark status with an icon (hidden from screen readers) and a word, not a text sign",
+              len(icons) >= 5 and all(x["icon"] and x["word"] in ("Done", "Open", "Blocked", "Blocking") and not x["sign"] for x in icons), str(icons[:2]))
+        await g.click(".gfilter.s-blocked")
+        await g.wait_for_timeout(200)
+        chosen = await g.evaluate("(() => { " + PROBE + """ const p = document.querySelector('.gfilter[aria-pressed="true"]'), cs = getComputedStyle(p);
+          return { key: p.dataset.fkey, solid: cs.backgroundColor === probe('--ink'), line: cs.boxShadow.includes(probe('--accent')) && cs.boxShadow.includes('inset') && cs.boxShadow.includes('-2px'),
+            words: [...p.querySelectorAll('b, span')].every(n => getComputedStyle(n).color === probe('--ink')) }; })()""")
+        check("the chosen filter is a light tint with an accent underline and its words in ink, not a solid block",
+              chosen["key"] == "f:blocked" and not chosen["solid"] and chosen["line"] and chosen["words"], str(chosen))
+        dimmed = await g.evaluate("(() => { " + PROBE + RATIO + """ return [...document.querySelectorAll('.gnode.dim')].map(n => { const t = n.querySelector('.t, .ms-txt b'), fg = getComputedStyle(t).color;
+          let op = 1; for (let e = t; e && e !== n.parentElement; e = e.parentElement) op *= +getComputedStyle(e).opacity;
+          return { r: Math.round(ratio(fg, getComputedStyle(n).backgroundColor) * 100) / 100, op, grey: fg === probe('--g-ink-2'), fill: getComputedStyle(n).backgroundColor === probe(n.classList.contains('alt') ? '--g-band' : '--g-paper') }; }); })()""")
+        check("cards out of the filter are an outline on their column's colour with grey words at 4.5:1 or more, never faded",
+              len(dimmed) >= 3 and all(x["op"] == 1 and x["grey"] and x["fill"] and x["r"] >= 4.5 for x in dimmed), str(sorted(dimmed, key=lambda x: x["r"])[:2]))
+        # The matches stand out from the dimmed cards: a dimmed card never looks like a done match.
+        await g.click(".gfilter.s-done")
+        await g.wait_for_timeout(200)
+        lit = await g.evaluate("(() => { " + PROBE + """ const look = n => ({ id: n.dataset.fkey, border: getComputedStyle(n).borderTopColor, words: getComputedStyle(n.querySelector('.t')).color });
+          return { ink: probe('--ink'), on: [...document.querySelectorAll('.gnode.s-done:not(.dim)')].map(look), off: [...document.querySelectorAll('.gnode.dim:not(.ms)')].map(look) }; })()""")
+        check("with the Done filter on, a matching done card has an ink outline and ink words; a dimmed card has neither",
+              lit["on"] and lit["off"] and all(x["border"] == lit["ink"] and x["words"] == lit["ink"] for x in lit["on"])
+              and all(y["border"] != lit["ink"] and y["words"] != lit["ink"] for y in lit["off"]), str({k: v[:2] if isinstance(v, list) else v for k, v in lit.items()}))
+        await g.click(".gfilter.s-all")
+        await g.wait_for_timeout(200)
         await g.evaluate("history.back()")
         await g.wait_for_timeout(300)
         await g.evaluate("openKey('f1-c0')")
         await g.wait_for_timeout(500)
         tlg = await g.evaluate("""(() => ({ ms: [...document.querySelectorAll('.gnode.ms')].map(n => n.getAttribute('aria-label')), band: [...document.querySelectorAll('.gband')].map(n => n.textContent),
           today: !!document.querySelector('.gtoday'), edges: document.querySelectorAll('.gedge').length, sum: (document.querySelector('.flow-sum') || {}).textContent || '' }))()""")
-        check("the timeline graph groups by milestone, draws today, and words each milestone", len(tlg["ms"]) == 1 and "M1" in tlg["ms"][0] and "days" in tlg["ms"][0] and tlg["today"] and tlg["edges"] >= 5 and any("M1" in b for b in tlg["band"]) and "DONE" in tlg["sum"], str(tlg)[:200])
+        check("the timeline graph groups by milestone, draws today, and words each milestone", len(tlg["ms"]) == 1 and "M1" in tlg["ms"][0] and "days" in tlg["ms"][0] and tlg["today"] and tlg["edges"] >= 5 and any("M1" in b for b in tlg["band"]) and re.match(r"Done \d+/\d+ · \d+%", tlg["sum"]), str(tlg)[:200])
+        today = await g.evaluate("(() => { " + PROBE + """ const t = document.querySelector('.gtoday'), s = t.querySelector('span'), ct = getComputedStyle(t), cs = getComputedStyle(s);
+          return { line: [ct.borderLeftWidth, ct.borderLeftColor === probe('--g-edge')], label: [cs.backgroundColor === probe('--g-paper'), cs.color === probe('--ink'), cs.borderTopWidth, cs.borderTopColor === probe('--g-rule-2'), cs.borderTopLeftRadius], text: s.textContent }; })()""")
+        check("today is a thin rule with a small paper label, not a solid pill",
+              today["line"] == ["1px", True] and today["label"] == [True, True, "1px", True, "4px"] and today["text"].startswith("Today "), str(today))
+        hover = await g.evaluate("""(() => { const out = []; const walk = (rules, media) => { for (const r of rules) {
+            if (r.media && r.cssRules) walk(r.cssRules, `${media} ${r.media.mediaText}`);
+            else if (r.selectorText && r.selectorText.includes(':hover') && /\\.(gnode|zoom|flow|gfilter|gdetail|gband|glayer|gedge|gtoday|gi)\\b/.test(r.selectorText)) out.push([r.selectorText, media]); } };
+          for (const s of document.styleSheets) { try { walk(s.cssRules, ''); } catch (e) { /* another site's sheet */ } } return out; })()""")
+        check("the graph's hover styles sit inside @media (hover: hover), so a tap on a phone leaves nothing stuck",
+              len(hover) >= 4 and all("(hover: hover)" in m for _, m in hover), str([s for s, m in hover if "(hover: hover)" not in m][:4] or len(hover)))
         await g.click(".flow-btn")
         await g.wait_for_timeout(200)
         full = await g.evaluate("getComputedStyle(document.querySelector('.flow')).position")
+        # A sheet opened from the full-screen graph (Owner) shows over it, and so does the toast; the graph
+        # still covers the top bar. Hit-testing skips the inert page, so the page is made live for a moment
+        # to see what is drawn on top.
+        on_top = """(() => { const page = document.getElementById('page'), was = page.inert; page.inert = false;
+          const hit = (x, y) => { const e = document.elementFromPoint(x, y), c = e && e.closest('.sheet, .flow, .toast, .top'); return c ? c.id || c.className.split(' ')[0] : null; };
+          const mid = id => { const n = document.getElementById(id); if (!n || n.hidden) return null; const r = n.getBoundingClientRect(); return hit(r.left + r.width / 2, r.top + r.height / 2); };
+          const out = { full: G.full, sheet: S.sheet, onSheet: S.sheet ? mid(S.sheet) : null, onToast: mid('toast'), onTop: hit(195, 20) }; page.inert = was; return out; })()"""
+        await g.evaluate("G.pick = 'a0'; renderTimeline()")
+        await g.wait_for_timeout(200)
+        owner = g.locator(".gdetail .btn.ghost >> text=Owner")
+        layers = {}
+        if await owner.count() == 1:
+            await owner.click()
+            await g.wait_for_timeout(300)
+            layers["sheet"] = await g.evaluate(on_top)
+            await close_sheet(g)
+            await g.evaluate("toast('A made-up note')")
+            await g.wait_for_timeout(100)
+            layers["toast"] = await g.evaluate(on_top)
+            await g.evaluate("document.getElementById('toast').hidden = true; G.pick = null; renderTimeline()")
+            await g.wait_for_timeout(100)
+        check("in full screen the Owner sheet and the toast show over the graph, which still covers the top bar",
+              layers.get("sheet", {}).get("onSheet") == "handSheet" and layers["sheet"]["full"] and layers.get("toast", {}).get("onToast") == "toast" and layers["toast"]["onTop"] == "flow" and layers["toast"]["full"], str(layers))
         await g.keyboard.press("Escape")
         await g.wait_for_timeout(200)
         check("the graph opens full screen and Escape brings it back", full == "fixed" and await g.evaluate("getComputedStyle(document.querySelector('.flow')).position") != "fixed")
@@ -901,12 +1023,23 @@ async def main():
         await g.wait_for_timeout(200)
         check("zoom buttons scale the graph", z0 == "scale(1)" and await g.evaluate("document.querySelector('.graph-canvas').style.transform") == "scale(1.2)")
         await g.click(".zoom button >> nth=0")
+        moving = "(() => [...document.querySelectorAll('.flow, .flow *')].filter(n => getComputedStyle(n).transitionDuration.split(',').some(d => parseFloat(d) > 0)).map(n => n.getAttribute('class')))()"
+        before = await g.evaluate(moving)
+        await g.emulate_media(reduced_motion="reduce")
+        await g.wait_for_timeout(100)
+        still = await g.evaluate(moving)
+        await g.emulate_media(reduced_motion="no-preference")
+        check("with reduced motion the graph's transitions are off", any("gnode" in (c or "") for c in before) and still == [], str(still[:4]))
         await g.evaluate("history.back()")
         await g.wait_for_timeout(300)
         await g.evaluate("openKey('f1-c1')")
         await g.wait_for_timeout(500)
         msrow = await g.inner_text("#items .flow-tag[class*='ms-']")
         check("each milestone row in the Milestones list says its date state and progress", "1/5 done" in msrow and "days" in msrow, msrow)
+        wait = await g.evaluate("(() => { " + PROBE + """ const b = document.querySelector('#items .flow-tag.blocked'), c = b && getComputedStyle(b).color;
+          return b ? { text: b.textContent, grey: c === probe('--ink-2'), red: c === probe('--bad') } : null; })()""")
+        check("on the Milestones list the Blocked tag is grey with its mark, not red",
+              wait and wait["text"].startswith("■ Blocked") and wait["grey"] and not wait["red"], str(wait))
         # Nothing on screen is in Mongolian: a space, both plan views, home, the menu, For you and the chat.
         bad = {}
         for key in ("f2-c2", "f1-c3", "f1-c0"):
@@ -929,6 +1062,7 @@ async def main():
 
     # Screen text: one English dictionary, no key written twice.
     check("the screen-text dictionary has no repeated keys", *dict_check())
+    check("the graph's colours are --g-* tokens with dark values defined twice; no --hud- token is left", *token_check())
     check("the page source has no Mongolian screen text", *cyrillic_check())
 
     # Third review, login, the minimal phone screen, chat, updates, world clock and English data.
@@ -1036,6 +1170,26 @@ async def main():
         await a.wait_for_timeout(500)
         sm = await a.inner_text(".flow-sum")
         check("a late milestone with nothing done reads as behind, not on plan", "Behind" in sm and "1 milestone late" in sm, sm.replace("\n", " | "))
+        ruler = await a.evaluate("(() => { " + PROBE + """ return [...document.querySelectorAll('.gband')].map(b => { const h = b.querySelector('.gb-head'), r = getComputedStyle(h, '::before'), w = b.querySelector('.gb-when .st');
+          return { when: b.querySelector('.gb-when').textContent, late: b.classList.contains('st-late'), rule: r.content !== 'none' && r.backgroundColor === probe('--g-bad') && r.height === '2px', red: !!w && getComputedStyle(w).color === probe('--g-bad') }; }); })()""")
+        late_band = [x for x in ruler if x["late"]]
+        check("the ruler words each group plainly (date · state · days, a late one “2 days late” once); only the late group is red, with a rule over its header",
+              len(ruler) == 2 and len(late_band) == 1 and re.fullmatch(r"\d{1,2}/\d{1,2} · 2 days late", late_band[0]["when"]) and late_band[0]["rule"] and late_band[0]["red"]
+              and any(re.fullmatch(r"\d{1,2}/\d{1,2} · Planned · 20 days left", x["when"]) and not x["rule"] and not x["red"] for x in ruler), str(ruler))
+        await a.evaluate("openKey('f1-c1')")
+        await a.wait_for_timeout(300)
+        msl = await a.evaluate("(() => { " + PROBE + """ return [...document.querySelectorAll('#items .todo')].map(r => ({ text: r.querySelector('.item-text').textContent,
+          red: [...r.querySelectorAll('.flow-tag')].filter(t => getComputedStyle(t).color === probe('--bad')).map(t => t.className) })); })()""")
+        check("on the Milestones list red marks only the late milestone's date tag",
+              sorted((x["text"].endswith("Late one"), x["red"]) for x in msl) == [(False, []), (True, ["flow-tag ms-late"])], str(msl))
+        await a.evaluate("S.db.doc('items/my').update({ text: S.items.get('my').text.split(' · ')[0] + ' · M2 Later one, with a long made-up name that takes two lines on its card' })")
+        await a.evaluate("openKey('f1-c0')")
+        await a.wait_for_timeout(400)
+        two = await a.evaluate("""(() => { const n = document.querySelector('[data-fkey="g:my"]'), b = n.querySelector('.ms-txt b'), lh = parseFloat(getComputedStyle(b).lineHeight), cs = getComputedStyle(n);
+          const inner = n.getBoundingClientRect().bottom - parseFloat(cs.borderBottomWidth) - parseFloat(cs.paddingBottom); let low = 0;
+          n.querySelectorAll('*').forEach(c => { const r = c.getBoundingClientRect(); if (r.height) low = Math.max(low, r.bottom); });
+          return { lines: Math.round(b.clientHeight / lh), more: b.scrollHeight > b.clientHeight + 1, fits: low <= inner + 0.5, h: n.offsetHeight }; })()""")
+        check("a milestone card shows up to two lines of its words, and they fit inside the card", two["lines"] == 2 and two["more"] and two["fits"] and two["h"] == 80, str(two))
         # Time: a phone that went away still counts up to when it left; a stale leftAt is not away time.
         t = await a.evaluate("""(() => { const now = Date.now(), day = dayKey(now);
           const phone = { days: {}, openSince: now - 3 * 3600000, leftAt: now - 2 * 3600000, openCell: 'home' }, laptop = { days: {}, openSince: now - 90 * 60000, leftAt: null, openCell: 'home' };

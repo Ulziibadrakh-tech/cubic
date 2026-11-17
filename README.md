@@ -242,11 +242,17 @@ the viewer's local date.
   with "All" for all.
 - `Plan › Milestones` holds the milestones (start the text with `MM/DD`, or
   `MM/DD/YYYY`); each row says its days left or late and how much is done.
-  `Plan › Timeline` is the same graph as the dependency graph, on a dark
-  "screen", grouped by milestone in date order: each to-do sits before the
-  first milestone that needs it, each milestone node carries its date, days
-  left and a progress ring, and a pink line marks today. The bar above says
-  what is done and whether the plan is on time. Both graphs zoom and open full
+  `Plan › Timeline` is the same graph as the dependency graph, grouped by
+  milestone in date order: each to-do sits before the first milestone that
+  needs it. A ruler over each group gives the milestone's date, its state in a
+  word and the days left ("11/20 · Due soon · 1 day left"; a late one says it
+  once: "11/14 · 3 days late"); each
+  milestone node carries its date, days left and a progress bar, and a thin
+  line marked "Today" shows where today falls. The bar above says what is done
+  ("Done 2/41 · 5%") and whether the plan is on time. Both graphs look like a
+  printed project chart in the page's light or dark theme: neutral cards with
+  a status icon and word, one accent for the to-dos holding others up now, and
+  red only for what is late, "Behind" and loops. Both zoom and open full
   screen. Nothing stores when a to-do was ticked, so there is no invented
   history.
 - The graph and the plan picker are worked out again from the data on every

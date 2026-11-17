@@ -26,10 +26,10 @@
   --rule: 1.5px; --r: 22px; --r-sm: 14px;
   --spring: cubic-bezier(.34, 1.56, .64, 1);
   --glow: color-mix(in srgb, #0071E3 9%, #F5F5F7);
-  /* The timeline HUD is a screen: dark with neon in both themes. */
-  --hud-bg: #0A0B1A; --hud-panel: #12142E; --hud-grid: rgba(0, 229, 255, .07); --hud-line: rgba(0, 229, 255, .22);
-  --hud-cyan: #00E5FF; --hud-magenta: #FF2BD6; --hud-yellow: #FCEE0A; --hud-blue: #7AA2FF; --hud-text: #E6F7FF; --hud-dim: #8C95BA;
-  --hud-mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
+  /* The plan graph: a printed chart's neutrals; its status text passes 4.5:1 on paper, bands and cards. */
+  --g-paper: #FFFFFF; --g-band: #F4F5F7; --g-node: #FFFFFF; --g-node-done: #F6F7F9; --g-wash: #EAF2FC;
+  --g-rule: #E3E5E9; --g-rule-2: #C8CCD3; --g-edge: #858B96; --g-edge-quiet: #B9BEC6; --g-bar: #3D434D;
+  --g-ink-2: #5B616B; --g-acc: #0062C4; --g-bad: #C5221F;
   --shadow: 0 1px 2px rgba(0,0,0,.04), 0 12px 32px rgba(29,29,31,.08);
 }
 @media (prefers-color-scheme: dark) {
@@ -42,6 +42,9 @@
     --p-vida: #1F6FEB; --p-anand: #DA3633; --p-obama: #8957E5;
     --glow: color-mix(in srgb, #1F6FEB 16%, #0D1117);
     --shadow: 0 0 0 1px #30363D, 0 8px 24px rgba(1,4,9,.55);
+    --g-paper: #0D1117; --g-band: #131922; --g-node: #161B22; --g-node-done: #11161D; --g-wash: #152338;
+    --g-rule: #262C35; --g-rule-2: #3A424D; --g-edge: #6B7480; --g-edge-quiet: #4A525D; --g-bar: #C3CBD4;
+    --g-ink-2: #9BA4AE; --g-acc: #58A0FA; --g-bad: #F85149;
     color-scheme: dark;
   }
 }
@@ -54,6 +57,9 @@
   --p-vida: #1F6FEB; --p-anand: #DA3633; --p-obama: #8957E5;
   --glow: color-mix(in srgb, #1F6FEB 16%, #0D1117);
   --shadow: 0 0 0 1px #30363D, 0 8px 24px rgba(1,4,9,.55);
+  --g-paper: #0D1117; --g-band: #131922; --g-node: #161B22; --g-node-done: #11161D; --g-wash: #152338;
+  --g-rule: #262C35; --g-rule-2: #3A424D; --g-edge: #6B7480; --g-edge-quiet: #4A525D; --g-bar: #C3CBD4;
+  --g-ink-2: #9BA4AE; --g-acc: #58A0FA; --g-bad: #F85149;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -434,68 +440,160 @@ body.locked { overflow: hidden; }
 .pw-form { display: flex; flex-direction: column; gap: 8px; }
 .note a { color: var(--accent); font-weight: 700; overflow-wrap: anywhere; }
 
-/* The plan graph: a dark screen with neon in both themes. Every to-do and milestone is a node;
-   milestone nodes carry their date, days left and progress. */
-.flow { position: relative; border-radius: 18px; overflow: hidden; background: var(--hud-bg); color: var(--hud-text);
-  box-shadow: 0 0 0 1px var(--hud-line), 0 0 28px rgba(0, 229, 255, .12), var(--shadow); }
-.flow-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 12px; border-bottom: 1px solid var(--hud-line); font-family: var(--hud-mono); }
-.flow-sum { flex: 1 1 210px; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.flow-sum b { color: var(--hud-yellow); font-size: 13px; letter-spacing: .06em; }
-.flow-sum span { font-size: 13px; font-weight: 700; }
-.flow-sum .warn { color: var(--hud-magenta); } .flow-sum .ok { color: var(--hud-cyan); } .flow-sum .dim { color: var(--hud-dim); font-weight: 500; }
-.zoom { display: inline-flex; align-items: center; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--hud-line); }
-.zoom span { min-width: 46px; text-align: center; font-size: 12px; color: var(--hud-dim); }
-.zoom button, .flow-btn { border: 0; background: transparent; color: var(--hud-text); min-width: 40px; height: 38px; border-radius: 999px; font: 700 15px/1 var(--hud-mono); }
-.flow-btn { padding: 0 14px; font-size: 13px; box-shadow: inset 0 0 0 1px var(--hud-line); }
-.zoom button:focus-visible, .flow-btn:focus-visible { outline: 2px solid var(--hud-yellow); outline-offset: -4px; }
-.zoom button:hover, .flow-btn:hover { color: var(--hud-cyan); }
-.flow-scroll { overflow: auto; height: min(68dvh, 660px); min-height: 300px; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
-  background-image: linear-gradient(var(--hud-grid) 1px, transparent 1px), linear-gradient(90deg, var(--hud-grid) 1px, transparent 1px); background-size: 24px 24px; }
-.flow-scroll:focus-visible { outline: 2px solid var(--hud-yellow); outline-offset: -2px; }
+/* The plan graph, drawn like a printed project chart: paper that follows the theme, a light band
+   behind every other milestone group (Timeline) or layer (Dependency graph), a date ruler with
+   today marked, and neutral to-do cards with a status icon and word and the owner's initial. One
+   accent colour picks out the to-dos holding others up now and the links out of them; red is kept
+   for what is late, Behind and loops. Milestone headers and nodes carry their date, days left or
+   late, and a bar of how much they need is done. Hover styles live in @media (hover: hover), so a
+   tap on a phone leaves nothing stuck; reduced motion turns the few transitions off. */
+.flow { position: relative; border-radius: var(--r-sm); overflow: hidden; background: var(--sunk); color: var(--ink); font-family: var(--body); box-shadow: var(--shadow); }
+.flow-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 14px; border-bottom: 1px solid var(--g-rule); background: var(--sunk); }
+.flow-sum { flex: 1 1 210px; min-width: 0; max-width: 460px; display: flex; flex-direction: column; gap: 6px; }
+/* "Done 2/41 · 5%": the word is a quiet label, the numbers are plain. */
+.flow-sum b { display: block; font: 600 15px/1.25 var(--body); font-variant-numeric: tabular-nums; color: var(--ink); }
+.flow-sum b .k { margin-right: 1px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.flow-sum > span { font-size: 13px; font-weight: 600; line-height: 1.3; }
+.flow-sum .warn { color: var(--g-bad); } .flow-sum .ok { color: var(--ink); } .flow-sum .dim { color: var(--g-ink-2); font-weight: 500; }
+.flow-meter, .gb-prog i { display: block; height: 6px; border-radius: 3px; background: linear-gradient(var(--g-bar), var(--g-bar)) 0 0 / var(--p, 0%) 100% no-repeat, var(--g-rule); }
+.zoom { display: inline-flex; align-items: center; border: 1px solid var(--g-rule-2); border-radius: 8px; background: var(--sunk); }
+.zoom span { min-width: 46px; text-align: center; font: 600 12px/1 var(--body); font-variant-numeric: tabular-nums; color: var(--g-ink-2); }
+.zoom button, .flow-btn { border: 0; background: transparent; color: var(--ink); min-width: 40px; height: 38px; border-radius: 7px; font: 600 17px/1 var(--body); transition: background-color .15s ease; }
+.flow-btn { padding: 0 14px; font-size: 13px; border: 1px solid var(--g-rule-2); border-radius: 8px; background: var(--sunk); }
+.zoom button:focus-visible, .flow-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.flow .gfilters { flex: 1 1 320px; max-width: 560px; border: 1px solid var(--g-rule-2); border-radius: 10px; background: var(--sunk); box-shadow: none; }
+.flow .gfilter { --g-fill: var(--sunk); background: transparent; border-right: 1px solid var(--g-rule); padding: 7px 2px 6px; gap: 3px; transition: background-color .15s ease; }
+.flow .gfilter:last-child { border-right: 0; }
+.flow .gfilter:active { transform: none; }
+.flow .gfilter b { display: inline-flex; align-items: center; gap: 5px; font: 700 18px/1.1 var(--body); letter-spacing: 0; color: var(--ink); }
+.flow .gfilter span { font-size: 11px; font-weight: 600; color: var(--g-ink-2); }
+.flow .gfilter .gi { color: var(--g-ink-2); }
+.flow .gfilter.s-blocking .gi { color: var(--g-acc); }
+.flow .gfilter.s-blocking b, .flow .gfilter.s-blocking span { color: var(--g-acc); }
+/* The chosen filter: a light tint with an accent underline, its words in ink. */
+.flow .gfilter[aria-pressed="true"] { --g-fill: color-mix(in srgb, var(--ink) 6%, var(--sunk)); background: var(--g-fill); box-shadow: inset 0 -2px 0 var(--accent); }
+.flow .gfilter[aria-pressed="true"] b, .flow .gfilter[aria-pressed="true"] span { color: var(--ink); }
+.flow .gfilter:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; }
+.flow-scroll { overflow: auto; height: min(68dvh, 660px); min-height: 300px; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; background: var(--g-paper); }
+.flow-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .flow-zoom { position: relative; }
 .graph-canvas { position: absolute; left: 14px; top: 14px; transform-origin: 0 0; }
-.gedges { position: absolute; left: 0; top: 0; overflow: visible; }
-.gedge { fill: none; stroke: var(--hud-cyan); stroke-width: 1.2; opacity: .32; }
-.gedge.live { stroke: var(--hud-magenta); stroke-width: 1.8; opacity: .8; }
-.gedge.dim { opacity: .06; }
-.glayer { position: absolute; top: 0; height: 18px; font: 700 11px/18px var(--hud-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--hud-dim); white-space: nowrap; }
-.gband { --c: var(--hud-dim); position: absolute; top: 0; height: 32px; padding-left: 8px; display: flex; flex-direction: column; justify-content: center; border-left: 2px solid var(--c); font-family: var(--hud-mono); white-space: nowrap; overflow: hidden; }
-.gband b { font-size: 11.5px; color: var(--c); letter-spacing: .06em; } .gband span { font-size: 11px; color: var(--hud-dim); }
-.gband.st-done { --c: var(--hud-cyan); } .gband.st-late { --c: var(--hud-magenta); } .gband.st-soon { --c: var(--hud-yellow); } .gband.st-ahead { --c: var(--hud-blue); }
-.gtoday { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px dashed var(--hud-magenta); filter: drop-shadow(0 0 4px var(--hud-magenta)); pointer-events: none; }
-.gtoday span { position: absolute; top: 36px; left: 4px; padding: 2px 5px; background: var(--hud-bg); color: var(--hud-magenta); font: 700 11px/1 var(--hud-mono); letter-spacing: .12em; white-space: nowrap; }
-.gnode { --c: var(--hud-blue); position: absolute; display: flex; flex-direction: column; gap: 3px; padding: 6px 8px 6px 11px; overflow: hidden; text-align: left; border: 0; border-radius: 10px;
-  background: linear-gradient(135deg, var(--hud-panel), var(--hud-bg)); color: var(--hud-text);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 50%, transparent), 0 0 14px color-mix(in srgb, var(--c) 16%, transparent); }
-.gnode::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--c); box-shadow: 0 0 10px var(--c); }
-.gnode.s-done { --c: var(--hud-cyan); } .gnode.s-blocked { --c: var(--hud-magenta); } .gnode.s-blocking { --c: var(--hud-yellow); }
-.gnode.s-blocked { background: repeating-linear-gradient(135deg, rgba(255, 43, 214, .07) 0 6px, transparent 6px 12px), linear-gradient(135deg, var(--hud-panel), var(--hud-bg)); }
-.gnode small { display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; font: 700 10.5px/1.25 var(--hud-mono); letter-spacing: .05em; text-transform: uppercase; color: var(--c); }
-.gnode .t { font-size: 12.5px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.gnode.s-done .t { text-decoration: line-through; color: var(--hud-dim); }
-.own { margin-left: auto; flex: 0 0 18px; width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; font: 800 10px/1 var(--body); letter-spacing: 0; color: #FFFFFF; background: var(--hud-dim); }
-.own[data-who="vida"] { background: var(--p-vida); } .own[data-who="anand"] { background: var(--p-anand); } .own[data-who="obama"] { background: var(--p-obama); }
-.gnode.ms { flex-direction: row; align-items: center; gap: 8px; padding: 8px 10px 8px 12px; }
-.gnode.ms.st-done { --c: var(--hud-cyan); } .gnode.ms.st-late { --c: var(--hud-magenta); } .gnode.ms.st-soon { --c: var(--hud-yellow); } .gnode.ms.st-ahead { --c: var(--hud-blue); }
+/* The axis under the ruler (dates on the Timeline, layer names on the Dependency graph). */
+.graph-canvas::before { content: ''; position: absolute; z-index: 1; left: -14px; right: -14px; top: 26px; height: 1px; background: var(--g-rule-2); pointer-events: none; }
+.gedges { position: absolute; left: 0; top: 0; z-index: 2; overflow: visible; pointer-events: none; }
+.gedge { fill: none; stroke: var(--g-edge-quiet); stroke-width: 1; stroke-linecap: round; }
+.gedge.live { stroke: var(--g-edge); stroke-width: 1.5; }
+.gedge.hot { stroke: var(--accent); stroke-width: 1.75; }
+.gedge.far { opacity: .5; }
+.gedge.dim { opacity: .12; }
+.glayer, .gband { position: absolute; top: 0; bottom: 0; z-index: 0; pointer-events: none; }
+.glayer { font: 600 11.5px/26px var(--body); color: var(--g-ink-2); white-space: nowrap; }
+.glayer::before, .gband::before { content: ''; position: absolute; z-index: -1; top: -14px; bottom: -14px; left: calc(-1 * var(--ext, 22px)); right: calc(-1 * var(--ext, 22px)); }
+.glayer.alt::before, .gband.alt::before { background: var(--g-band); }
+.gband::after { content: ''; position: absolute; top: 20px; left: calc(-1 * var(--ext, 22px)); width: 1px; height: 6px; background: var(--g-rule-2); }
+.gb-head { position: relative; width: min(100%, 240px); display: flex; flex-direction: column; }
+/* At 100% a group's header slides along while its group is in view (sticky ignores the zoom's scale). */
+.graph-canvas.z1 .gb-head { position: sticky; left: 14px; }
+/* A late group's header carries a red rule over it; groups on plan stay uncoloured. */
+.gband.st-late .gb-head::before { content: ''; position: absolute; left: 0; right: 0; top: -10px; height: 2px; background: var(--g-bad); }
+/* On the ruler: "11/20 · Due soon · 1 day left", plain words; red only when late. */
+.gb-when { height: 20px; margin-top: -4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font: 600 12px/20px var(--body); color: var(--g-ink-2); }
+.gb-when b { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); }
+.gb-when .st { font-variant-numeric: tabular-nums; }
+.gband.st-late .gb-when .st, .gnode.ms.st-late em { color: var(--g-bad); }
+.gband.st-soon .gb-when .st, .gnode.ms.st-soon em { color: var(--ink); }
+/* The milestone's name: up to two lines, which still fit above the cards (top 100). */
+.gb-name { margin-top: 26px; font: 700 13px/1.25 var(--body); color: var(--ink); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.gb-prog { margin-top: 7px; display: flex; align-items: center; gap: 8px; white-space: nowrap; font: 600 11.5px/1.2 var(--body); font-variant-numeric: tabular-nums; color: var(--g-ink-2); }
+.gb-prog i { flex: 1 1 auto; min-width: 40px; }
+/* Today: a thin rule with a small paper label on the ruler. */
+.gtoday { position: absolute; z-index: 1; top: -14px; bottom: -14px; width: 0; border-left: 1px solid var(--g-edge); pointer-events: none; }
+.gtoday span { position: absolute; top: 31px; left: -.5px; transform: translateX(-50%); padding: 2px 6px; border: 1px solid var(--g-rule-2); border-radius: 4px; background: var(--g-paper); color: var(--ink);
+  font: 600 11px/1.2 var(--body); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.gtoday.start span { transform: none; left: -1px; } .gtoday.end span { transform: translateX(-100%); left: 0; }
+/* A card. --g-fill is its colour, and the cut-outs of its status icon take the same colour. A to-do
+   card holds its status row (18px) and two lines of words (31.2px) inside its 64px. */
+.gnode { --g-fill: var(--g-node); position: absolute; z-index: 3; display: flex; flex-direction: column; gap: 2px; padding: 5px 9px 5px 12px; overflow: hidden; text-align: left;
+  border: 1px solid var(--g-rule-2); border-radius: 6px; background: var(--g-fill); color: var(--ink); font-family: var(--body); transition: border-color .15s ease, background-color .15s ease; }
+.gnode::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
+.gnode.s-blocking { border-color: color-mix(in srgb, var(--accent) 45%, var(--g-rule-2)); }
+.gnode.s-blocking::before { background: var(--accent); }
+.gnode.s-done { --g-fill: var(--g-node-done); border-color: var(--g-rule); }
+.gnode small { display: flex; align-items: center; gap: 5px; min-height: 18px; white-space: nowrap; overflow: hidden; font: 600 11.5px/1.2 var(--body); letter-spacing: .01em; color: var(--g-ink-2); }
+.gnode small .sw { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.gnode.s-blocking small { color: var(--g-acc); }
+.gnode .t { flex: 0 0 auto; font: 500 13px/1.2 var(--body); color: var(--ink); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.gnode.s-done .t { color: var(--g-ink-2); text-decoration: line-through; text-decoration-color: var(--g-edge); }
+/* Status icons (aria-hidden; the word beside them says the status): the colour of their words,
+   so grey, or the accent for a to-do holding others up; the loop's arrow is red like its border. */
+.gi { flex: 0 0 12px; width: 12px; height: 12px; overflow: visible; fill: currentColor; }
+.gi .ln { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.gi .cut { fill: var(--g-fill, var(--g-node)); }
+.gi .cut-ln { fill: none; stroke: var(--g-fill, var(--g-node)); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.ms-txt em .gi { vertical-align: -1.5px; }
+.gnode.loop small .gi { color: var(--g-bad); }
+.own { margin-left: auto; flex: 0 0 18px; width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; border: 1px solid var(--g-rule-2); background: transparent;
+  color: var(--ink); font: 600 11px/1 var(--body); letter-spacing: 0; }
+/* A milestone: up to two lines of its words, its date state and count, then its progress bar. */
+.gnode.ms { justify-content: center; gap: 4px; padding: 6px 10px 6px 12px; border: 1px solid var(--ink); }
+.gnode.ms::before { background: var(--ink); }
+.gnode.ms.s-done { border-color: var(--g-edge); }
+.gnode.ms.s-done::before { background: var(--g-edge); }
 .ms-txt { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.ms-txt b { font: 800 13px/1.2 var(--display); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.ms-txt em { font: 700 11px/1.2 var(--hud-mono); font-style: normal; letter-spacing: .05em; text-transform: uppercase; color: var(--c); }
-.ms-txt i { font: 500 11px/1.2 var(--hud-mono); font-style: normal; color: var(--hud-dim); }
-.gnode.loop { box-shadow: inset 0 0 0 2px var(--hud-magenta); }
-.gnode.dim { opacity: .2; }
-.gnode[aria-pressed="true"], .gnode:focus-visible { outline: 2px solid var(--hud-yellow); outline-offset: 2px; }
-svg.ring { width: 46px; height: 46px; flex: 0 0 46px; }
-.ring-track { fill: none; stroke: rgba(255, 255, 255, .1); stroke-width: 5; }
-.ring-arc { fill: none; stroke: var(--c); stroke-width: 5; stroke-linecap: round; }
-.ring-text { fill: var(--hud-text); font: 700 13px var(--hud-mono); }
-.flow .gdetail { margin: 0; padding: 12px 14px; border-top: 1px solid var(--hud-line); background: var(--hud-panel); color: var(--hud-text); display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
-.flow .gdetail .btn.ghost { color: var(--hud-text); background: rgba(255, 255, 255, .08); }
-.flow .gdetail ul { list-style: none; margin: 0; padding: 0; } .flow .gdetail li button { width: 100%; border: 0; background: transparent; color: var(--hud-text); text-align: left; padding: 6px 0; }
-.flow .gdetail li button:hover b { color: var(--hud-cyan); } .flow .gdetail small { color: var(--hud-dim); }
-.flow.full { position: fixed; inset: 0; z-index: 25; border-radius: 0; display: flex; flex-direction: column; }
+.ms-txt b { flex: 0 0 auto; font: 700 13px/1.2 var(--body); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* The date state never gives way: when both are long, the count does (the card's label keeps it whole). */
+.ms-row { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; white-space: nowrap; }
+.ms-txt em { flex: none; font: 600 12px/1.2 var(--body); font-style: normal; color: var(--g-ink-2); }
+.ms-txt i { min-width: 0; overflow: hidden; text-overflow: ellipsis; font: 500 12px/1.2 var(--body); font-style: normal; font-variant-numeric: tabular-nums; color: var(--g-ink-2); }
+svg.ring { display: block; width: 100%; height: 12px; flex: 0 0 12px; overflow: visible; }
+.ring-track { fill: var(--g-rule); }
+.ring-arc { fill: var(--g-bar); }
+.ring-text { fill: var(--g-ink-2); font: 600 11px var(--body); font-variant-numeric: tabular-nums; }
+/* A loop is the one dashed card, in red. Blocked cards keep the solid border: their word says it. */
+.gnode.loop { border: 1.5px dashed var(--g-bad); }
+@media (hover: hover) {
+  .gnode:not([aria-pressed="true"]):hover { border-color: var(--g-edge); }
+  .gnode.ms:not([aria-pressed="true"]):hover { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+  .flow .gnode.dim:hover { border-color: var(--g-rule-2); box-shadow: none; }
+  .zoom button:hover, .flow-btn:hover { background: var(--g-band); }
+  .flow .gfilter:not([aria-pressed="true"]):hover { background: var(--g-band); }
+  .flow .gdetail li button:hover b { color: var(--g-acc); }
+}
+/* Out of the picked chain or the filter: an outline with no fill of its own (it takes the colour of
+   its column, so links behind it stay hidden) and grey words that still pass 4.5:1. Only the side
+   bar, the owner's ring and the progress bar fade, never the words. */
+.flow .gnode.dim { --g-fill: var(--g-paper); border-color: var(--g-rule); box-shadow: none; }
+.flow .gnode.dim.alt { --g-fill: var(--g-band); }
+.flow .gnode.dim::before { opacity: .3; }
+.flow .gnode.dim :is(small, .t, .ms-txt b, .ms-txt em, .ms-txt i, .own) { color: var(--g-ink-2); }
+.flow .gnode.dim .own { border-color: var(--g-rule); }
+.flow .gnode.dim :is(.ring-track, .ring-arc) { opacity: .35; }
+/* While some cards are dimmed (.focus), the cards in the chain or the filter take an ink outline, and
+   a done one ink words, so a dimmed card never looks like a match. The picked card keeps its accent
+   ring, and a loop its red dashes. */
+.graph-canvas.focus .gnode:not(.dim):not(.loop):not([aria-pressed="true"]) { border-color: var(--ink); }
+.graph-canvas.focus .gnode.s-done:not(.dim) .t { color: var(--ink); }
+.gnode[aria-pressed="true"] { --g-fill: var(--g-wash); border-color: var(--accent); box-shadow: 0 0 0 1.5px var(--accent); }
+.gnode:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.flow .gdetail { --g-fill: var(--sunk); margin: 0; padding: 12px 14px 14px; border-top: 1px solid var(--g-rule); background: var(--sunk); color: var(--ink); display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.flow .gdetail > b { font-size: 15px; }
+.flow .gdetail .gi { margin-right: 2px; vertical-align: -1px; color: var(--g-ink-2); }
+.flow .gdetail .gi-blocking { color: var(--g-acc); }
+.flow .gdetail ul { list-style: none; margin: 0; padding: 0; }
+.flow .gdetail li + li { border-top: 1px solid var(--g-rule); }
+.flow .gdetail li button { width: 100%; border: 0; background: transparent; color: var(--ink); text-align: left; padding: 7px 0; }
+.flow .gdetail small { color: var(--g-ink-2); }
+/* Full screen covers the top bar (6) but stays under the toast (10), notes (15), sheets (20, 21) and
+   the login page (30): a sheet opened from it (Owner) shows, and a tap lands where it is seen. */
+.flow.full { position: fixed; inset: 0; z-index: 9; border-radius: 0; display: flex; flex-direction: column; box-shadow: none; }
+.flow.full .flow-bar { padding-top: max(12px, env(safe-area-inset-top)); }
 .flow.full .flow-scroll { flex: 1; height: auto; }
-.flow.full .gdetail { max-height: 42vh; overflow: auto; }
+.flow.full .gdetail { max-height: 42vh; overflow: auto; padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+@media (prefers-reduced-motion: reduce) { .gnode, .zoom button, .flow-btn, .flow .gfilter { transition: none; } }
 .flow-tag.ms-late { color: var(--bad); } .flow-tag.ms-soon { color: var(--away); } .flow-tag.ms-done { color: var(--good); } .flow-tag.ms-ahead { color: var(--ink-2); }
+.flow-tag[class*="ms-"] { font-variant-numeric: tabular-nums; }
+/* On the Milestones list every milestone waits for its to-dos: that tag is grey; red stays for late. */
+.flow-tag.blocked.muted { color: var(--ink-2); }
 /* Handing a to-do over: who to ask (the suggestion first, reasons written out), requests and answers */
 .hand-task { display: flex; flex-direction: column; gap: 4px; }
 .hand-task b { font: 800 19px/1.2 var(--display); overflow-wrap: anywhere; } .hand-task small { color: var(--ink-2); font-size: 13px; }
@@ -716,7 +814,8 @@ const L = { en: {} };
 const tr = (key, ...a) => { const v = L.en[key]; return typeof v === 'function' ? v(...a) : (v == null ? key : v); };
 Object.assign(L.en, {
   reached: 'Reached', noDate: 'No date', lateN: n => `${n} ${n === 1 ? 'day' : 'days'} late`, todayW: 'Today', daysLeft: n => `${n} ${n === 1 ? 'day' : 'days'} left`,
-  hudDone: (d, n, p) => `DONE ${d}/${n} · ${p}%`, hudToday: 'TODAY', hudNoDates: 'No dated milestones',
+  sumDone: 'Done', sumDoneN: (d, n, p) => `${d}/${n} · ${p}%`, sumNoDates: 'No dated milestones',
+  msSt_done: 'Reached', msSt_late: 'Late', msSt_soon: 'Due soon', msSt_ahead: 'Planned',
   msStats: (n, d, b, r) => `${d} of ${n} done · ${b} blocked · ${r} can start`, msTick: ' · every task is done, tick the milestone', msNoTasks: 'No tasks are linked to this milestone.',
   moreReady: n => `${n} more can start. See them all in “Build order” on the Dependency graph.`,
   tlEmpty: 'Add milestones in the Milestones space and they show here in date order. Start the text with a date: 11/22 · …', tlNoneInPlan: 'No milestones in this plan.',
@@ -773,7 +872,7 @@ Object.assign(L.en, {
   menu: 'Menu', menuOf: n => `Menu · ${n}`, close: 'Close', settings: 'Settings', switchPerson: 'Switch person', allSpaces: n => `All spaces · ${n}`, noName: 'Pick your name',
   loginTitle: 'Who is working?', loginSub: 'Pick your name. This account will remember you.', loginClaude: 'Your Claude account signs you in. Here you only pick your name.',
   loginLocal: 'This copy keeps data in this browser only.', loginSkip: 'Just look for now', loginAs: n => `Sign in as ${n}`,
-  updates: 'Updates', updatesN: n => (n ? `Updates, ${n} new` : 'Updates'), chat: 'Chat', chatN: n => (n ? `Chat, ${n} new ${n === 1 ? 'message' : 'messages'}` : 'Chat'),
+  updates: 'Updates', chat: 'Chat', chatN: n => (n ? `Chat, ${n} new ${n === 1 ? 'message' : 'messages'}` : 'Chat'),
   noUpdates: 'No changes by others in the last 7 days.', newTag: 'New',
   act_add: 'added', act_done: 'finished', act_undone: 'reopened', act_owner: 'changed the owner of', act_move: 'moved', act_edit: 'changed',
   upd: (n, verb, t) => `${n} ${verb} “${t}”`, ownerTo: n => ` → ${n}`,
@@ -783,7 +882,7 @@ Object.assign(L.en, {
   chatWait: 'The data is still loading. Wait a moment and send again.', chatNoId: 'We could not tell who you are, so you cannot write here.', yesterday: 'Yesterday',
   worldClock: 'World clock', night: 'night', dayPlus: '+1 day', dayMinus: '−1 day', cityOf: n => `${n}: choose a city`, noCity: 'Choose a city',
   zoomIn: 'Zoom in', zoomOut: 'Zoom out', fullScreen: '⛶ Full screen', exitFull: '✕ Close', noMsCol: 'No milestone',
-  tlHelp: 'Each group of columns is one milestone, in date order. Each to-do sits before the first milestone that needs it. The pink dashed line is today. Tap a node to light up its chain.',
+  tlHelp: 'Each group of columns is one milestone, in date order. Each to-do sits before the first milestone that needs it. The line marked Today shows where today falls. Tap a node to light up its chain.',
   planBehind: (due, done, late) => `▲ Behind: ${due} due by today, ${done} done${late ? ` · ${late} ${late === 1 ? 'milestone' : 'milestones'} late` : ''}`,
   planOnTrack: (due, done) => `◆ On plan: ${due} due by today, ${done} done`, planNothingDue: '◆ On plan: nothing is due by today', msNode: (d, n) => `${d}/${n} done`, del: 'Delete',
 });
@@ -1513,7 +1612,8 @@ function renderArea() {
     const x = fl.get(i.id), st = stoneOf && stoneOf.get(i.id);
     if (st) main.append(el('span', { class: `flow-tag ms-${st.state}`, text: `${MARK[st.state]} ${whenText(st)}${st.need.length ? ' · ' + tr('msNode', st.done, st.need.length) : ''}` }));
     const hand = handTag(i); if (hand) main.append(hand);
-    if (x && x.state === 'blocked') main.append(el('span', { class: 'flow-tag blocked', text: tr('blockedBy', short(txt(S.items.get(x.waits[0])), 34), x.waits.length > 1 ? ` +${x.waits.length - 1}` : '') }));
+    /* A milestone always waits for its to-dos, so on the Milestones list that tag is grey (red is for late). */
+    if (x && x.state === 'blocked') main.append(el('span', { class: `flow-tag blocked${stoneOf ? ' muted' : ''}`, text: tr('blockedBy', short(txt(S.items.get(x.waits[0])), 34), x.waits.length > 1 ? ` +${x.waits.length - 1}` : '') }));
     else if (x && x.state === 'blocking') main.append(el('span', { class: 'flow-tag blocking', text: tr('blockingN', x.holds.length) }));
     if (i.url && /^https?:\/\//i.test(i.url)) main.append(el('a', { href: i.url, target: '_blank', rel: 'noopener', text: tr('openLink') }));
     const m = member(i.who);
@@ -2091,7 +2191,6 @@ const svgEl = (tag, attrs = {}, kids = []) => {
   (Array.isArray(kids) ? kids : [kids]).forEach(c => c != null && n.append(typeof c === 'string' ? document.createTextNode(c) : c));
   return n;
 };
-let ringSeq = 0;
 const startOfToday = () => { const t = new Date(); t.setHours(0, 0, 0, 0); return t; };
 /* A leading MM/DD (or MM/DD/YYYY). Without a year, the year is the one that puts the date nearest
    today: a 01/10 milestone written in December means next January. "1.5 days" is not a date. */
@@ -2133,15 +2232,28 @@ function milestoneData(P, picked, fl) {
 }
 const whenText = st => (st.i.done ? tr('reached') : st.days === null ? tr('noDate') : st.days < 0 ? tr('lateN', -st.days) : st.days === 0 ? tr('todayW') : tr('daysLeft', st.days));
 const MARK = { done: '◆', late: '▲', soon: '◇', ahead: '◇' };
-/* A neon ring: the share of what the milestone needs that is done (no arc at 0%). */
+/* A progress bar with its percentage at the end: the share of what the milestone needs that is
+   done (no fill at 0%). Lengths are in percent of the card, so it needs no viewBox and never stretches. */
 function ring(pct) {
-  const r = 22, c = 2 * Math.PI * r, uid = `rg${++ringSeq}`;
-  return svgEl('svg', { viewBox: '0 0 60 60', class: 'ring', 'aria-hidden': 'true' }, [
-    svgEl('defs', {}, svgEl('filter', { id: uid, x: '-40%', y: '-40%', width: '180%', height: '180%' }, [svgEl('feGaussianBlur', { stdDeviation: 1.6, result: 'b' }), svgEl('feMerge', {}, [svgEl('feMergeNode', { in: 'b' }), svgEl('feMergeNode', { in: 'SourceGraphic' })])])),
-    svgEl('circle', { cx: 30, cy: 30, r, class: 'ring-track' }),
-    pct > 0 ? svgEl('circle', { cx: 30, cy: 30, r, class: 'ring-arc', 'stroke-dasharray': `${(c * pct / 100).toFixed(1)} ${c.toFixed(1)}`, transform: 'rotate(-90 30 30)', filter: `url(#${uid})` }) : null,
-    svgEl('text', { x: 30, y: 34.5, 'text-anchor': 'middle', class: 'ring-text' }, `${pct}%`)]);
+  const run = 76;
+  return svgEl('svg', { class: 'ring', 'aria-hidden': 'true' }, [
+    svgEl('rect', { x: 0, y: 4, width: `${run}%`, height: 4, rx: 2, class: 'ring-track' }),
+    pct > 0 ? svgEl('rect', { x: 0, y: 4, width: `${(run * Math.min(100, pct) / 100).toFixed(2)}%`, height: 4, rx: 2, class: 'ring-arc' }) : null,
+    svgEl('text', { x: '100%', y: 10, 'text-anchor': 'end', class: 'ring-text' }, `${pct}%`)]);
 }
+/* A to-do's status icon in the graph. The shape alone tells them apart (a hollow circle when open,
+   a forward mark when it holds others up, a bar when it is blocked, a tick when done, an arrow
+   turning back for a loop), and the word beside it says the status, so colour is never the only
+   cue. Cut-outs take the colour of the card or button they sit on (--g-fill). */
+const STATUS_ICON = {
+  open: [['circle', { cx: 6, cy: 6, r: 4.75, class: 'ln' }]],
+  blocking: [['circle', { cx: 6, cy: 6, r: 5.5 }], ['path', { d: 'M4.6 3.7v4.6L8.3 6z', class: 'cut' }]],
+  blocked: [['circle', { cx: 6, cy: 6, r: 5.5 }], ['rect', { x: 3.25, y: 5.2, width: 5.5, height: 1.6, rx: 0.8, class: 'cut' }]],
+  done: [['circle', { cx: 6, cy: 6, r: 5.5 }], ['path', { d: 'M3.6 6.1l1.6 1.6 3.2-3.3', class: 'cut-ln' }]],
+  loop: [['path', { d: 'M1.5 6a4.5 4.5 0 1 0 4.5-4.5 4.9 4.9 0 0 0-3.37 1.37L1.5 4', class: 'ln' }], ['path', { d: 'M1.5 1.5V4H4', class: 'ln' }]],
+};
+const statusIcon = state => svgEl('svg', { viewBox: '0 0 12 12', class: `gi gi-${STATUS_ICON[state] ? state : 'open'}`, 'aria-hidden': 'true' },
+  (STATUS_ICON[state] || STATUS_ICON.open).map(([tag, attrs]) => svgEl(tag, attrs)));
 /* Columns: `colOf` gives each node a sortable column; `gapAfter` says where a wider gap goes (between
    milestone groups). Within a column, a node sits near what it waits for (barycentre order). */
 function graphLayout(P, nodes, colOf, gapAfter, top) {
@@ -2192,10 +2304,10 @@ function drawFlow(kind) {
     const none = stones.length;
     colOf = id => (gi.has(id) ? gi.get(id) : none) * 1000 + (P.layer.get(id) || 0);
     gapAfter = (a, b) => Math.floor(a / 1000) !== Math.floor(b / 1000);
-    top = 64;
+    top = 100;   /* room for the date ruler and each milestone's header: name, progress bar, count */
   } else {
     nodes = P.order.filter(has).map(id => S.items.get(id));
-    colOf = id => P.layer.get(id); gapAfter = () => false; top = 26;
+    colOf = id => P.layer.get(id); gapAfter = () => false; top = 40;
   }
   const lay = graphLayout(P, nodes, colOf, gapAfter, top);
   if (G.pick && !lay.pos.has(G.pick)) G.pick = null;
@@ -2216,45 +2328,66 @@ function drawFlow(kind) {
       const a = lay.pos.get(d), b = lay.pos.get(n.id); if (!a || !b) return;
       const x1 = a.x + G.W, y1 = a.y + a.h / 2, x2 = b.x, y2 = b.y + b.h / 2, mx = (x1 + x2) / 2;
       const live = !S.items.get(d).done && !n.done;
-      svg.append(svgEl('path', { d: `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`, class: `gedge${live ? ' live' : ''}${chain && !(chain.has(d) && chain.has(n.id)) ? ' dim' : ''}` }));
+      /* "hot": a link out of a to-do that holds others up and can start now, drawn in the accent.
+         "far": a link that passes behind a column of cards is drawn lighter, unless its chain is picked. */
+      const hot = live && fl.get(d).state === 'blocking', on = !chain || (chain.has(d) && chain.has(n.id));
+      svg.append(svgEl('path', { d: `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`, class: `gedge${live ? ' live' : ''}${hot ? ' hot' : ''}${x2 - x1 > G.W && !chain ? ' far' : ''}${on ? '' : ' dim'}` }));
     });
   });
-  const canvas = el('div', { class: 'graph-canvas', style: `width:${lay.w}px;height:${lay.h}px;transform:scale(${G.zoom})` }, svg);
+  /* --ext: how far a column band reaches past its cards, to the middle of the gap beside it. */
+  const ext = time ? (G.GGAP + G.GX) / 2 : G.GX / 2;
+  const canvas = el('div', { class: `graph-canvas${G.zoom === 1 ? ' z1' : ''}${lay.nodes.some(dim) ? ' focus' : ''}`, style: `width:${lay.w}px;height:${lay.h}px;transform:scale(${G.zoom});--ext:${ext}px` }, svg);
 
-  /* Column heads: layers, or milestone groups with their date and today between them. */
+  /* Column heads: layers, or milestone groups with their date and today between them. Every other
+     column (or group) gets a light band behind it, like the rows of a printed table; `onBand` says
+     whether a node's column has one (a dimmed card takes that colour, so links behind it stay hidden). */
+  const mdShort = d => `${d.getMonth() + 1}/${d.getDate()}`;
+  let onBand = () => false;
   if (time) {
     const span = new Map();
     lay.keys.forEach(k => { const g = Math.floor(k / 1000), x = lay.colX.get(k); const s0 = span.get(g); span.set(g, s0 ? [Math.min(s0[0], x), Math.max(s0[1], x + G.W)] : [x, x + G.W]); });
     const groups = [...span.keys()].sort((a, b) => a - b);
-    groups.forEach(g => {
+    onBand = id => groups.indexOf(Math.floor(colOf(id) / 1000)) % 2 === 1;
+    /* A group's header: on the ruler its date, its state in a word and days left,
+       "11/20 · Due soon · 1 day left" (a late one says it once: "11/14 · 3 days late"); under it
+       the milestone's own words without the leading date and what follows it (· . , : ; - – —),
+       a progress bar and how much of what it needs is done. */
+    const named = st => txt(st.i).replace(/^\s*\d{1,2}\/\d{1,2}(?:\/\d{2,4})?[\s·.,:;–—-]*/, '') || txt(st.i);
+    const stateWords = st => { const w = tr(`msSt_${st.state}`), when = whenText(st); return st.state === 'late' || when === w ? when : `${w} · ${when}`; };
+    groups.forEach((g, k) => {
       const [x0, x1] = span.get(g), st = stones[g];
-      canvas.append(el('div', { class: `gband${st ? ` st-${st.state}` : ''}`, 'aria-hidden': 'true', style: `left:${x0}px;width:${x1 - x0}px` }, st
-        ? [el('b', { text: `${MARK[st.state]} ${st.short || short(txt(st.i), 14)}` }), el('span', { text: whenText(st) })]
-        : [el('b', { text: tr('noMsCol') })]));
+      canvas.append(el('div', { class: `gband${st ? ` st-${st.state}` : ''}${k % 2 ? ' alt' : ''}`, 'aria-hidden': 'true', style: `left:${x0}px;width:${x1 - x0}px` }, el('div', { class: 'gb-head' }, st
+        ? [el('span', { class: 'gb-when' }, [st.date ? el('b', { text: mdShort(st.date) }) : null, st.date ? ' · ' : null, el('span', { class: 'st', text: stateWords(st) })]),
+          el('b', { class: 'gb-name', text: named(st) }),
+          el('span', { class: 'gb-prog' }, [el('i', { style: `--p:${st.pct}%` }), st.need.length ? tr('msNode', st.done, st.need.length) : null])]
+        : [el('span', { class: 'gb-when' }, el('b', { text: tr('noMsCol') }))])));
     });
     /* Today: before the first group whose milestone is not yet past (dated groups come first). */
     const today = md.today.getTime();
     if (stones.some(st => st.date)) {
       const next = groups.find(g => !stones[g] || !stones[g].date || stones[g].date.getTime() >= today);
-      const tx = next === undefined ? span.get(groups[groups.length - 1])[1] + G.GGAP / 2 : Math.max(0, span.get(next)[0] - (next === groups[0] ? 10 : G.GGAP / 2 + G.GX / 2));
-      const d = new Date(today);
-      canvas.append(el('div', { class: 'gtoday', style: `left:${tx}px`, 'aria-hidden': 'true' }, el('span', { text: `${tr('hudToday')} ${d.getMonth() + 1}/${d.getDate()}` })));
+      const tx = next === undefined ? span.get(groups[groups.length - 1])[1] + G.GGAP / 2 : Math.max(-7, span.get(next)[0] - (next === groups[0] ? 10 : G.GGAP / 2 + G.GX / 2));
+      const edge = next === undefined ? ' end' : tx < 48 ? ' start' : '';
+      canvas.append(el('div', { class: `gtoday${edge}`, style: `left:${tx}px`, 'aria-hidden': 'true' }, el('span', { text: `${tr('todayW')} ${mdShort(md.today)}` })));
     }
   } else {
-    lay.keys.forEach(l => canvas.append(el('span', { class: 'glayer', 'aria-hidden': 'true', style: `left:${lay.colX.get(l)}px;width:${G.W}px`, text: l === P.stuckLayer ? tr('loopCol') : tr('layerN', l) })));
+    lay.keys.forEach((l, k) => canvas.append(el('span', { class: `glayer${k % 2 ? ' alt' : ''}`, 'aria-hidden': 'true', style: `left:${lay.colX.get(l)}px;width:${G.W}px`, text: l === P.stuckLayer ? tr('loopCol') : tr('layerN', l) })));
+    onBand = id => lay.keys.indexOf(colOf(id)) % 2 === 1;
   }
 
   /* Nodes */
   lay.nodes.forEach(n => {
     const p = lay.pos.get(n.id), x = fl.get(n.id), inLoop = loops.has(n.id), st = stoneOf.get(n.id), m = member(n.who);
-    const cls = `gnode s-${x.state}${st ? ` ms st-${st.state}` : n.cell === MILESTONE_CELL ? ' ms st-ahead' : ''}${inLoop ? ' loop' : ''}${dim(n) ? ' dim' : ''}`;
+    const cls = `gnode s-${x.state}${st ? ` ms st-${st.state}` : n.cell === MILESTONE_CELL ? ' ms st-ahead' : ''}${inLoop ? ' loop' : ''}${dim(n) ? ` dim${onBand(n.id) ? ' alt' : ''}` : ''}`;
     const words = st ? `${txt(n)}. ${whenText(st)}. ${st.need.length ? tr('msNode', st.done, st.need.length) : tr('msNoTasks')}`
       : `${time ? '' : layerName(n.id) + '. '}${STATE[x.state]}: ${txt(n)}${m ? `. ${tr('owner')}: ${m.name}` : ''}`;
+    /* A milestone: its words (up to two lines), the date state and the count on one line, then the
+       progress bar. A to-do: a status icon and word with the owner's initial, then its words. */
     const kids = st || n.cell === MILESTONE_CELL
-      ? [ring(st ? st.pct : 0), el('span', { class: 'ms-txt' }, [el('b', { text: txt(n) }),
-          el('em', { text: st ? `${MARK[st.state]} ${whenText(st)}` : `${STATE_MARK[x.state]} ${STATE[x.state]}` }),
-          el('i', { text: st && st.need.length ? tr('msNode', st.done, st.need.length) : STATE[x.state] })])]
-      : [el('small', {}, [`${inLoop ? '⟲' : STATE_MARK[x.state]} ${STATE[x.state]}`, m ? el('span', { class: 'own', 'data-who': m.id, text: m.name[0] }) : null]), el('span', { class: 't', text: txt(n) })];
+      ? [el('span', { class: 'ms-txt' }, [el('b', { text: txt(n) }), el('span', { class: 'ms-row' }, [
+          el('em', {}, st ? `${MARK[st.state]} ${whenText(st)}` : [statusIcon(x.state), ` ${STATE[x.state]}`]),
+          el('i', { text: st && st.need.length ? tr('msNode', st.done, st.need.length) : STATE[x.state] })])]), ring(st ? st.pct : 0)]
+      : [el('small', {}, [statusIcon(inLoop ? 'loop' : x.state), el('span', { class: 'sw', text: STATE[x.state] }), m ? el('span', { class: 'own', 'data-who': m.id, text: m.name[0] }) : null]), el('span', { class: 't', text: txt(n) })];
     canvas.append(el('button', { type: 'button', class: cls, style: `left:${p.x}px;top:${p.y}px;width:${G.W}px;height:${p.h}px`, 'data-fkey': `g:${n.id}`, 'aria-pressed': String(G.pick === n.id), 'aria-label': words,
       onclick: () => { G.pick = G.pick === n.id ? null : n.id; time ? renderTimeline() : renderGraph(); } }, kids));
   });
@@ -2282,13 +2415,16 @@ function drawFlow(kind) {
     stones.forEach(st => { if (st.date && st.date <= today && !st.i.done) st.need.forEach(n => due.add(n.id)); if (st.state === 'late') late += 1; });
     const dueDone = [...due].filter(id => S.items.get(id).done).length;
     const behind = late > 0 || dueDone < due.size;
-    barLead = el('div', { class: 'flow-sum', role: 'status' }, [el('b', { text: tr('hudDone', doneNow, total, total ? Math.round(doneNow / total * 100) : 0) }),
-      !stones.some(st => st.date) ? el('span', { class: 'dim', text: tr('hudNoDates') })
+    const share = total ? Math.round(doneNow / total * 100) : 0;
+    /* "Done 2/41 · 5%": the word as a quiet label, then the numbers. */
+    barLead = el('div', { class: 'flow-sum', role: 'status' }, [el('b', {}, [el('span', { class: 'k', text: tr('sumDone') }), ' ', tr('sumDoneN', doneNow, total, share)]),
+      el('i', { class: 'flow-meter', 'aria-hidden': 'true', style: `--p:${share}%` }),
+      !stones.some(st => st.date) ? el('span', { class: 'dim', text: tr('sumNoDates') })
         : el('span', { class: behind ? 'warn' : 'ok', text: behind ? tr('planBehind', due.size, dueDone, late) : due.size ? tr('planOnTrack', due.size, dueDone) : tr('planNothingDue') })]);
   } else {
     barLead = el('div', { class: 'gfilters', role: 'group', 'aria-label': tr('filterBy') }, [['all', tr('all')], ['blocking', STATE.blocking], ['blocked', STATE.blocked], ['open', STATE.open], ['done', STATE.done]].map(([k, label]) =>
       el('button', { type: 'button', class: `gfilter s-${k}`, 'data-fkey': `f:${k}`, 'aria-pressed': String(G.filter === k), onclick: () => { G.filter = k; renderGraph(); } },
-        [el('b', { text: String(tally[k]) }), el('span', { text: `${STATE_MARK[k] ? STATE_MARK[k] + ' ' : ''}${label}` })])));
+        [el('b', {}, [STATUS_ICON[k] ? statusIcon(k) : null, String(tally[k])]), el('span', { text: label })])));
   }
 
   /* What the picked node is, waits for and holds up; for a milestone, what can start for it now. */
@@ -2303,7 +2439,7 @@ function drawFlow(kind) {
         : `${STATE[x.state]} · ${layerName(n.id)} · ${whereIs(n.cell)}${member(n.who) ? ' · ' + member(n.who).name : ''}` }),
       x.waits.length ? el('span', { text: tr('waitsFor', names(x.waits)) }) : null,
       x.holds.length ? el('span', { text: tr('holdsUp', names(x.holds)) }) : null,
-      ready.length ? el('ul', {}, ready.slice(0, 6).map(r => el('li', {}, el('button', { type: 'button', onclick: () => openKey(r.cell) }, [el('b', { text: `▶ ${txt(r)}` }), el('small', { text: ` · ${whereIs(r.cell)}${member(r.who) ? ' · ' + member(r.who).name : ''}` })])))) : null,
+      ready.length ? el('ul', {}, ready.slice(0, 6).map(r => el('li', {}, el('button', { type: 'button', onclick: () => openKey(r.cell) }, [el('b', {}, [statusIcon(fl.get(r.id).state), ` ${txt(r)}`]), el('small', { text: ` · ${whereIs(r.cell)}${member(r.who) ? ' · ' + member(r.who).name : ''}` })])))) : null,
       ready.length > 6 ? el('small', { text: tr('moreReady', ready.length - 6) }) : null,
       el('div', { class: 'btns' }, [el('button', { type: 'button', class: 'btn', text: tr('openSpace'), onclick: () => openKey(n.cell) }),
         S.canWrite && n.cell !== MILESTONE_CELL ? el('button', { type: 'button', class: 'btn ghost', text: tr('handTitle'), onclick: () => openHand(n.id) }) : null,

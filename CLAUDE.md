@@ -137,7 +137,8 @@ The team works mostly from phones, through Claude sessions on this repository.
   defined twice (media query and `[data-theme="dark"]`). `--accent` is for text
   and outlines, `--accent-fill` for filled buttons (white text must pass 4.5:1).
   The theme button stores a per-viewer choice; with none, the phone decides.
-  The timeline HUD (`--hud-*`) is a dark screen in both themes.
+  The plan graph follows the theme too, through its own `--g-*` tokens, whose
+  dark values are also defined twice (media query and `[data-theme="dark"]`).
 - **English only.** Every string on screen goes through `tr(key, ...)` with an
   entry in `L.en`; static markup uses `data-t`, `data-t-ph`, `data-t-al`,
   `data-t-ti`. Never hard-code screen text. Side and space names are the team's
@@ -210,10 +211,17 @@ strings, so routing uses `#f2` and `#f2-c1`.
   date state and progress (`milestoneData`).
 - Status is written in words and a mark, never by colour alone.
 - Screen text and seeded content are English. Keep lines short.
-- The graph screen is dark with neon in both themes (`--hud-*`), zooms, and
-  opens full screen. Its bar says what is done and whether the plan is on time
-  (due by today = what the milestones dated today or earlier need). Nothing
-  stores when a to-do was ticked, so it never invents a history.
+- The graph reads like a printed project chart and follows the light and dark
+  theme through the `--g-*` tokens (dark values defined twice: media query and
+  `[data-theme="dark"]`). One accent marks the to-dos holding others up now and
+  the links out of them; red is only for what is late, "Behind" and loops (a
+  loop is the one dashed card). Status is always a mark and a word: graph cards
+  use the SVG icons (`statusIcon()`, `aria-hidden`) beside the status word.
+  Hover styles sit in `@media (hover: hover)`; reduced motion turns the graph's
+  transitions off. It zooms and opens full screen. Its bar says what is done
+  ("Done 2/41 · 5%") and whether the plan is on time (due by today = what the
+  milestones dated today or earlier need). Nothing stores when a to-do was
+  ticked, so it never invents a history.
 - The cube should feel physical: free drag, momentum, a soft settle. Do not
   replace it with fixed step animations.
 - Time is shown per person and per space, never as a ranking.
