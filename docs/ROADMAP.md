@@ -27,12 +27,12 @@ the order the rest would come in. Nothing below is committed to a date.
 | Topological build order: layers, picker per plan, build-order list, loop warning | Done (`plan()`, `dev/plan_tools.py`) |
 | CI on every push, security headers on Vercel | Done |
 | Roles and default owner by side | Done (`TEAM`, `SIDE_OWNER`) |
-| English toggle, theme toggle, standard dark palette | Done |
+| English screen (the Mongolian one was dropped), theme toggle, standard dark palette | Done |
 | Timeline and milestones as one plan graph (milestone groups, today, progress on the nodes) | Done |
 | Login page, minimal phone home (cube only), menu | Done |
 | Team chat, updates with unread counts, in-page alerts | Done |
 | World clock (each person's city and local time) | Done (`team` collection) |
-| English versions of to-dos, Translate through the viewer's Claude | Done (`en`, `sample`) |
+| Older Mongolian to-dos shown in English (`en`); Translate removed with the Mongolian screen | Done |
 | Handing to-dos over: request, accept or decline, suggestions, escalation, Do next | Done (`ask`, `rankFor`, `doNext`) |
 
 ## Decided against, for a team of three

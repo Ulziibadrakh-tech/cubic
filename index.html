@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="mn">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -529,10 +529,9 @@ button.flow-tag { border: 0; background: transparent; padding: 2px 0; text-align
   <header class="top">
     <h1 class="mark">CUBIC</h1>
     <div class="top-tools">
-      <button type="button" class="tool" id="langBtn" aria-label="Switch to English" lang="en">EN</button>
-      <button type="button" class="tool icon" id="bellBtn" aria-haspopup="dialog" aria-label="Шинэчлэл"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l1.6 2.2H4.4z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg><b class="badge" id="bellBadge" hidden></b></button>
-      <button type="button" class="tool icon" id="chatBtn" aria-haspopup="dialog" aria-label="Чат"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-4.5 3.6V16H4z"/></svg><b class="badge" id="chatBadge" hidden></b></button>
-      <button type="button" class="avatar" id="meBtn" aria-haspopup="dialog" aria-label="Цэс" data-who=""><span id="meInitial">☰</span><i id="meDot" aria-hidden="true"></i></button>
+      <button type="button" class="tool icon" id="bellBtn" aria-haspopup="dialog" aria-label="For you"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l1.6 2.2H4.4z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg><b class="badge" id="bellBadge" hidden></b></button>
+      <button type="button" class="tool icon" id="chatBtn" aria-haspopup="dialog" aria-label="Chat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-4.5 3.6V16H4z"/></svg><b class="badge" id="chatBadge" hidden></b></button>
+      <button type="button" class="avatar" id="meBtn" aria-haspopup="dialog" aria-label="Menu" data-who=""><span id="meInitial">☰</span><i id="meDot" aria-hidden="true"></i></button>
     </div>
     <div class="sync" id="sync" role="status" aria-live="polite"></div>
   </header>
@@ -540,15 +539,15 @@ button.flow-tag { border: 0; background: transparent; padding: 2px 0; text-align
   <section class="note away-box" id="awayBox" hidden></section>
 
   <main id="home">
-    <section class="stage" id="cubeView" aria-label="Шоо" data-t-al="cube">
-      <div class="scene" id="scene" tabindex="0" role="group" aria-label="Шоо. Сумаар эргүүлнэ." data-t-al="sceneAria"><div class="cube" id="cube"></div></div>
+    <section class="stage" id="cubeView" aria-label="Cube" data-t-al="cube">
+      <div class="scene" id="scene" tabindex="0" role="group" aria-label="Cube. Drag it or use the arrow keys to turn it. Tap a space to open it." data-t-al="sceneAria"><div class="cube" id="cube"></div></div>
     </section>
   </main>
 
   <main id="area" hidden>
     <div class="wrap" style="padding:0;gap:16px">
       <div class="crumb">
-        <button type="button" class="btn ghost" id="back" data-t="back">← Буцах</button>
+        <button type="button" class="btn ghost" id="back" data-t="back">← Back</button>
         <span class="chip" id="areaChip"></span>
       </div>
       <p class="area-num" id="areaNum" aria-hidden="true"></p>
@@ -556,113 +555,111 @@ button.flow-tag { border: 0; background: transparent; padding: 2px 0; text-align
       <p class="space-time" id="spaceTime" hidden></p>
       <form id="capture" autocomplete="off">
         <div class="add-row">
-          <input class="field" id="newText" type="text" placeholder="Шинэ ажил" aria-label="Шинэ ажил" data-t-ph="newTodo" data-t-al="newTodo" maxlength="200">
-          <button class="btn" type="submit" id="addBtn" data-t="add">Нэмэх</button>
+          <input class="field" id="newText" type="text" placeholder="New to-do" aria-label="New to-do" data-t-ph="newTodo" data-t-al="newTodo" maxlength="200">
+          <button class="btn" type="submit" id="addBtn" data-t="add">Add</button>
         </div>
         <p class="err" id="captureErr" hidden></p>
       </form>
-      <p class="tr-line" id="trLine" hidden></p>
       <ul class="items" id="items"></ul>
       <div id="planView" hidden></div>
-      <p class="empty" id="itemsEmpty" hidden>Одоогоор ажил алга.</p>
-      <p class="fine" id="swipeHint" data-t="swipeHint">Мөрийг хажуу тийш чирж устгана.</p>
+      <p class="empty" id="itemsEmpty" hidden>No to-dos yet.</p>
+      <p class="fine" id="swipeHint" data-t="swipeHint">Swipe a row sideways to delete it.</p>
     </div>
   </main>
 </div>
 
 <div class="sheet-back" id="sheetBack" hidden></div>
 <section class="sheet" id="menuSheet" hidden role="dialog" aria-modal="true" aria-labelledby="menuTitle">
-  <div class="sheet-head"><h2 class="sheet-title" id="menuTitle" data-t="menu">Цэс</h2><button type="button" class="x-btn" data-close aria-label="Хаах" data-t-al="close">✕</button></div>
+  <div class="sheet-head"><h2 class="sheet-title" id="menuTitle" data-t="menu">Menu</h2><button type="button" class="x-btn" data-close aria-label="Close" data-t-al="close">✕</button></div>
   <div class="sheet-body">
-    <section class="card" id="meBar" aria-label="Та ба таны цаг" data-t-al="meAria">
+    <section class="card" id="meBar" aria-label="You and your time" data-t-al="meAria">
       <div class="me-row"><span class="who" id="meAvatar" aria-hidden="true"></span><div><b id="meWho"></b><small id="meRole"></small></div></div>
       <div class="me clock">
         <span class="dot" id="meClockDot" aria-hidden="true"></span>
-        <span class="clock-time" id="meTime">0 мин</span>
-        <button type="button" class="btn ghost" id="clockBtn">Түр зогсоох</button>
-        <button type="button" class="btn ghost" id="switchBtn" data-t="switchPerson">Хүн солих</button>
+        <span class="clock-time" id="meTime">0 min</span>
+        <button type="button" class="btn ghost" id="clockBtn">Pause</button>
+        <button type="button" class="btn ghost" id="switchBtn" data-t="switchPerson">Switch person</button>
       </div>
     </section>
-    <input class="field" id="search" type="search" placeholder="Хайх" aria-label="Хайх" data-t-ph="search" data-t-al="search">
-    <section class="card" id="results" hidden aria-label="Хайлтын илэрц" data-t-al="resultsAria">
+    <input class="field" id="search" type="search" placeholder="Search" aria-label="Search" data-t-ph="search" data-t-al="search">
+    <section class="card" id="results" hidden aria-label="Search results" data-t-al="resultsAria">
       <h3 class="label" data-n="—" id="resultsTitle"></h3>
       <ul class="recent" id="resultsList"></ul>
     </section>
-    <section class="card" aria-label="Баг" data-t-al="team">
-      <h3 class="label" data-n="01" data-t="team">Баг</h3>
+    <section class="card" aria-label="Team" data-t-al="team">
+      <h3 class="label" data-n="01" data-t="team">Team</h3>
       <ul class="team" id="team"></ul>
     </section>
     <details class="card" id="spacesBox">
       <summary class="label" data-n="02" id="spacesSum"></summary>
-      <section class="grid" id="gridView" aria-label="Жагсаалт" data-t-al="list"></section>
+      <section class="grid" id="gridView" aria-label="List" data-t-al="list"></section>
     </details>
     <details class="card" id="dataCard">
-      <summary class="label" data-n="03" data-t="data">Өгөгдөл</summary>
+      <summary class="label" data-n="03" data-t="data">Data</summary>
       <div class="data-grid">
         <section>
-          <h4 data-t="export">Гаргах</h4>
+          <h4 data-t="export">Export</h4>
           <p class="fine" data-t="exportHelp"></p>
           <p class="fine" id="backupHint" data-t="backupHint"></p>
           <div class="btns">
-            <button type="button" class="btn" id="exportJson" data-t="exportJson">JSON татах</button>
-            <button type="button" class="btn ghost" id="exportCsv" data-t="exportCsv">CSV татах</button>
-            <button type="button" class="btn ghost" id="exportCopy" data-t="copy">Хуулах</button>
+            <button type="button" class="btn" id="exportJson" data-t="exportJson">Save JSON</button>
+            <button type="button" class="btn ghost" id="exportCsv" data-t="exportCsv">Save CSV</button>
+            <button type="button" class="btn ghost" id="exportCopy" data-t="copy">Copy</button>
           </div>
           <p class="fine" id="exportMsg" hidden></p>
-          <textarea class="field" id="exportText" readonly hidden aria-label="Гаргасан өгөгдөл" data-t-al="exportTextAria"></textarea>
+          <textarea class="field" id="exportText" readonly hidden aria-label="Exported data" data-t-al="exportTextAria"></textarea>
         </section>
         <section id="importBox">
-          <h4 data-t="import">Оруулах</h4>
+          <h4 data-t="import">Import</h4>
           <p class="fine" data-t="importHelp"></p>
           <div class="btns">
-            <label class="btn ghost file-btn"><span data-t="chooseFile">Файл сонгох</span><input type="file" id="importFile" accept=".json,.csv,application/json,text/csv,text/plain"></label>
+            <label class="btn ghost file-btn"><span data-t="chooseFile">Choose a file</span><input type="file" id="importFile" accept=".json,.csv,application/json,text/csv,text/plain"></label>
           </div>
-          <textarea class="field" id="importText" placeholder="Энд буулгана" aria-label="Оруулах өгөгдөл" data-t-ph="pasteHere" data-t-al="importAria"></textarea>
-          <div class="btns"><button type="button" class="btn ghost" id="importCheck" data-t="check">Шалгах</button></div>
+          <textarea class="field" id="importText" placeholder="Paste here" aria-label="Data to import" data-t-ph="pasteHere" data-t-al="importAria"></textarea>
+          <div class="btns"><button type="button" class="btn ghost" id="importCheck" data-t="check">Check</button></div>
           <p class="err" id="importErr" hidden></p>
           <div id="importPlan" hidden></div>
         </section>
       </div>
     </details>
     <section class="card settings">
-      <h3 class="label" data-n="04" data-t="settings">Тохиргоо</h3>
+      <h3 class="label" data-n="04" data-t="settings">Settings</h3>
       <div class="btns"><button type="button" class="btn ghost" id="themeBtn">☾</button></div>
-      <p class="tr-line" id="trAll" hidden></p>
     </section>
   </div>
 </section>
 <section class="sheet" id="updatesSheet" hidden role="dialog" aria-modal="true" aria-labelledby="updTitle">
-  <div class="sheet-head"><h2 class="sheet-title" id="updTitle" data-t="forYou">Танд</h2><button type="button" class="x-btn" data-close aria-label="Хаах" data-t-al="close">✕</button></div>
+  <div class="sheet-head"><h2 class="sheet-title" id="updTitle" data-t="forYou">For you</h2><button type="button" class="x-btn" data-close aria-label="Close" data-t-al="close">✕</button></div>
   <div class="sheet-body">
     <div class="fy" id="forYou"></div>
-    <h3 class="label" data-n="◇" data-t="updates">Шинэчлэл</h3>
+    <h3 class="label" data-n="◇" data-t="updates">Updates</h3>
     <ul class="upd" id="updList"></ul>
     <p class="fine" data-t="notifNote"></p>
   </div>
 </section>
 <section class="sheet" id="handSheet" hidden role="dialog" aria-modal="true" aria-labelledby="handTitle">
-  <div class="sheet-head"><h2 class="sheet-title" id="handTitle" data-t="handTitle">Хариуцагч</h2><button type="button" class="x-btn" data-close aria-label="Хаах" data-t-al="close">✕</button></div>
+  <div class="sheet-head"><h2 class="sheet-title" id="handTitle" data-t="handTitle">Owner</h2><button type="button" class="x-btn" data-close aria-label="Close" data-t-al="close">✕</button></div>
   <div class="sheet-body" id="handBody"></div>
 </section>
 <section class="sheet" id="chatSheet" hidden role="dialog" aria-modal="true" aria-labelledby="chatTitle">
-  <div class="sheet-head"><h2 class="sheet-title" id="chatTitle" data-t="chat">Чат</h2><button type="button" class="x-btn" data-close aria-label="Хаах" data-t-al="close">✕</button></div>
-  <div class="wclock" id="chatClocks" aria-label="Цагийн бүс" data-t-al="worldClock"></div>
+  <div class="sheet-head"><h2 class="sheet-title" id="chatTitle" data-t="chat">Chat</h2><button type="button" class="x-btn" data-close aria-label="Close" data-t-al="close">✕</button></div>
+  <div class="wclock" id="chatClocks" aria-label="World clock" data-t-al="worldClock"></div>
   <div class="sheet-body" id="chatScroll"><ol class="chat" id="chatList" aria-live="polite"></ol></div>
   <p class="err" id="chatErr" hidden></p>
   <form class="chat-form" id="chatForm" autocomplete="off">
-    <textarea class="field" id="chatText" rows="1" maxlength="1000" placeholder="Мессеж бичих" aria-label="Мессеж бичих" data-t-ph="chatPh" data-t-al="chatPh"></textarea>
-    <button type="submit" class="btn" id="chatSend" data-t="send">Илгээх</button>
+    <textarea class="field" id="chatText" rows="1" maxlength="1000" placeholder="Write a message" aria-label="Write a message" data-t-ph="chatPh" data-t-al="chatPh"></textarea>
+    <button type="submit" class="btn" id="chatSend" data-t="send">Send</button>
   </form>
 </section>
 <section class="login" id="login" hidden role="dialog" aria-modal="true" aria-labelledby="loginTitle"></section>
 <div class="ping-box" aria-live="polite"><button type="button" class="ping" id="ping" hidden></button></div>
-<div class="toast" id="toast" hidden role="status"><span id="toastText"></span><button type="button" id="toastUndo" data-t="undo">Буцаах</button></div>
+<div class="toast" id="toast" hidden role="status"><span id="toastText"></span><button type="button" id="toastUndo" data-t="undo">Undo</button></div>
 
 <script>
 'use strict';
-/* ── Анхны бүтэц. Хуваалцсан хувилбар ачаалагдах хүртэл үүнийг харуулна; бүх нэр засагдана. ── */
+/* ── The starting layout, shown until the shared version loads; every name can be changed. ── */
 const DEFAULT_FACES = [
-  { title: 'Pilots', icon: '◎', cells: ['Ресторан 1', 'Ресторан 2', 'Туршилт', 'Санал хүсэлт'] },
+  { title: 'Pilots', icon: '◎', cells: ['Restaurant 1', 'Restaurant 2', 'Experiment', 'Feedback'] },
   { title: 'Plan', icon: '➤', cells: ['Timeline', 'Milestones', 'Roadmap', 'Dependency graph'] },
   { title: 'Technology', icon: '⌘', cells: ['Tech Stack', 'System Design', 'API Documentation', 'Cybersecurity'] },
   { title: 'Marketing', icon: '✦', cells: ['Slogans', 'Social Media Accounts', 'Posts & Descriptions', 'Content Calendar'] },
@@ -671,10 +668,7 @@ const DEFAULT_FACES = [
 ];
 /* Two spaces on the Plan side are views over every to-do, not lists of their own.
    Milestones are the to-dos kept in the Milestones space; the Timeline reads them. */
-/* English for the default space names that are in Mongolian; a name the team has set is shown as written. */
-const DEFAULT_CELLS_EN = { 0: ['Restaurant 1', 'Restaurant 2', 'Experiment', 'Feedback'] };
-const cellName = (f, c) => { const face = S.faces[f]; if (!face) return ''; const def = DEFAULT_FACES[f] && DEFAULT_FACES[f].cells[c];
-  return S.lang === 'en' && face.cells[c] === def && DEFAULT_CELLS_EN[f] ? DEFAULT_CELLS_EN[f][c] : face.cells[c]; };
+const cellName = (f, c) => { const face = S.faces[f]; return face ? face.cells[c] : ''; };
 const TIMELINE_CELL = 'f1-c0', MILESTONE_CELL = 'f1-c1', GRAPH_CELL = 'f1-c3';
 const isViewCell = k => k === TIMELINE_CELL || k === GRAPH_CELL;
 /* The team. `who` on a to-do and in people/<id> is one of these ids. Vida and Anand build the
@@ -687,66 +681,11 @@ const SIDE_OWNER = ['anand', '', 'vida', 'obama', 'obama', 'obama'];
 const ownerFor = cell => (CELL_RE.test(cell || '') ? SIDE_OWNER[+cell[1]] || '' : '');
 const member = id => TEAM.find(m => m.id === id) || null;
 
-/* ── Screen language: Mongolian by default, English on the МН/EN toggle (kept per viewer). ──
-   A string is a key here; a function takes the numbers or names it shows. Side and space names are
-   the team's own words (only untouched default names change). A to-do keeps the text as written;
-   it may also carry an English version (`en`, made from `enSrc`), shown in English while it still
-   matches the text. Changing the text makes that version out of date, so it is not shown. */
-const L = { mn: {}, en: {} };
-const tr = (key, ...a) => { const v = (L[S.lang] && key in L[S.lang]) ? L[S.lang][key] : L.mn[key]; return typeof v === 'function' ? v(...a) : (v == null ? key : v); };
-Object.assign(L.mn, {
-  reached: 'Хүрсэн', noDate: 'Огноогүй', lateN: n => `${n} хоног хэтэрсэн`, todayW: 'Өнөөдөр', daysLeft: n => `${n} хоног үлдсэн`,
-  hudDone: (d, n, p) => `ДУУССАН ${d}/${n} · ${p}%`, hudToday: 'ӨНӨӨДӨР', hudNoDates: 'Огноотой шалгуур алга',
-  msStats: (n, d, b, r) => `${n}-аас ${d} дууссан · ${b} гацсан · ${r} эхлэх боломжтой`, msTick: ' · бүх ажил дууссан, шалгуураа тэмдэглэнэ үү', msNoTasks: 'Энэ шалгуурт ажил холбоогүй байна.',
-  moreReady: n => `Бас ${n} ажил эхлэх боломжтой. Бүгдийг «Dependency graph»-ийн «Барих дараалал»-аас харна.`,
-  tlEmpty: 'Milestones нүдэнд шалгуур нэмбэл энд цагийн дарааллаар харагдана. Эхэнд нь огноо бичнэ: 11/22 · …', tlNoneInPlan: 'Энэ төлөвлөгөөнд шалгуур алга.',
-  meAria: 'Та ба таны цаг', change: 'Солих', cube: 'Шоо', list: 'Жагсаалт', search: 'Хайх',
-  resultsAria: 'Хайлтын илэрц', sceneAria: 'Шоо. Чирж эсвэл сумаар эргүүлнэ. Нүдэн дээр дарж нээнэ.', team: 'Баг', data: 'Өгөгдөл', export: 'Гаргах',
-  exportHelp: 'Бүх тал, нүд, ажил, цагийг нэг файлд. Нөөц болгон хадгална, эсвэл өөр газар оруулна.',
-  backupHint: 'Нөөц: «JSON татах» дараад хадгалах газраас Proton Drive-ыг сонгоно. Долоо хоногт нэг удаа.',
-  exportJson: 'JSON татах', exportCsv: 'CSV татах', copy: 'Хуулах', exportTextAria: 'Гаргасан өгөгдөл', import: 'Оруулах',
-  importHelp: 'JSON эсвэл CSV файл сонгох, эсвэл бичвэрийг буулгах. Одоо байгаа зүйл устахгүй.', chooseFile: 'Файл сонгох', pasteHere: 'Энд буулгана',
-  importAria: 'Оруулах өгөгдөл', check: 'Шалгах', back: '← Буцах', newTodo: 'Шинэ ажил', add: 'Нэмэх', undo: 'Буцаах',
-  swipeHint: 'Мөрийг хажуу тийш чирж устгана. Үсэгтэй тэмдэг дээр дарж хариуцагчийг солино. Бичвэр дээр дарж засна, өөр нүд рүү зөөнө. Олон мөр буулгавал мөр бүр тусдаа ажил болно.',
-  saveQuota: 'Өгөгдлийн сан дүүрсэн тул хадгалагдсангүй.', saveRevoked: 'Хадгалах эрх алга болсон. Хуудсаа дахин нээнэ үү.', saveFailed: 'Хадгалагдсангүй. Дахин оролдоно уу.',
-  saving: 'Хадгалж байна…', saved: 'Хадгаллаа', you: 'Та', someone: 'Хэн нэгэн', space: 'Нүд',
-  removeX: t => `Хасах: ${t}`, addWaitAria: 'Хүлээх ажил нэмэх', addWait: '＋ Хүлээх ажил нэмэх', depLabel: 'Хүлээж буй ажил', save: 'Хадгалах', cancel: 'Болих',
-  st_done: 'Дууссан', st_open: 'Нээлттэй', st_blocked: 'Гацсан', st_blocking: 'Гацааж буй',
-  pickPlan: 'Төлөвлөгөө сонгох', otherN: n => `Бусад · ${n}`, allN: n => `Бүгд · ${n}`, all: 'Бүгд',
-  nBlocked: n => `${n} гацсан`, noneBlocked: 'Гацсан ажилгүй', msLeft: n => `${n} шалгуур үлдсэн`, noMs: 'Шалгуургүй', empty: 'Хоосон', nLeft: n => `${n} үлдсэн`, allDone: 'Бүгд дууссан',
-  rename: 'Нэр солих', renameOf: t => `${t}: нэр солих`, sideName: 'Талын нэр', spaceName: 'Нүдний нэр', nHits: n => `${n} илэрц`, noHits: 'Илэрц алга',
-  doneOf: t => `Дууссан: ${t}`, edit: 'Засах', editTodo: 'Ажлыг засах', blockedBy: (t, more) => `■ Гацсан · ${t}${more}`, blockingN: n => `▶ ${n} ажлыг гацааж буй`, openLink: 'Нээх ↗',
-  ownerIs: n => `Хариуцагч: ${n}. Солих`, pickOwner: 'Хариуцагч сонгох', owner: 'Хариуцагч', deleteX: t => `Устгах: ${t}`,
-  leftover: (n, where, list) => `${n} мөр нэмэгдсэнгүй (${where}): ${list} `, retry: 'Дахин оролдох', pasteWait: 'Өгөгдөл ачаалагдаж байна. Түр хүлээгээд дахин буулгана уу.',
-  hm: (h, mm) => `${h} ц ${mm} мин`, min: m => `${m} мин`, notSignedIn: 'Нэвтрээгүй', clockStopped: 'Цаг зогссон', home: 'Нүүр', awayFor: t => `Эзгүй ${t}`,
-  todayT: t => `Өнөөдөр ${t}`, pause: 'Түр зогсоох', start: 'Эхлүүлэх', weekT: t => `7 хоног ${t}`, inSpace: l => `Энэ нүдэнд: ${l}`,
-  awayQ: t => `Таныг эзгүй байхад цаг ${t} явсан. Ажиллаж байсан уу?`, awayYes: 'Тийм, тоол', awayNo: 'Үгүй, гарсан үеэр зогсоо',
-  impEmpty: 'Хоосон байна.', impBadJson: 'JSON уншигдсангүй.', impNotCubic: 'Энэ CUBIC-ийн файл биш.', impCsvCols: 'CSV-д "cell", "text" багана хэрэгтэй.', impNoTodos: 'Оруулах ажил олдсонгүй.',
-  dlDeclined: 'Хадгалсангүй.', dlFailed: 'Файл хадгалж чадсангүй. «Хуулах»-ыг ашиглана уу.',
-  pNew: 'Шинэ ажил', pUpd: 'Шинэчлэгдэх ажил', pFaces: 'Талын нэр', pPeople: 'Хүн', pClock: 'Цагийн бүртгэл', pSame: 'Ижил, өөрчлөхгүй', pOlder: 'Энд илүү шинэ тул алгасна',
-  pLoops: 'Тойрог үүсгэх тул хасах хамаарал', pSkipped: 'Алгасах мөр (нүд эсвэл бичвэр буруу)', importN: n => `Оруулах (${n})`,
-  impPartial: 'Бүгд хадгалагдсангүй. Дахин дарвал үлдсэнийг нь нэмнэ.', impNone: 'Энд бүгд байгаа. Нэмэх зүйл алга.', impUnreadable: 'Уншиж чадсангүй.',
-  fileSaved: 'Файл хадгалагдлаа.', copied: 'Хуулсан. Өөр газар «Оруулах» хэсэгт буулгана уу.', copyManual: 'Автоматаар хуулж чадсангүй. Доорх бичвэрийг бүгдийг нь хуулна уу.',
-  filterBy: 'Төлөвөөр шүүх', noOrder: 'Тойрогийн улмаас дараалалгүй', layerN: n => `Давхарга ${n}`, loopCol: '⟲ Тойрог', graphAria: 'Төлөвлөгөөний граф. Хажуу тийш гүйлгэнэ.',
-  waitsFor: l => `Хүлээж буй: ${l}`, holdsUp: l => `Гацааж буй: ${l}`, openSpace: 'Нүдийг нээх', unpick: 'Сонголтыг болих',
-  loopN: n => `⟲ ${n} ажил бие биеэ хүлээж тойрог үүсгэсэн`, loopHelp: 'Нэгнийх нь «Хүлээж буй ажил»-аас нөгөөг хасна уу. Тэр хүртэл эдгээр болон тэднийг хүлээж буй ажил барих дараалалд хамгийн сүүлд орно.',
-  buildOrder: (n, l) => `Барих дараалал · ${n} ажил, ${l} давхарга`, noDeps: 'Одоогоор хамаарал алга. Ажлыг засахдаа «Хүлээж буй ажил» нэмнэ үү.',
-  graphHelp: (imp, loose) => `Зүүн талын ажил дуусаж байж баруун талынх эхэлнэ. Багана бүр нэг давхарга. Зузаан шугам: одоо гацааж буй холбоос. Ажил дээр дарвал түүний гинжийг тодруулна.${imp ? ` Өөр холбоосоор илэрхийлэгдсэн ${imp} шууд бус холбоосыг зураагүй.` : ''}${loose ? ` Хамааралгүй ${loose} ажил графт ороогүй.` : ''}`,
-  canStart: 'Одоо эхлэх боломжтой', opensN: n => ` · ${n} ажлыг нээнэ`, none: 'Алга.',
-  langBtn: 'EN', langAria: 'Switch to English', themeToDark: 'Харанхуй горим руу', themeToLight: 'Гэрэл горим руу',
-  roleVida: 'Технологи', roleAnand: 'Технологи · Forward deployed engineering', roleObama: 'Бизнес, маркетинг, брэнд',
-  captureWait: 'Өгөгдөл ачаалагдаж байна. Түр хүлээгээд дахин дарна уу.', addFailed: 'Нэмж чадсангүй. Бичсэн зүйл тань хэвээр байна.',
-  loading: 'Ачаалж байна…', noTodos: 'Одоогоор ажил алга.', nTodos: n => `${n} ажил`,
-  fileBig: 'Файл хэт том байна.', fileUnreadable: 'Файлыг уншиж чадсангүй.',
-  impNothing: 'Оруулах зүйл олдсонгүй.', impDone: n => `Орууллаа: ${n} өөрчлөлт.`, impWait: 'Өгөгдөл ачаалагдаж байна. Түр хүлээгээд дахин шалгана уу.',
-  clockFailed: 'Цагийн өөрчлөлт хадгалагдсангүй.',
-  nLost: 'Холболт тасарлаа. Хуудсаа дахин нээнэ үү.', nNoStorage: 'Энэ хөтөч өгөгдөл хадгалахыг зөвшөөрөхгүй байна. Өөр хөтөчөөр нээнэ үү.',
-  nNoDb: 'Хуваалцсан өгөгдөл энд нээгдсэнгүй. Claude-д нэвтэрч нээнэ үү.', nReadOnly: 'Та зөвхөн унших эрхтэй. Эзэмшигчээс Contributor эрх хүсээрэй.',
-  nNoId: 'Таныг таньж чадсангүй, тиймээс цаг ажиллахгүй. Claude-д нэвтэрч нээнэ үү.', nSlow: 'Өгөгдөлд холбогдож чадахгүй байна. Харагдаж буй зүйл хуучирсан байж магадгүй.',
-  nLocal: 'Энэ хуудас өгөгдлийг зөвхөн энэ хөтөч дээр хадгална. Багийн хуваалцсан хувилбар Claude дээр байна. Шилжүүлэхдээ «Өгөгдөл» хэсгийг ашиглана уу.',
-  editEmpty: 'Хоосон байж болохгүй.', editFailed: 'Хадгалж чадсангүй. Бичсэн зүйл тань хэвээр байна.',
-  loopSkipped: n => `${n} хамаарал тойрог үүсгэх тул нэмсэнгүй.`, moved: w => `«${w}» руу зөөлөө.`, deleted: 'Устгалаа.',
-});
+/* ── Screen text, in English. A string is a key here; a function takes the numbers or names it shows.
+   A to-do written in Mongolian earlier may carry an English version (`en`, made from `enSrc`); it is
+   shown while it still matches the text, and an edit stores the English as the text. */
+const L = { en: {} };
+const tr = (key, ...a) => { const v = L.en[key]; return typeof v === 'function' ? v(...a) : (v == null ? key : v); };
 Object.assign(L.en, {
   reached: 'Reached', noDate: 'No date', lateN: n => `${n} ${n === 1 ? 'day' : 'days'} late`, todayW: 'Today', daysLeft: n => `${n} ${n === 1 ? 'day' : 'days'} left`,
   hudDone: (d, n, p) => `DONE ${d}/${n} · ${p}%`, hudToday: 'TODAY', hudNoDates: 'No dated milestones',
@@ -786,7 +725,7 @@ Object.assign(L.en, {
   buildOrder: (n, l) => `Build order · ${n} ${n === 1 ? 'to-do' : 'to-dos'}, ${l} ${l === 1 ? 'layer' : 'layers'}`, noDeps: 'No dependencies yet. Add “Waits for” when you edit a to-do.',
   graphHelp: (imp, loose) => `A to-do on the left must be done before the ones to its right start. Each column is one layer. A thick line is a link holding things up now. Tap a to-do to light up its chain.${imp ? ` ${imp} indirect ${imp === 1 ? 'link is' : 'links are'} already implied by others and not drawn.` : ''}${loose ? ` ${loose} ${loose === 1 ? 'to-do with no links is' : 'to-dos with no links are'} not on the graph.` : ''}`,
   canStart: 'Can start now', opensN: n => ` · unblocks ${n}`, none: 'None.',
-  langBtn: 'МН', langAria: 'Монгол руу шилжих', themeToDark: 'Switch to dark theme', themeToLight: 'Switch to light theme',
+  themeToDark: 'Switch to dark theme', themeToLight: 'Switch to light theme',
   roleVida: 'Technology', roleAnand: 'Technology · Forward deployed engineering', roleObama: 'Business, marketing, branding',
   captureWait: 'The data is still loading. Wait a moment and press again.', addFailed: 'Could not add it. Your text is still here.',
   loading: 'Loading…', noTodos: 'No to-dos yet.', nTodos: n => `${n} ${n === 1 ? 'to-do' : 'to-dos'}`,
@@ -802,26 +741,6 @@ Object.assign(L.en, {
 });
 
 /* Login, menu, updates, chat, world clock, translation and the plan graph. */
-Object.assign(L.mn, {
-  menu: 'Цэс', menuOf: n => `Цэс · ${n}`, close: 'Хаах', settings: 'Тохиргоо', switchPerson: 'Хүн солих', allSpaces: n => `Бүх нүд · ${n}`, noName: 'Нэрээ сонгоно уу',
-  loginTitle: 'Хэн ажиллах вэ?', loginSub: 'Нэрээ сонгоно уу. Энэ бүртгэл таныг санана.', loginClaude: 'Claude-ийн бүртгэл тань таныг таньдаг. Энд зөвхөн нэрээ сонгоно.',
-  loginLocal: 'Энэ хувилбар өгөгдлийг зөвхөн энэ хөтөчид хадгална.', loginSkip: 'Одоохондоо зүгээр үзэх', loginAs: n => `${n} болж нэвтрэх`,
-  updates: 'Шинэчлэл', updatesN: n => (n ? `Шинэчлэл, ${n} шинэ` : 'Шинэчлэл'), chat: 'Чат', chatN: n => (n ? `Чат, ${n} шинэ мессеж` : 'Чат'),
-  noUpdates: 'Сүүлийн 7 хоногт бусдын хийсэн өөрчлөлт алга.', newTag: 'Шинэ',
-  act_add: 'нэмсэн', act_done: 'дуусгасан', act_undone: 'дахин нээсэн', act_owner: 'хариуцагчийг солисон', act_move: 'зөөсөн', act_edit: 'зассан',
-  upd: (n, verb, t) => `${n} «${t}» ${verb}`, ownerTo: n => ` → ${n}`,
-  agoNow: 'Дөнгөж сая', agoMin: m => `${m} мин өмнө`, agoH: h => `${h} цагийн өмнө`, agoD: d => `${d} өдрийн өмнө`,
-  notifNote: 'Мэдэгдэл энэ хуудас нээлттэй үед гарна. Хуудас хаалттай үед утсанд ирэх мэдэгдэл Telegram-тай хамт дараа нэмэгдэнэ.',
-  chatPh: 'Мессеж бичих', send: 'Илгээх', chatEmpty: 'Одоогоор мессеж алга. Эхнийхийг бичээрэй.', chatFailed: 'Илгээгдсэнгүй. Бичсэн зүйл тань хэвээр байна.',
-  chatWait: 'Өгөгдөл ачаалагдаж байна. Түр хүлээгээд дахин илгээнэ үү.', chatNoId: 'Таныг таньж чадаагүй тул энд бичих боломжгүй.', yesterday: 'Өчигдөр',
-  worldClock: 'Цагийн бүс', night: 'шөнө', dayPlus: '+1 өдөр', dayMinus: '−1 өдөр', cityOf: n => `${n}: хот сонгох`, noCity: 'Хот сонгох',
-  notEn: n => `${n} ажил англиар алга.`, translate: 'Англи руу орчуулах', translateAll: n => `Бүгдийг англи руу орчуулах (${n})`, translating: 'Орчуулж байна…',
-  trDone: n => `${n} ажлыг орчууллаа.`, trDenied: 'Claude-ийг ашиглахыг зөвшөөрөөгүй тул орчуулсангүй.', trBusy: 'Claude завгүй байна. Нэг минутын дараа дахин оролдоно уу.', trFailed: 'Орчуулж чадсангүй.',
-  zoomIn: 'Томруулах', zoomOut: 'Жижигрүүлэх', fullScreen: '⛶ Бүтэн дэлгэц', exitFull: '✕ Хаах', noMsCol: 'Шалгуургүй',
-  tlHelp: 'Бүлэг багана бүр нэг шалгуур, огнооны дарааллаар. Ажил бүр түүнийг хамгийн түрүүнд хэрэгтэй шалгуурынхаа өмнө байна. Ягаан тасархай шугам бол өнөөдөр. Зангилаа дээр дарвал түүний гинж тодорно.',
-  planBehind: (due, done, late) => `▲ Хоцорч байна: өнөөдрийг хүртэл ${due} ажил дуусах ёстой, ${done} дууссан${late ? ` · ${late} шалгуур хэтэрсэн` : ''}`,
-  planOnTrack: (due, done) => `◆ Төлөвлөгөөнд: өнөөдрийг хүртэл ${due} ажил дуусах ёстой, ${done} дууссан`, planNothingDue: '◆ Төлөвлөгөөнд: өнөөдрийг хүртэл дуусах ёстой ажил алга', msNode: (d, n) => `${d}/${n} дууссан`, del: 'Устгах',
-});
 Object.assign(L.en, {
   menu: 'Menu', menuOf: n => `Menu · ${n}`, close: 'Close', settings: 'Settings', switchPerson: 'Switch person', allSpaces: n => `All spaces · ${n}`, noName: 'Pick your name',
   loginTitle: 'Who is working?', loginSub: 'Pick your name. This account will remember you.', loginClaude: 'Your Claude account signs you in. Here you only pick your name.',
@@ -835,8 +754,6 @@ Object.assign(L.en, {
   chatPh: 'Write a message', send: 'Send', chatEmpty: 'No messages yet. Write the first one.', chatFailed: 'Not sent. Your text is still here.',
   chatWait: 'The data is still loading. Wait a moment and send again.', chatNoId: 'We could not tell who you are, so you cannot write here.', yesterday: 'Yesterday',
   worldClock: 'World clock', night: 'night', dayPlus: '+1 day', dayMinus: '−1 day', cityOf: n => `${n}: choose a city`, noCity: 'Choose a city',
-  notEn: n => `${n} ${n === 1 ? 'to-do is' : 'to-dos are'} not in English yet.`, translate: 'Translate', translateAll: n => `Translate everything (${n})`, translating: 'Translating…',
-  trDone: n => `Translated ${n}.`, trDenied: 'Claude was not allowed, so nothing was translated.', trBusy: 'Claude is busy. Try again in a minute.', trFailed: 'Could not translate.',
   zoomIn: 'Zoom in', zoomOut: 'Zoom out', fullScreen: '⛶ Full screen', exitFull: '✕ Close', noMsCol: 'No milestone',
   tlHelp: 'Each group of columns is one milestone, in date order. Each to-do sits before the first milestone that needs it. The pink dashed line is today. Tap a node to light up its chain.',
   planBehind: (due, done, late) => `▲ Behind: ${due} due by today, ${done} done${late ? ` · ${late} ${late === 1 ? 'milestone' : 'milestones'} late` : ''}`,
@@ -844,23 +761,6 @@ Object.assign(L.en, {
 });
 
 /* Handing to-dos over, answering requests, and what to do next. */
-Object.assign(L.mn, {
-  handTitle: 'Хариуцагч', forYou: 'Танд', forYouN: n => (n ? `Танд, ${n} шинэ` : 'Танд'), nobody: 'хэн ч биш',
-  askWhom: 'Хэнээс хийж өгөхийг хүсэх вэ?', notePh: 'Тайлбар (заавал биш): яагаад?', suggested: 'Санал болгож буй',
-  whySide: 'энэ тал түүнийх', whyRole: 'ажлын чиглэл нь таарна', openN: n => `${n} нээлттэй ажил`, awakeAt: t => `одоо ${t}, сэрүүн`, nightAt: t => `тэнд шөнө, ${t}`, saidNo: 'өмнө нь татгалзсан',
-  takeMine: 'Би хийнэ', offerTake: n => `Би хийе · ${n} зөвшөөрнө`, dropOwner: 'Хариуцагчгүй болгох', pickNameFirst: 'Хүсэлт илгээхийн тулд эхлээд нэрээ сонгоно уу.',
-  askedYou: n => `↘ ${n} танаас үүнийг хийж өгөхийг хүсэж байна`, offerYou: n => `↘ ${n} үүнийг хийе гэж байна`,
-  waitFor: (n, t) => `→ Хариу хүлээж байна: ${n} · ${t}`, offerWait: (n, t) => `→ Таны санал: ${n} шийднэ · ${t}`, noAnswer: h => ` · ${h} цаг хариугүй`, nightNow: ' · тэнд одоо шөнө',
-  saidNoBy: n => `✕ ${n} татгалзсан`, bothNo: '✕ Хоёулаа татгалзсан. Хамтдаа шийдье.', offerNo: n => `✕ ${n} санал тань зөвшөөрөөгүй`,
-  accept: 'Зөвшөөрөх', decline: 'Татгалзах', acceptX: t => `Зөвшөөрөх: ${t}`, declineX: t => `Татгалзах: ${t}`,
-  takeBack: 'Хүсэлтээ буцаах', askInstead: n => `Оронд нь хүсэх: ${n}`, keepIt: 'Өөрөө үлдээх', talkChat: 'Чатаар шийдэх', chatAbout: t => `«${t}» — үүнийг хэн хийх вэ?`,
-  askSent: n => `Хүсэлт илгээлээ: ${n}`, tookIt: 'Та авлаа.', saidNoDone: 'Татгалзлаа.', handFailed: 'Хадгалагдсангүй. Дахин оролдоно уу.',
-  reqIn: n => `Танд ирсэн хүсэлт · ${n}`, reqOut: n => `Таны хүсэлт · ${n}`, doNext: 'Дараа нь хийх', noNext: 'Таны эхлэх боломжтой ажил одоогоор алга.', unblocksN: n => `${n} ажлыг нээнэ`,
-  fromNote: t => `Тайлбар: ${t}`,
-  u_ask: (n, to, t) => `${n} хүсэлт илгээв → ${to}: «${t}»`, u_askYou: (n, t) => `${n} танаас хүсэж байна: «${t}»`, u_offer: (n, t) => `${n} хийе гэв: «${t}»`, u_offerYou: (n, t) => `${n} таны ажлыг хийе гэж байна: «${t}»`,
-  u_accept: (n, t) => `${n} хүлээн авав: «${t}»`, u_decline: (n, t) => `${n} татгалзав: «${t}»`, u_cancel: (n, t) => `${n} хүсэлтээ буцаав: «${t}»`,
-  updMany: (n, verb, k) => `${n} ${k} ажил ${verb}`,
-});
 Object.assign(L.en, {
   handTitle: 'Owner', forYou: 'For you', forYouN: n => (n ? `For you, ${n} new` : 'For you'), nobody: 'nobody',
   askWhom: 'Who should take it?', notePh: 'Note (optional): why?', suggested: 'Suggested',
@@ -880,18 +780,18 @@ Object.assign(L.en, {
 });
 
 const S = {
-  lang: 'mn', lastInput: Date.now(),
+  lastInput: Date.now(),
   db: null, user: null, me: null, canWrite: true, loaded: false, local: false,
   faces: DEFAULT_FACES.map(f => ({ title: f.title, cells: f.cells.slice(), editedAt: 0, stored: false })),
   items: new Map(), people: new Map(), clocks: new Map(), clockReady: false, peopleReady: false,
-  chat: [], chatReady: false, team: new Map(), seen: null, seenReady: false, sample: null,
+  chat: [], chatReady: false, team: new Map(), seen: null, seenReady: false,
   face: 0, cell: null, rx: 0, ry: 0,
   pending: 0, renderQueued: false, sheet: null, leftover: null,
 };
 /* What a to-do says in the screen language: its English version in English while that still
    matches the text, else the text as written. */
 const hasEn = i => !!(i && typeof i.en === 'string' && i.en.trim() && i.enSrc === i.text);
-const txt = i => (!i ? '' : S.lang === 'en' && hasEn(i) ? i.en : i.text);
+const txt = i => (!i ? '' : hasEn(i) ? i.en : i.text);
 const $ = id => document.getElementById(id);
 const el = (tag, props = {}, kids = []) => {
   const n = document.createElement(tag);
@@ -911,7 +811,7 @@ const faceStyle = f => `--fc:var(--f${f});--fi:var(--fi${f})`;
 const num = n => String(n).padStart(2, '0');
 const cellNum = (f, c) => num(f * 4 + c + 1);
 
-/* ── Хадгалалтын төлөв: засвар чимээгүй алга болохгүй ── */
+/* ── Saving state: an edit is never lost silently ── */
 function setSync(state, text) { const s = $('sync'); s.dataset.state = state; s.textContent = text; }
 /* Every write goes through dbWrite(): writes to one document wait in line (the db asks for one at
    a time), and a passing `unavailable` is retried once after a short pause. */
@@ -984,14 +884,14 @@ function toast(text, undo) {
   later(7000);
 }
 
-/* ── Хүмүүс: Claude-ийн хэрэглэгч бүр гурвын нэг болж сонгоно ── */
+/* ── People: each signed-in account picks which of the three it is ── */
 const whoOf = uid => (S.people.get(uid) || {}).who || '';
 const nameOfUid = uid => (member(whoOf(uid)) || {}).name || (uid === 'claude' ? 'Claude' : uid === S.me ? tr('you') : tr('someone'));
 /* Two accounts of one person count as the same person (a phone and a laptop). */
 const isMine = uid => !!uid && (uid === S.me || (!!whoOf(S.me) && whoOf(uid) === whoOf(S.me)));
 
 /* ── Login: the Claude account (or this browser, off Claude) says who is here; the person picks
-   which of the three they are, once. "Хүн солих" brings the page back. ── */
+   which of the three they are, once. "Switch person" brings the page back. ── */
 const loginOpen = () => !$('login').hidden;
 function hideLogin() { const box = $('login'); if (box.hidden) return; box.hidden = true; box.replaceChildren(); $('page').inert = false; }
 function showLogin(force) {
@@ -1017,15 +917,14 @@ function showLogin(force) {
     ]))),
     el('p', { class: 'fine', text: S.local ? tr('loginLocal') : tr('loginClaude') }),
     el('div', { class: 'login-foot' }, [
-      el('button', { type: 'button', class: 'btn ghost', lang: S.lang === 'mn' ? 'en' : 'mn', text: tr('langBtn'), 'aria-label': tr('langAria'), onclick: () => setLang(S.lang === 'mn' ? 'en' : 'mn') }),
       el('button', { type: 'button', class: 'btn ghost', text: force && mine ? tr('cancel') : tr('loginSkip'), onclick: () => { S.loginSkipped = true; hideLogin(); renderClock(); } }),
     ]));
   $('loginTitle').focus({ preventScroll: true });
 }
 const askWho = () => showLogin(true);
 
-/* ── Байранд нь засах: дарна, бичнэ, Хадгалах эсвэл Болих. Алдаа гарвал бичвэр үлдэнэ.
-   `cell` өгвөл өөр нүд рүү зөөх сонголт гарна. ── */
+/* ── Edit in place: tap, type, Save or Cancel. On a failure the text stays.
+   With `cell`, a choice to move the to-do to another space appears. ── */
 function cellPicker(current) {
   const sel = el('select', { class: 'field', 'aria-label': tr('space'), 'data-t-al': 'space' });
   S.faces.forEach((face, f) => {
@@ -1038,7 +937,7 @@ function cellPicker(current) {
   });
   return sel;
 }
-/* "Хүлээж буй ажил": the to-dos this one cannot start before. Offers only choices that make no loop. */
+/* "Waits for": the to-dos this one cannot start before. Offers only choices that make no loop. */
 function depEditor(itemId, chosen) {
   const box = el('div', { class: 'dep-edit' });
   const draw = () => {
@@ -1117,7 +1016,7 @@ function inlineEdit(host, { value, label, onSave, cell, itemId }) {
    hidden view does not. */
 const isEditing = () => [...document.querySelectorAll('[data-editing]')].some(n => n.getClientRects().length > 0);
 
-/* ── Бичилт ── */
+/* ── Writes ── */
 const stamp = () => ({ editedBy: S.me || null, editedAt: Date.now() });
 function saveFace(f) {
   const face = S.faces[f], s = stamp();
@@ -1168,11 +1067,11 @@ function removeItem(id) {
   });
 }
 
-/* ── Хамаарал: ажил бүр `deps` (хүлээж буй ажлуудын id) хадгална. Төлөвийг эндээс тооцно. ──
-   done     дууссан
-   blocked  дуусаагүй, хүлээж буй ажлын аль нэг нь дуусаагүй
-   blocking дуусаагүй, өөрөө гацаагүй, гэхдээ өөр дуусаагүй ажил үүнийг хүлээж байгаа
-   open     дуусаагүй, хэнийг ч хүлээхгүй, хэнийг ч гацаахгүй */
+/* ── Dependencies: each to-do keeps `deps` (ids of what it waits for). Status is worked out from them. ──
+   done     ticked
+   blocked  not done, and something it waits for is not done
+   blocking not done, not blocked, but another open to-do waits for it
+   open     not done, waits for nothing open and holds nothing up */
 const STATE = new Proxy({}, { get: (_, k) => tr(`st_${String(k)}`) });   /* status words in the screen language */
 const STATE_MARK = { done: '✓', open: '○', blocked: '■', blocking: '▶' };
 const depsOf = i => [...new Set(Array.isArray(i.deps) ? i.deps : [])].filter(d => d !== i.id && S.items.has(d));
@@ -1294,7 +1193,7 @@ function plan() {
   groups.forEach(g => g.members.forEach(id => groupOf.set(id, g.key)));
   return { ids, order, layer, loop, stuck, stuckLayer: stuck.size ? top : -1, deps, direct, implied, groups, groupOf };
 }
-/* The plan picked on the graph and the timeline. Groups under GROUP_MIN to-dos share "Бусад". */
+/* The plan picked on the graph and the timeline. Groups under GROUP_MIN to-dos share "Other". */
 const GROUP_MIN = 5;
 function pickedGroup(P) {
   const big = P.groups.filter(g => g.size >= GROUP_MIN);
@@ -1330,7 +1229,7 @@ function countFor(key) {
   return n === 0 ? tr('empty') : open ? tr('nLeft', open) : tr('allDone');
 }
 
-/* ── Шоо: чөлөөтэй чирнэ, тавихад эрчээрээ эргээд хамгийн ойрын тал дээр зөөлөн тогтоно ── */
+/* ── Cube: drag freely; on release it carries on with the drag and settles softly on the nearest side ── */
 const TILT_X = -11, TILT_Y = -15;
 function frontFace() {
   if (S.rx <= -45) return 4; if (S.rx >= 45) return 5;
@@ -1434,7 +1333,7 @@ function initCubeInput() {
   });
 }
 
-/* ── Жагсаалт: 3D-гүйгээр мөн 24 нүд ── */
+/* ── List: the same 24 spaces without 3D ── */
 function renderGrid() {
   $('gridView').replaceChildren(...S.faces.map((face, f) => {
     const head = el('div', { class: 'g-head' });
@@ -1448,7 +1347,7 @@ function renderGrid() {
   }));
 }
 
-/* ── Хайлт ── */
+/* ── Search ── */
 function whereIs(key) { const m = /^f(\d)-c(\d)$/.exec(key || ''); if (!m) return ''; const f = S.faces[+m[1]]; return f ? `${f.title} › ${cellName(+m[1], +m[2])}` : ''; }
 function renderSearch() {
   const q = $('search').value.trim().toLowerCase();
@@ -1459,7 +1358,7 @@ function renderSearch() {
     [el('b', { text: txt(i) }), el('small', { text: whereIs(i.cell) })]))));
 }
 
-/* ── Нүд: хийх ажлын жагсаалт ── */
+/* ── A space: its to-do list ── */
 function attachSwipe(row, onRemove) {
   let sx = 0, sy = 0, dx = 0, active = false, locked = false, t0 = 0;
   row.addEventListener('pointerdown', e => { if (row.querySelector('[data-editing]') || e.target.closest('input, a, select, textarea, [data-editing], button:not(.item-text):not(.flow-tag)')) return; active = true; locked = false; sx = e.clientX; sy = e.clientY; dx = 0; t0 = e.timeStamp; });
@@ -1498,7 +1397,7 @@ function renderArea() {
   $('items').hidden = view; $('planView').hidden = !view;
   renderSpaceTime();
   if (view) {
-    $('itemsEmpty').hidden = true; $('swipeHint').hidden = true; $('trLine').hidden = true;
+    $('itemsEmpty').hidden = true; $('swipeHint').hidden = true;
     if (S.cell === GRAPH_CELL) renderGraph(); else renderTimeline();
     return;
   }
@@ -1511,7 +1410,6 @@ function renderArea() {
   $('itemsEmpty').hidden = list.length > 0;
   $('itemsEmpty').textContent = !S.db ? '' : S.loaded ? tr('noTodos') : tr('loading');
   $('swipeHint').hidden = !S.canWrite || !list.length;
-  renderTrLine($('trLine'), list);
   const opened = ROWS.cell !== S.cell;
   /* A leftover from a failed paste stays on screen (it names its space) until it is saved or closed. */
   if (opened) { ROWS.cell = S.cell; ROWS.seen = new Set(); ROWS.done = new Set(list.filter(i => i.done).map(i => i.id)); if (S.leftover) showLeftover(S.leftover.lines, S.leftover.cell); else $('captureErr').hidden = true; }
@@ -1525,13 +1423,14 @@ function renderArea() {
     chk.checked = !!i.done; chk.addEventListener('change', () => patchItem(i.id, { done: chk.checked }));
     const main = el('div', { class: 'item-main' });
     const textHost = el('div');
-    /* The editor edits what is on screen: in English, a to-do's English version (kept matched to its text). */
-    const editsEn = S.lang === 'en' && hasEn(i);
+    /* The editor edits what is on screen. A to-do written in Mongolian earlier shows its English
+       version; saving an edit stores the English as the text and drops the old pair. */
+    const editsEn = hasEn(i);
     textHost.append(S.canWrite
       ? el('button', { type: 'button', class: 'editable item-text', 'data-fkey': `e:${i.id}`, text: shown, title: tr('edit'),
           onclick: () => inlineEdit(textHost, { value: shown, label: tr('editTodo'), cell: i.cell, itemId: i.id, onSave: (v, to, changes) => {
             const cur = S.items.get(i.id);
-            if (editsEn && 'text' in changes && cur) { changes.en = changes.text; changes.enSrc = cur.text; delete changes.text; }
+            if (editsEn && 'text' in changes && cur) { changes.en = null; changes.enSrc = null; }
             return moveItem(i.id, changes);
           } }) })
       : el('span', { class: 'item-text', text: shown }));
@@ -1596,10 +1495,10 @@ function initCapture() {
   });
 }
 
-/* ── Цаг: хүн ажлын талбарыг нээмэгц цаг нь явна ──
-   Хүн бүрд нэг баримт (clock/<id>): өдөр, нүдээр хаагдсан хугацаа ба нээлттэй хэсэг
-   (openSince, openCell). Зөвхөн төлөв өөрчлөгдөхөд бичнэ: эхлэх, зогсох, нүд солих,
-   гарах, буцаж ирэх. Явж буй тоог дэлгэц дээр openSince-ээс тооцно. */
+/* ── Time: a person's timer runs while the workspace is open ──
+   One document per account (clock/<id>): closed time per day and per space, plus the open stretch
+   (openSince, openCell). Written only on a change of state: start, pause, change of space, leaving,
+   returning. The running total is worked out on screen from openSince. */
 const AWAY_ASK_MS = 10 * 60 * 1000;
 const AWAY_MAX_MS = 12 * 60 * 60 * 1000;
 const dayKey = ts => { const d = new Date(ts); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -1832,10 +1731,10 @@ function initClock() {
   }, { capture: true, passive: true }));
 }
 
-/* ── Өгөгдөл гаргах, оруулах ──
-   Гаргах: бүх цуглуулгыг нэг JSON-д (дахин оруулж болно), эсвэл ажлуудыг CSV-д.
-   Оруулах: эхлээд юу өөрчлөгдөхийг харуулна. Юуг ч устгахгүй. Ижил id-тай ажил,
-   талын нэр зөвхөн оруулж буй нь шинэ бол солигдоно. Хүн, цаг зөвхөн байхгүй бол нэмэгдэнэ. */
+/* ── Export and import ──
+   Export: every collection in one JSON file (it can be imported again), or the to-dos as CSV.
+   Import: first shows what will change, and deletes nothing. A to-do or side name with the same id
+   is replaced only if the imported one is newer. People and time records are added only if missing. */
 const ITEM_FIELDS = ['cell', 'text', 'en', 'enSrc', 'url', 'who', 'done', 'deps', 'by', 'at', 'editedBy', 'editedAt'];
 const todayStamp = () => dayKey(Date.now());
 function exportData() {
@@ -2061,7 +1960,7 @@ function initData() {
   };
   $('importCheck').onclick = () => checkImport($('importText').value);
   /* One handler (initData runs again as data arrives). The picker is cleared after every read, so
-     the same file can be picked again after "Болих". */
+     the same file can be picked again after "Cancel". */
   $('importFile').onchange = async e => {
     const file = e.target.files && e.target.files[0]; if (!file) return;
     try {
@@ -2092,7 +1991,7 @@ const svgEl = (tag, attrs = {}, kids = []) => {
 let ringSeq = 0;
 const startOfToday = () => { const t = new Date(); t.setHours(0, 0, 0, 0); return t; };
 /* A leading MM/DD (or MM/DD/YYYY). Without a year, the year is the one that puts the date nearest
-   today: a 01/10 milestone written in December means next January. "1.5 хоног" is not a date. */
+   today: a 01/10 milestone written in December means next January. "1.5 days" is not a date. */
 function milestoneDate(text) {
   const m = /^\s*(\d{1,2})\/(\d{1,2})(?:\/(\d{4}|\d{2}))?(?!\d|\/|\.\d)/.exec(text || ''); if (!m) return null;
   const mo = +m[1], da = +m[2];
@@ -2341,10 +2240,10 @@ function drawFlow(kind) {
   host.replaceChildren(...[chips, loopNote, box, el('p', { class: 'fine', text: time ? tr('tlHelp') : tr('graphHelp', implied, loose) }), ...lists].filter(Boolean));
   if (keep) { const now = host.querySelector('.flow-scroll'); if (now) { now.scrollLeft = keep.x; now.scrollTop = keep.y; } }
 }
-/* Full screen: the graph covers the page; Escape or "✕ Хаах" brings it back. */
+/* Full screen: the graph covers the page; Escape or "✕ Close" brings it back. */
 function setFull(on, redraw) { G.full = !!on; document.body.classList.toggle('locked', G.full || !!S.sheet); redraw(); }
 
-/* ── Чиглүүлэлт: #f2 бол тал, #f2-c1 бол нүд ── */
+/* ── Routing: #f2 is a side, #f2-c1 a space ── */
 function setHash() { const h = S.cell || `f${S.face}`; if (location.hash !== `#${h}`) { try { history.replaceState(S.cell ? history.state : null, '', `#${h}`); } catch (e) { location.hash = h; } } }
 /* Opening a space adds a history step, so the phone's back gesture returns to the cube. */
 function openKey(key) {
@@ -2418,7 +2317,7 @@ function renderMenu() {
   renderClock(); renderTeam(); renderSearch();
   if (!$('gridView').querySelector('[data-editing]')) renderGrid();
   $('spacesSum').textContent = tr('allSpaces', S.faces.reduce((t, f) => t + f.cells.length, 0));
-  showThemeBtn(); renderTrLine($('trAll'), [...S.items.values()], true);
+  showThemeBtn();
 }
 
 /* ── Updates: what the others changed, newest first, and an unread count on the bell ──
@@ -2536,7 +2435,7 @@ function renderChat(toEnd) {
   const items = []; let day = '';
   S.chat.forEach(m => {
     const d = dayKey(m.at);
-    if (d !== day) { day = d; items.push(el('li', { class: 'day-sep', text: d === dayKey(Date.now()) ? tr('todayW') : d === dayKey(Date.now() - 86400000) ? tr('yesterday') : new Date(m.at).toLocaleDateString(S.lang === 'en' ? 'en-US' : 'mn-MN', { month: 'short', day: 'numeric' }) })); }
+    if (d !== day) { day = d; items.push(el('li', { class: 'day-sep', text: d === dayKey(Date.now()) ? tr('todayW') : d === dayKey(Date.now() - 86400000) ? tr('yesterday') : new Date(m.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) })); }
     const mine = isMine(m.by), who = member(whoOf(m.by));
     const t = new Date(m.at), hm = `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
     items.push(el('li', { class: `msg${mine ? ' mine' : ''}` }, [mine ? null : el('span', { class: 'who', 'data-who': who ? who.id : '', 'aria-hidden': 'true', text: who ? who.name[0] : '·' }),
@@ -2603,42 +2502,6 @@ function pickCity(m, btn) {
   });
   sel.addEventListener('blur', () => setTimeout(() => { if (sel.isConnected) done(); }, 150));
   sel.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); done(); } });
-}
-
-/* ── English for the team's own words: in English, a line says how many to-dos have no English
-   version yet; inside Claude it offers to translate them (the viewer's own Claude is asked, once
-   they allow it). The text as written is never changed. ── */
-const needsEn = list => list.filter(i => !hasEn(i));
-function renderTrLine(node, list, all) {
-  if (S.lang !== 'en' || !S.loaded) { node.hidden = true; return; }
-  const todo = needsEn(list);
-  if (!todo.length && !node.dataset.msg) { node.hidden = true; return; }
-  node.hidden = false;
-  const msg = node.dataset.msg ? el('span', { text: tr(node.dataset.msg, +node.dataset.n || 0) }) : null;
-  const can = !!S.sample && canWriteNow() && todo.length && !S.translating;
-  node.replaceChildren(...[todo.length ? el('span', { text: tr('notEn', todo.length) }) : null,
-    can ? el('button', { type: 'button', class: 'btn ghost', text: all ? tr('translateAll', todo.length) : tr('translate'), onclick: () => translate(todo, node) }) : null,
-    S.translating ? el('span', { text: tr('translating') }) : null, msg].filter(Boolean));
-}
-async function translate(list, node) {
-  if (!S.sample || S.translating) return;
-  S.translating = true; delete node.dataset.msg; renderTrLine(node, list);
-  let done = 0, key = 'trDone';
-  try {
-    for (let k = 0; k < list.length; k += 40) {
-      const part = list.slice(k, k + 40).map(i => ({ id: i.id, text: i.text }));
-      const out = await S.sample.json(`Translate each to-do line into short, plain English for a small startup's task list. Keep numbers, dates (11/20), codes (M1, F2), names and product names as written. Keep each line as short as the original. Reply with only a JSON object mapping each id to its English line.\n\n${JSON.stringify(part)}`, { modelTier: 'quick' });
-      for (const { id, text } of part) {
-        const en = out && typeof out[id] === 'string' ? out[id].trim().slice(0, 500) : '';
-        const cur = S.items.get(id);
-        if (!en || !cur || cur.text !== text) continue;   /* changed meanwhile: leave it for next time */
-        if (await patchItem(id, { en, enSrc: text }, 'translate')) done += 1;
-      }
-    }
-  } catch (e) { key = e && e.code === 'not_granted' ? 'trDenied' : e && e.code === 'rate_limited' ? 'trBusy' : 'trFailed'; if (key === 'trDenied') S.sample = null; }
-  S.translating = false;
-  node.dataset.msg = key; node.dataset.n = String(done);
-  queueRender();
 }
 
 /* ── Handing a to-do to a teammate ──
@@ -2812,27 +2675,11 @@ function renderHand() {
 /* ── Language and theme: per-viewer choices, kept in this browser only ── */
 const store = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* preference only */ } } };
 function applyStatic() {
-  document.documentElement.lang = S.lang;
   document.querySelectorAll('[data-t]').forEach(n => { n.textContent = tr(n.dataset.t); });
   document.querySelectorAll('[data-t-ph]').forEach(n => { n.placeholder = tr(n.dataset.tPh); });
   document.querySelectorAll('[data-t-al]').forEach(n => { n.setAttribute('aria-label', tr(n.dataset.tAl)); });
   document.querySelectorAll('[data-t-ti]').forEach(n => { n.title = tr(n.dataset.tTi); });
-  const lb = $('langBtn'); lb.textContent = tr('langBtn'); lb.setAttribute('aria-label', tr('langAria')); lb.lang = S.lang === 'mn' ? 'en' : 'mn';
   showThemeBtn(); resay();
-}
-/* A language change re-words everything, but never redraws under an open edit (queueRender waits
-   for it to close); boxes that ask something are re-worded in place. */
-function setLang(lang) {
-  S.lang = lang === 'en' ? 'en' : 'mn'; store.set('cubic-lang', S.lang);
-  ['trLine', 'trAll'].forEach(id => { delete $(id).dataset.msg; });
-  applyStatic(); refreshNotice(); initData(); queueRender(); renderClock(); renderBadges();
-  if (S.cell) renderSpaceTime();
-  if (loginOpen()) showLogin(S.loginForced);
-  const c = myClock(); if (!$('awayBox').hidden && c && leftOf(c)) renderAway(c.leftAt);
-  if (S.importShown && !$('importPlan').hidden) renderImportPlan(S.importShown);
-  if (S.leftover && !$('captureErr').hidden) showLeftover(S.leftover.lines, S.leftover.cell);
-  if (S.sheet === 'chatSheet') renderChat();
-  if (S.pending === 0 && $('sync').dataset.state === 'saved') setSync('saved', tr('saved'));
 }
 /* Theme: follows the phone until the person picks one; the button says what it switches to. */
 const isDark = () => (document.documentElement.dataset.theme ? document.documentElement.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches);
@@ -2844,9 +2691,9 @@ function queueRender(force) {
   S.renderQueued = false; renderAll();
 }
 
-/* ── Claude-гүй үед (жишээ нь Vercel): өгөгдлийг зөвхөн энэ хөтөчид хадгална ──
-   Claude-ийн db-тэй ижил хэлбэр: doc/collection, set/delete, onSnapshot. Бусад таб руу
-   `storage` үйл явдлаар дамжина. Хадгалж чадахгүй бол set алдаа шиднэ, save() түүнийг харуулна. */
+/* ── Without Claude and without a team database: data stays in this browser only ──
+   The same shape as Claude's db: doc/collection, set/delete, onSnapshot. Other tabs hear changes
+   through the `storage` event. When it cannot save, set throws and save() shows it. */
 function localStore() {
   const KEY = 'cubic-local-db', ID = 'cubic-local-id';
   let docs, me;
@@ -2887,14 +2734,14 @@ function localStore() {
   return { db: { doc, collection }, user: { id: async () => me, can: async () => true } };
 }
 
-/* ── Хуваалцсан өгөгдөл ── */
+/* ── Shared data ── */
 async function connect() {
   let db = null, user = null;
   const slow = setTimeout(() => { S.slow = true; refreshNotice(); }, 10000);
   if (window.claude && window.claude.use) {
-    let dl, sample;
-    [db, user, dl, sample] = await Promise.all(['db', 'user', 'downloads', 'sample'].map(n => window.claude.use(n).catch(() => null)));
-    S.downloads = dl || null; S.sample = sample && typeof sample.json === 'function' ? sample : null;
+    let dl;
+    [db, user, dl] = await Promise.all(['db', 'user', 'downloads'].map(n => window.claude.use(n).catch(() => null)));
+    S.downloads = dl || null;
   } else {
     const local = localStore();
     if (local) { S.local = true; db = local.db; user = local.user; }
@@ -2980,14 +2827,12 @@ async function connect() {
   }, failed);
 }
 
-/* ── Эхлэл ── */
+/* ── Start ── */
 (function start() {
   /* The font stylesheet loads as "print" so a stalled request never holds the page; switch it on now. */
   try { $('fonts').media = 'all'; } catch (e) { /* fonts are optional */ }
-  S.lang = store.get('cubic-lang') === 'en' ? 'en' : 'mn';
   const theme = store.get('cubic-theme'); if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
   applyStatic();
-  $('langBtn').addEventListener('click', () => setLang(S.lang === 'mn' ? 'en' : 'mn'));
   $('themeBtn').addEventListener('click', () => setTheme(isDark() ? 'light' : 'dark'));
   try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', showThemeBtn); } catch (e) { /* older browsers */ }
   readHash(); initCubeInput(); initCapture(); initClock(); initChat(); route(); renderClock(); renderBadges();

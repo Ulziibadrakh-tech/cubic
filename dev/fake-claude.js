@@ -4,8 +4,7 @@
 
    Pretend to be someone else:  http://localhost:8800/?as=bat
    Start clean:                 http://localhost:8800/?reset=1
-   A viewer the host does not tell about (can() null) whose writes are refused: ?refuse=1
-   Claude answers the page (sample): ?sample=1 ("EN " before each line; ?sample=no declines)   */
+   A viewer the host does not tell about (can() null) whose writes are refused: ?refuse=1   */
 (() => {
   const q = new URLSearchParams(location.search);
   const KEY = 'cubic-dev-db';
@@ -66,14 +65,6 @@
   };
   // ?dl=1 pretends the downloads capability is granted; saved files are kept in window.__saved.
   const downloads = q.get('dl') ? { save: async f => { (window.__saved = window.__saved || []).push(f); return { status: 'saved' }; } } : null;
-  // ?sample=1 stands in for Claude answering the page: every line comes back with "EN " in front.
-  const sample = q.get('sample') ? Object.assign(async () => ({ text: '' }), {
-    json: async input => {
-      if (q.get('sample') === 'no') throw { code: 'not_granted', message: 'declined' };
-      const list = JSON.parse(String(input).slice(String(input).indexOf('[')));
-      return Object.fromEntries(list.map(x => [x.id, `EN ${x.text}`]));
-    },
-  }) : null;
-  window.claude = { use: async name => (name === 'db' ? { doc, collection } : name === 'user' ? user : name === 'downloads' ? downloads : name === 'sample' ? sample : null) };
+  window.claude = { use: async name => (name === 'db' ? { doc, collection } : name === 'user' ? user : name === 'downloads' ? downloads : null) };
   console.info(`[cubic dev] local data, signed in as "${me}". Add ?as=name to switch person, ?reset=1 to clear.`);
 })();

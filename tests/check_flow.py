@@ -6,7 +6,7 @@
 
 Prints PASS/FAIL per check and exits non-zero if any failed.
 """
-import asyncio
+import asyncio, re
 import json
 import sys
 from pathlib import Path
@@ -106,41 +106,54 @@ def _skip_expr(src, i):
 
 
 def dict_check():
-    """Keys at the top level of each `Object.assign(L.mn|L.en, {...})` block: none repeated within
-    a language (a later one would silently win), and the same set in both languages."""
+    """Keys at the top level of each `Object.assign(L.en, {...})` block: none repeated (a later one
+    would silently win), and every `tr('key')` / `data-t*="key"` in the page has an entry."""
     src = (ROOT / "index.html").read_text(encoding="utf-8")
-    keys = {"mn": [], "en": []}
-    for lang in keys:
-        start = 0
-        while (k := src.find(f"Object.assign(L.{lang}, {{", start)) >= 0:
-            i = src.index("{", k) + 1
-            depth, prev, token, token_prev = 1, "{", "", "{"
-            while depth:
-                ch = src[i]
-                if ch in "'\"":
-                    i = _skip_string(src, i)
-                    prev, token = "s", ""
-                elif ch == "`":
-                    i = _skip_template(src, i)
-                    prev, token = "s", ""
-                elif ch.isalnum() or ch in "_$":
-                    if not token:
-                        token_prev = prev
-                    token += ch
-                elif not ch.isspace():
-                    if ch == ":" and depth == 1 and token and token_prev in "{,":
-                        keys[lang].append(token)
-                    if ch in "{([":
-                        depth += 1
-                    elif ch in "})]":
-                        depth -= 1
-                    prev, token = ch, ""
-                i += 1
-            start = i
-    dup = {lang: sorted({k for k in v if v.count(k) > 1}) for lang, v in keys.items()}
-    diff = sorted(set(keys["mn"]) ^ set(keys["en"]))
-    ok = not dup["mn"] and not dup["en"] and not diff and len(keys["mn"]) > 150
-    return ok, f"mn {len(keys['mn'])} en {len(keys['en'])} dup {dup} diff {diff[:8]}"
+    keys = []
+    start = 0
+    while (k := src.find("Object.assign(L.en, {", start)) >= 0:
+        i = src.index("{", k) + 1
+        depth, prev, token, token_prev = 1, "{", "", "{"
+        while depth:
+            ch = src[i]
+            if ch in "'\"":
+                i = _skip_string(src, i)
+                prev, token = "s", ""
+            elif ch == "`":
+                i = _skip_template(src, i)
+                prev, token = "s", ""
+            elif ch.isalnum() or ch in "_$":
+                if not token:
+                    token_prev = prev
+                token += ch
+            elif not ch.isspace():
+                if ch == ":" and depth == 1 and token and token_prev in "{,":
+                    keys.append(token)
+                if ch in "{([":
+                    depth += 1
+                elif ch in "})]":
+                    depth -= 1
+                prev, token = ch, ""
+            i += 1
+        start = i
+    dup = sorted({k for k in keys if keys.count(k) > 1})
+    used = set(re.findall(r"\btr\('([A-Za-z_$][\w$]*)'", src)) | set(re.findall(r'data-t(?:-ph|-al|-ti)?="([\w$]+)"', src))
+    missing = sorted(used - set(keys))
+    ok = not dup and not missing and len(keys) > 150
+    return ok, f"en {len(keys)} dup {dup} missing {missing[:8]}"
+
+def cyrillic_check():
+    """English only: no Mongolian letters in index.html, except the pattern that still reads an
+    old milestone tag (М1) in data written before."""
+    src = (ROOT / "index.html").read_text(encoding="utf-8")
+    lines = [l.strip()[:80] for l in src.split("\n") if re.search("[\u0400-\u04FF]", l) and "[MmМм]" not in l]
+    return not lines, f"{len(lines)} lines: {lines[:3]}"
+
+# Every Cyrillic word in what is on screen: rendered text and labels, placeholders and titles.
+CYR = ("(() => { const t = [document.body.innerText]; document.querySelectorAll('[aria-label],[placeholder],[title]').forEach(n => "
+       "t.push(n.getAttribute('aria-label') || '', n.getAttribute('placeholder') || '', n.getAttribute('title') || '')); "
+       "return (t.join(' ').match(/[\\u0400-\\u04FF]+/g) || []).slice(0, 5); })()")
+
 
 async def main():
     async with async_playwright() as p:
@@ -154,7 +167,7 @@ async def main():
         check("the login page asks who you are on first visit", await pg.locator("#login").is_visible() and await pg.locator("#login .login-card").count() == 3)
         await login(pg, "Obama")
         check("chosen name shown on the person button", await pg.get_attribute("#meBtn", "data-who") == "obama" and "Obama" in await pg.get_attribute("#meBtn", "aria-label"))
-        check("timer starts on open", (await pg.text_content("#clockBtn")).strip() == "Түр зогсоох")
+        check("timer starts on open", (await pg.text_content("#clockBtn")).strip() == "Pause")
         # The phone home is the top bar and the cube, nothing else.
         shown = await pg.evaluate("""[...document.querySelectorAll('#page > *')].filter(n => n.getClientRects().length && getComputedStyle(n).display !== 'none' && n.offsetHeight > 0).map(n => n.id || n.className)""")
         check("home shows only the top bar and the cube", shown == ["top", "home"] and not await pg.locator("#team").is_visible() and not await pg.locator("#dataCard").is_visible(), str(shown))
@@ -184,16 +197,16 @@ async def main():
         await pg.click("#cube .face-0 .cell-tile >> nth=2")
         await pg.wait_for_timeout(300)
         check("space opens with a deep link", await pg.evaluate("location.hash") == "#f0-c2", await pg.inner_text(".area-title"))
-        for text in ("Суурь тоог хэмжих", "Зөөгчдөөс асуух", "Устгах мөр"):
+        for text in ("Measure the baseline", "Ask the servers", "Row to delete"):
             await pg.fill("#newText", text)
             await pg.press("#newText", "Enter")
             await pg.wait_for_timeout(250)
-        check("to-dos added and saved", await pg.locator(".todo").count() == 3 and await pg.inner_text("#sync") == "Хадгаллаа")
+        check("to-dos added and saved", await pg.locator(".todo").count() == 3 and await pg.inner_text("#sync") == "Saved")
         await pg.click(".todo .editable.item-text >> nth=1")
-        await pg.fill(".todo input.field", "Зөөгчдөөс 7 хоногийн дараа асуух")
+        await pg.fill(".todo input.field", "Ask the servers after 7 days")
         await pg.keyboard.press("Enter")
         await pg.wait_for_timeout(300)
-        check("inline edit saves", "7 хоногийн" in await pg.inner_text("#items"))
+        check("inline edit saves", "after 7 days" in await pg.inner_text("#items"))
         # Pilots starts with Anand; Obama (signed in) taps the owner and offers to take it: Anand decides.
         before_who = await pg.get_attribute(".todo .who >> nth=0", "data-who")
         await pg.click(".todo .who >> nth=0")
@@ -228,7 +241,7 @@ async def main():
         await menu(pg)
         await pg.click("#clockBtn")
         await pg.wait_for_timeout(300)
-        check("pause stops the timer", await pg.inner_text("#clockBtn") == "Эхлүүлэх")
+        check("pause stops the timer", await pg.inner_text("#clockBtn") == "Start")
         await pg.click("#clockBtn")
         await close_sheet(pg)
         # Away for 25 minutes: no tap or key on this device since leaving.
@@ -241,7 +254,7 @@ async def main():
         check("stopping at the leave time keeps only the worked part", 4 * 60000 < today < 7 * 60000, f"{round(today / 60000)} min")
 
         await pg.click("#back")
-        check("tile shows what is left", "2 үлдсэн" in await pg.inner_text("#cube .face-0 .cell-tile >> nth=2"))
+        check("tile shows what is left", "2 left" in await pg.inner_text("#cube .face-0 .cell-tile >> nth=2"))
         await menu(pg)
         await pg.click("#spacesSum")
         await pg.wait_for_timeout(200)
@@ -256,8 +269,8 @@ async def main():
         await menu(pg2)
         team = (await pg2.inner_text("#team")).replace("\n", " | ")
         await close_sheet(pg2)
-        check("team lists Vida, Anand and Obama", all(n in team for n in ("Vida", "Anand", "Obama")) and "Нэвтрээгүй" in team, team)
-        check("each person's open to-dos are counted", "2 ажил" in team, team)
+        check("team lists Vida, Anand and Obama", all(n in team for n in ("Vida", "Anand", "Obama")) and "Not signed in" in team, team)
+        check("each person's open to-dos are counted", "2 to-dos" in team, team)
 
         # Reorganise: move a to-do to another space, paste many lines at once.
         await pg.goto(f"{BASE}/#f0-c2")
@@ -269,11 +282,11 @@ async def main():
         moved = await pg.evaluate("[...S.items.values()].filter(i => i.cell === 'f2-c0').length")
         check("a to-do moves to another space", moved == 1 and await pg.locator(".todo").count() == 2)
         check("moving offers undo", await pg.locator("#toast").is_visible() and await pg.locator("#toastUndo").is_visible())
-        await pg.evaluate("""() => { const dt = new DataTransfer(); dt.setData('text/plain', '- Нэг\\n- Хоёр\\n\\n3. Гурав');
+        await pg.evaluate("""() => { const dt = new DataTransfer(); dt.setData('text/plain', '- One\\n- Two\\n\\n3. Three');
             document.getElementById('newText').dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true })); }""")
         await pg.wait_for_timeout(500)
         texts = await pg.inner_text("#items")
-        check("pasting many lines adds one to-do per line", await pg.locator(".todo").count() == 5 and all(t in texts for t in ("Нэг", "Хоёр", "Гурав")) and "- Нэг" not in texts)
+        check("pasting many lines adds one to-do per line", await pg.locator(".todo").count() == 5 and all(t in texts for t in ("One", "Two", "Three")) and "- One" not in texts)
 
         # Dependencies: a to-do can wait for another; the Plan side shows the graph and the timeline.
         check("view spaces are not offered as a place to move to", await pg.evaluate("[...cellPicker('f0-c2').options].every(o => !isViewCell(o.value))"))
@@ -286,12 +299,12 @@ async def main():
         await pg.wait_for_timeout(400)
         top = await pg.evaluate("[...S.items.values()].filter(i => i.cell === 'f0-c2').sort((a, b) => b.at - a.at)[0].id")
         check("the dependency is saved", await pg.evaluate(f"S.items.get('{top}').deps.length") == 1)
-        check("the waiting to-do is marked blocked in words", await pg.locator(".flow-tag.blocked").count() == 1 and "Гацсан" in await pg.inner_text(".flow-tag.blocked"))
+        check("the waiting to-do is marked blocked in words", await pg.locator(".flow-tag.blocked").count() == 1 and "Blocked" in await pg.inner_text(".flow-tag.blocked"))
         check("the one it waits for is marked as blocking", await pg.locator(".flow-tag.blocking").count() == 1)
         check("a loop is not allowed", await pg.evaluate(f"wouldLoop('{ids[0]}', '{top}')") and not await pg.evaluate(f"wouldLoop('{top}', '{ids[1]}')"))
         await pg.goto(f"{BASE}/#f1-c1")
         await pg.wait_for_timeout(400)
-        await pg.fill("#newText", "12/31 · Туршилтын шалгуур")
+        await pg.fill("#newText", "12/31 · Test milestone")
         await pg.press("#newText", "Enter")
         await pg.wait_for_timeout(300)
         await pg.click(".todo .editable.item-text >> nth=0")
@@ -305,21 +318,21 @@ async def main():
         check("graph has no capture box", not await pg.locator("#capture").is_visible())
         await pg.click(".gnode.s-blocking")
         await pg.wait_for_timeout(200)
-        check("tapping a node explains its chain", await pg.locator(".gdetail").is_visible() and "Гацааж буй" in await pg.inner_text(".gdetail"))
-        check("the same is readable as lists", "Одоо эхлэх боломжтой" in await pg.text_content("#planView") and await pg.locator("#planView .recent button").count() >= 3)
+        check("tapping a node explains its chain", await pg.locator(".gdetail").is_visible() and "Holding up" in await pg.inner_text(".gdetail"))
+        check("the same is readable as lists", "Can start now" in await pg.text_content("#planView") and await pg.locator("#planView .recent button").count() >= 3)
         if SHOTS:
             await pg.screenshot(path=f"{SHOTS}/graph.png", full_page=True)
         await pg.goto(f"{BASE}/#f1-c0")
         await pg.wait_for_timeout(400)
         tl = await pg.inner_text("#planView")
         node = await pg.inner_text(".gnode.ms")
-        check("the timeline is a graph: the milestone node carries its date and progress", await pg.locator(".gnode.ms").count() == 1 and await pg.locator(".gnode").count() == 3 and "0/2 дууссан" in node and "хоног үлдсэн" in node.lower() and "ДУУССАН 0/2" in tl, node.replace("\n", " | "))
+        check("the timeline is a graph: the milestone node carries its date and progress", await pg.locator(".gnode.ms").count() == 1 and await pg.locator(".gnode").count() == 3 and "0/2 done" in node and "days left" in node.lower() and "DONE 0/2" in tl, node.replace("\n", " | "))
         await pg.click(".gnode.ms")
         await pg.wait_for_timeout(200)
-        check("tapping a milestone node says what it needs", "2-аас 0 дууссан" in await pg.inner_text(".gdetail") and "1 гацсан" in await pg.inner_text(".gdetail"))
+        check("tapping a milestone node says what it needs", "0 of 2 done" in await pg.inner_text(".gdetail") and "1 blocked" in await pg.inner_text(".gdetail"))
         await pg.evaluate(f"patchItem('{ids[0]}', {{ done: true }})")
         await pg.wait_for_timeout(400)
-        check("finishing the blocker frees the next to-do", await pg.evaluate(f"flow().get('{top}').state") == "blocking" and "2-аас 1 дууссан" in await pg.inner_text("#planView"))
+        check("finishing the blocker frees the next to-do", await pg.evaluate(f"flow().get('{top}').state") == "blocking" and "1 of 2 done" in await pg.inner_text("#planView"))
         await pg.evaluate(f"patchItem('{ids[0]}', {{ done: false }})")
         await pg.goto(f"{BASE}/#f0-c2")
         await pg.wait_for_timeout(400)
@@ -337,7 +350,7 @@ async def main():
         await pg.click("#exportCopy")
         await pg.wait_for_timeout(300)
         msg = await pg.inner_text("#exportMsg")
-        check("copy says what happened", "Хуулсан" in msg or (await pg.locator("#exportText").is_visible() and '"app": "cubic"' in await pg.input_value("#exportText")), msg)
+        check("copy says what happened", "Copied" in msg or (await pg.locator("#exportText").is_visible() and '"app": "cubic"' in await pg.input_value("#exportText")), msg)
         await close_sheet(pg)
 
         # Inside Claude with the downloads capability: a backup file can be saved (phone: share sheet, e.g. Proton Drive).
@@ -351,7 +364,7 @@ async def main():
         await pgd.wait_for_timeout(300)
         saved = await pgd.evaluate("(window.__saved || []).map(f => [f.filename, f.data.length > 50 && JSON.parse(f.data).app])")
         check("backup saves the whole workspace as one JSON file", len(saved) == 1 and saved[0][0].endswith(".json") and saved[0][1] == "cubic", str(saved))
-        check("saving says it was saved", "хадгалагдлаа" in await pgd.inner_text("#exportMsg"))
+        check("saving says it was saved", "File saved" in await pgd.inner_text("#exportMsg"))
         await pgd.close()
 
         # As served on Vercel: no Claude, data stays in this browser.
@@ -360,16 +373,16 @@ async def main():
         pg3.on("pageerror", lambda e: errors.append(str(e)))
         await pg3.goto(f"{BASE}/?bare=1")
         await pg3.wait_for_timeout(600)
-        check("without Claude the page says data stays in this browser", "зөвхөн энэ хөтөч" in await pg3.inner_text("#notice"))
+        check("without Claude the page says data stays in this browser", "this browser only" in await pg3.inner_text("#notice"))
         await login(pg3, "Anand")
         await pg3.goto(f"{BASE}/?bare=1#f2-c1")
         await pg3.wait_for_timeout(400)
-        await pg3.fill("#newText", "Орон нутгийн ажил")
+        await pg3.fill("#newText", "A local to-do")
         await pg3.press("#newText", "Enter")
         await pg3.wait_for_timeout(300)
         await pg3.reload()
         await pg3.wait_for_timeout(500)
-        check("without Claude a to-do survives a reload", "Орон нутгийн ажил" in await pg3.inner_text("#items") and await pg3.get_attribute("#meBtn", "data-who") == "anand")
+        check("without Claude a to-do survives a reload", "A local to-do" in await pg3.inner_text("#items") and await pg3.get_attribute("#meBtn", "data-who") == "anand")
         await pg3.click("#back")
         await pg3.wait_for_timeout(300)
         await open_data(pg3)
@@ -381,25 +394,25 @@ async def main():
         await pg3.click("#importCheck")
         await pg3.wait_for_timeout(200)
         plan = await pg3.inner_text("#importPlan")
-        check("import shows what will change first", "Шинэ ажил" in plan and "7" in plan, plan.replace("\n", " "))
+        check("import shows what will change first", "New to-dos" in plan and "7" in plan, plan.replace("\n", " "))
         check("nothing is written before confirming", await pg3.evaluate("S.items.size") == 1)
-        await pg3.click("#importPlan .btn >> text=Оруулах")
+        await pg3.click("#importPlan .btn >> text=Import (")
         await pg3.wait_for_timeout(500)
         check("import adds the to-dos and keeps what was there", await pg3.evaluate("S.items.size") == 8 and await pg3.evaluate("[...S.items.values()].some(i => (i.deps || []).length)"))
         check("import brings the time records", await pg3.evaluate("S.clocks.size") >= 2)
         await pg3.fill("#importText", dump)
         await pg3.click("#importCheck")
         await pg3.wait_for_timeout(200)
-        check("importing the same file twice adds nothing", "Нэмэх зүйл алга" in await pg3.inner_text("#importPlan"))
-        await pg3.fill("#importText", "cell,text,owner\nf3-c0,CSV-ээс ирсэн,obama\nf9-c9,буруу нүд,\n")
+        check("importing the same file twice adds nothing", "Nothing to add" in await pg3.inner_text("#importPlan"))
+        await pg3.fill("#importText", "cell,text,owner\nf3-c0,From a CSV,obama\nf9-c9,bad space,\n")
         await pg3.click("#importCheck")
         await pg3.wait_for_timeout(200)
-        await pg3.click("#importPlan .btn >> text=Оруулах")
+        await pg3.click("#importPlan .btn >> text=Import (")
         await pg3.wait_for_timeout(400)
         check("CSV import adds rows and skips bad ones", await pg3.evaluate("[...S.items.values()].filter(i => i.cell === 'f3-c0' && i.who === 'obama').length") == 1 and await pg3.evaluate("S.items.size") == 9)
         await pg3.fill("#importText", "{ not json")
         await pg3.click("#importCheck")
-        check("a broken file is refused in plain words", await pg3.inner_text("#importErr") == "JSON уншигдсангүй.")
+        check("a broken file is refused in plain words", await pg3.inner_text("#importErr") == "Could not read the JSON.")
         if SHOTS:
             await pg3.screenshot(path=f"{SHOTS}/menu_data.png")
             await close_sheet(pg3)
@@ -432,7 +445,7 @@ async def main():
         await pg4.click("#importCheck")
         await pg4.wait_for_timeout(200)
         check("the plan imports as 50 new to-dos", "50" in await pg4.inner_text("#importPlan"))
-        await pg4.click("#importPlan .btn >> text=Оруулах")
+        await pg4.click("#importPlan .btn >> text=Import (")
         await pg4.wait_for_timeout(700)
         topo = await pg4.evaluate("""(() => { const P = plan(); const pos = new Map(P.order.map((id, k) => [id, k]));
           const okOrder = P.ids.every(id => P.deps.get(id).every(d => pos.get(d) < pos.get(id)));
@@ -446,8 +459,8 @@ async def main():
         await pg4.goto(f"{BASE}/?bare=1#f1-c3")
         await pg4.wait_for_timeout(600)
         labels = await pg4.locator(".glayer").all_inner_texts()
-        check("graph columns are labelled by layer", len(labels) == 14 and labels[0].lower().startswith("давхарга 0"), str(labels[:3]))
-        check("graph draws only direct needs and says how many it left out", f"{topo['implied']} шууд бус" in await pg4.inner_text("#planView"))
+        check("graph columns are labelled by layer", len(labels) == 14 and labels[0].lower().startswith("layer 0"), str(labels[:3]))
+        check("graph draws only direct needs and says how many it left out", f"{topo['implied']} indirect" in await pg4.inner_text("#planView"))
         await pg4.click("details.build >> nth=2 >> summary")
         first_step = await pg4.locator(".build-list li >> nth=0").inner_text()
         check("build order list starts with 01", first_step.startswith("▶ 01") or first_step.startswith("○ 01"), first_step.split("\n")[0])
@@ -457,15 +470,15 @@ async def main():
         check("a space lists its plan tasks in build order", rows == ["01", "02", "09", "14", "35", "39"], str(rows))
         # A second, separate plan makes the picker appear; each view then shows one plan.
         await pg4.evaluate("""(async () => { const c = S.db.collection('items');
-          for (let k = 0; k < 6; k++) await c.doc('xx-' + k).set({ cell: 'f3-c0', text: 'Өөр ' + k, deps: k ? ['xx-' + (k - 1)] : [], done: false, who: '', url: '', at: 1000 + k }); })()""")
+          for (let k = 0; k < 6; k++) await c.doc('xx-' + k).set({ cell: 'f3-c0', text: 'Other ' + k, deps: k ? ['xx-' + (k - 1)] : [], done: false, who: '', url: '', at: 1000 + k }); })()""")
         await pg4.goto(f"{BASE}/?bare=1#f1-c3")
         await pg4.wait_for_timeout(600)
         chips = await pg4.locator(".gchip").all_inner_texts()
-        check("two plans: a picker with both and «Бүгд»", len(chips) == 3 and chips[-1].startswith("Бүгд"), str(chips))
+        check("two plans: a picker with both and «All»", len(chips) == 3 and chips[-1].startswith("All"), str(chips))
         check("the newest plan is shown first", await pg4.locator(".gnode").count() == 50)
-        await pg4.click(".gchip >> text=Бүгд")
+        await pg4.click(".gchip >> text=All ·")
         await pg4.wait_for_timeout(300)
-        check("«Бүгд» shows every plan", await pg4.locator(".gnode").count() == 56)
+        check("«All» shows every plan", await pg4.locator(".gnode").count() == 56)
         # Import must not close a loop of waiting (wouldLoop guards every place that adds one).
         cyc = '{"app":"cubic","items":[{"id":"tp-01","cell":"f2-c0","text":"01 loop test","deps":["tp-39"],"editedAt":9999999999999}]}'
         await pg4.goto(f"{BASE}/?bare=1#f0")
@@ -474,8 +487,8 @@ async def main():
         await pg4.fill("#importText", cyc)
         await pg4.click("#importCheck")
         await pg4.wait_for_timeout(200)
-        check("import names a dependency it leaves out to avoid a loop", "Тойрог" in await pg4.inner_text("#importPlan"))
-        await pg4.click("#importPlan .btn >> text=Оруулах")
+        check("import names a dependency it leaves out to avoid a loop", "would loop" in await pg4.inner_text("#importPlan"))
+        await pg4.click("#importPlan .btn >> text=Import (")
         await pg4.wait_for_timeout(500)
         await close_sheet(pg4)
         check("after that import there is still no loop", await pg4.evaluate("plan().loop.length") == 0 and await pg4.evaluate("S.items.get('tp-01').deps.length") == 0)
@@ -484,7 +497,7 @@ async def main():
         await pg4.goto(f"{BASE}/?bare=1#f1-c3")
         await pg4.wait_for_timeout(600)
         check("the Vercel security headers block nothing the page uses", await pg4.evaluate("window.__csp.length") == 0, str(await pg4.evaluate("window.__csp")))
-        check("a loop made outside the editor is named on the graph", "тойрог" in (await pg4.inner_text("#planView")).lower() and await pg4.locator(".gnode.loop").count() >= 2)
+        check("a loop made outside the editor is named on the graph", "loop" in (await pg4.inner_text("#planView")).lower() and await pg4.locator(".gnode.loop").count() >= 2)
         if SHOTS:
             await pg4.evaluate("S.db.doc('items/tp-01').set({ ...S.items.get('tp-01'), id: undefined, deps: [] })")
             await pg4.goto(f"{BASE}/?bare=1#f1-c3")
@@ -503,29 +516,29 @@ async def main():
         await pg5.goto(f"{BASE}/?reset=1&as=fixes#f2-c1")
         await pg5.wait_for_timeout(700)
         await login(pg5, "Anand")
-        await pg5.fill("#newText", "Нэг мөр")
+        await pg5.fill("#newText", "One line")
         await pg5.press("#newText", "Enter")
         await pg5.wait_for_timeout(300)
         iid = await pg5.evaluate("[...S.items.keys()][0]")
         # A teammate's change that this page has not seen yet is kept when this page ticks the row.
-        await pg5.evaluate(f"S.db.doc('items/{iid}').update({{ text: 'Нөгөө хүний засвар' }})")
+        await pg5.evaluate(f"S.db.doc('items/{iid}').update({{ text: 'A teammate edit' }})")
         await pg5.wait_for_timeout(200)
-        await pg5.evaluate(f"S.items.get('{iid}').text = 'Нэг мөр'")      # this page's copy is now behind
+        await pg5.evaluate(f"S.items.get('{iid}').text = 'One line'")      # this page's copy is now behind
         await pg5.evaluate(f"patchItem('{iid}', {{ done: true }})")
         await pg5.wait_for_timeout(300)
         stored = await pg5.evaluate(f"JSON.parse(localStorage.getItem('cubic-dev-db'))['items/{iid}']")
-        check("ticking a row keeps a teammate's unseen edit (merge, not overwrite)", stored["done"] is True and stored["text"] == "Нөгөө хүний засвар", str(stored)[:120])
+        check("ticking a row keeps a teammate's unseen edit (merge, not overwrite)", stored["done"] is True and stored["text"] == "A teammate edit", str(stored)[:120])
         # Pasted lines land in the space they were pasted in, even after moving on.
-        await pg5.evaluate("""(async () => { const p = addLines(['A мөр', 'B мөр', 'C мөр'], 'f2-c1'); S.cell = 'f3-c0'; await p; S.cell = 'f2-c1'; })()""")
+        await pg5.evaluate("""(async () => { const p = addLines(['A line', 'B line', 'C line'], 'f2-c1'); S.cell = 'f3-c0'; await p; S.cell = 'f2-c1'; })()""")
         await pg5.wait_for_timeout(400)
-        check("pasted lines stay in their space when the person moves on", await pg5.evaluate("[...S.items.values()].filter(i => /^[ABC] мөр$/.test(i.text) && i.cell === 'f2-c1').length") == 3)
+        check("pasted lines stay in their space when the person moves on", await pg5.evaluate("[...S.items.values()].filter(i => /^[ABC] line$/.test(i.text) && i.cell === 'f2-c1').length") == 3)
         # The clock: never written before it has loaded, pause kept on return, midnight split, away time not shown.
         check("the clock is not written before it has loaded", await pg5.evaluate("(async () => { S.clockReady = false; const r = await startClock(); S.clockReady = true; return r; })()") is False)
         await pg5.evaluate("pauseClock()")
         await pg5.wait_for_timeout(200)
         await pg5.evaluate("reconcileClock(false)")
         await pg5.wait_for_timeout(300)
-        check("a chosen pause survives coming back to the page", await pg5.evaluate("!myClock().openSince && myClock().paused === true") and (await pg5.text_content("#clockBtn")).strip() == "Эхлүүлэх")
+        check("a chosen pause survives coming back to the page", await pg5.evaluate("!myClock().openSince && myClock().paused === true") and (await pg5.text_content("#clockBtn")).strip() == "Start")
         split = await pg5.evaluate("""(() => { const m = new Date(2026, 10, 18).getTime(); const c = { days: {}, openSince: m - 3600000, openCell: 'home' };
           const live = [liveMs({ ...c, leftAt: m + 1800000 }, '2026-11-17'), liveMs({ ...c, leftAt: m + 1800000 }, '2026-11-18')];
           closeStretch(c, m + 1800000); return { live, d17: c.days['2026-11-17'].ms, d18: c.days['2026-11-18'].ms }; })()""")
@@ -540,10 +553,10 @@ async def main():
         await pg5.click("#gridView .g-head .icon-btn >> nth=0")
         await pg5.evaluate("openKey('f2-c1')")
         await pg5.wait_for_timeout(300)
-        await pg5.fill("#newText", "Харагдах ёстой мөр")
+        await pg5.fill("#newText", "A line that must show")
         await pg5.press("#newText", "Enter")
         await pg5.wait_for_timeout(500)
-        check("a new to-do shows even with an edit open on the other view", "Харагдах ёстой мөр" in await pg5.inner_text("#items"))
+        check("a new to-do shows even with an edit open on the other view", "A line that must show" in await pg5.inner_text("#items"))
         # Import never puts to-dos where nobody can see them, and a CSV round trip keeps dependencies.
         n0 = await pg5.evaluate("S.items.size")
         await pg5.goto(f"{BASE}/?as=fixes#f0")
@@ -553,25 +566,25 @@ async def main():
         await pg5.click("#importCheck")
         await pg5.wait_for_timeout(200)
         plan_txt = await pg5.inner_text("#importPlan")
-        check("import skips rows aimed at view spaces and says so", "Алгасах мөр" in plan_txt and "2" in plan_txt, plan_txt.replace("\n", " "))
-        await pg5.click("#importPlan .btn >> text=Оруулах")
+        check("import skips rows aimed at view spaces and says so", "Rows skipped" in plan_txt and "2" in plan_txt, plan_txt.replace("\n", " "))
+        await pg5.click("#importPlan .btn >> text=Import (")
         await pg5.wait_for_timeout(400)
         await pg5.evaluate("""(async () => { await S.db.doc('items/d1').set({ cell: 'f2-c2', text: 'd1', deps: [], done: false, who: '', url: '', at: 1 });
           await S.db.doc('items/d2').set({ cell: 'f2-c2', text: 'd2', deps: ['d1'], done: false, who: '', url: '', at: 2, editedAt: 5 }); })()""")
         await pg5.wait_for_timeout(300)
         csv = await pg5.evaluate("exportCsv()")
-        newer = csv.replace(",d2,", ",d2 засвар,").replace(",5,d1", ",9999999999999,d1")
+        newer = csv.replace(",d2,", ",d2 edited,").replace(",5,d1", ",9999999999999,d1")
         await pg5.fill("#importText", newer)
         await pg5.click("#importCheck")
         await pg5.wait_for_timeout(200)
-        await pg5.click("#importPlan .btn >> text=Оруулах")
+        await pg5.click("#importPlan .btn >> text=Import (")
         await pg5.wait_for_timeout(400)
-        check("a CSV round trip keeps a to-do's dependencies", await pg5.evaluate("JSON.stringify(S.items.get('d2').deps)") == '["d1"]' and await pg5.evaluate("S.items.get('d2').text") == "d2 засвар")
-        older = "id,cell,text,editedAt\nd2,f2-c2,d2 хуучин CSV,99999999999999\n"
+        check("a CSV round trip keeps a to-do's dependencies", await pg5.evaluate("JSON.stringify(S.items.get('d2').deps)") == '["d1"]' and await pg5.evaluate("S.items.get('d2').text") == "d2 edited")
+        older = "id,cell,text,editedAt\nd2,f2-c2,d2 old CSV,99999999999999\n"
         await pg5.fill("#importText", older)
         await pg5.click("#importCheck")
         await pg5.wait_for_timeout(200)
-        await pg5.click("#importPlan .btn >> text=Оруулах")
+        await pg5.click("#importPlan .btn >> text=Import (")
         await pg5.wait_for_timeout(400)
         check("a CSV without a deps column leaves dependencies alone", await pg5.evaluate("JSON.stringify(S.items.get('d2').deps)") == '["d1"]')
         # Saving an edit applies only what it changed to the dependencies.
@@ -581,8 +594,8 @@ async def main():
         await pg5.click("#items .item-text >> text=d1")
         await pg5.evaluate("S.db.doc('items/d1').update({ deps: ['v3'] })")    # someone else adds a need meanwhile
         await pg5.wait_for_timeout(200)
-        await pg5.fill("#area .edit-row input", "d1 шинэ")
-        await pg5.click("#area .edit-row .btn >> text=Хадгалах")
+        await pg5.fill("#area .edit-row input", "d1 new")
+        await pg5.click("#area .edit-row .btn >> text=Save")
         await pg5.wait_for_timeout(300)
         check("saving an edit keeps a need someone else added meanwhile", "v3" in await pg5.evaluate("JSON.stringify(S.items.get('d1').deps)"))
         # Keyboard focus stays on the checkbox after ticking.
@@ -591,7 +604,7 @@ async def main():
         await pg5.wait_for_timeout(400)
         check("focus stays on the checkbox after ticking by keyboard", await pg5.evaluate("document.activeElement && document.activeElement.type === 'checkbox'"))
         # Dates: MM/DD only, an explicit year is used.
-        dates = await pg5.evaluate("[milestoneDate('1.5 хоног'), milestoneDate('06/30/2027 x') && milestoneDate('06/30/2027 x').getFullYear(), milestoneDate('11/20 · M1') && milestoneDate('11/20 · M1').getDate()]")
+        dates = await pg5.evaluate("[milestoneDate('1.5 days'), milestoneDate('06/30/2027 x') && milestoneDate('06/30/2027 x').getFullYear(), milestoneDate('11/20 · M1') && milestoneDate('11/20 · M1').getDate()]")
         check("a milestone date is MM/DD, with a written year kept", dates == [None, 2027, 20], str(dates))
         # The phone's back gesture returns from a space to the cube.
         await pg5.goto("about:blank")
@@ -606,17 +619,17 @@ async def main():
         await menu(pg5)
         await pg5.click("#spacesSum")
         await pg5.click("#gridView .g-head .icon-btn >> nth=0")
-        await pg5.fill("#gridView [data-editing] input", "Pilots Б")
+        await pg5.fill("#gridView [data-editing] input", "Pilots B")
         await pg5.keyboard.press("Enter")
         await pg5.wait_for_timeout(300)
-        check("a side is renamed from All spaces in the menu", await pg5.evaluate("S.faces[0].title") == "Pilots Б" and "Pilots Б" in await pg5.inner_text("#cube"))
+        check("a side is renamed from All spaces in the menu", await pg5.evaluate("S.faces[0].title") == "Pilots B" and "Pilots B" in await pg5.inner_text("#cube"))
         await close_sheet(pg5)
         # Production: fonts never hold the page, keys stay with the page, contrast, read-only, two devices.
         await pg5.goto(f"{BASE}/?as=fixes#f0")
         await pg5.wait_for_timeout(600)
         check("the font stylesheet is switched on by the script, not blocking it", await pg5.evaluate("document.getElementById('fonts').media") == "all")
-        check("nothing reads as empty before the data arrives", await pg5.evaluate("(() => { S.loaded = false; const t = countFor('f0-c0'); S.loaded = true; return t; })()") == "Ачаалж байна…")
-        await pg5.focus("#langBtn")
+        check("nothing reads as empty before the data arrives", await pg5.evaluate("(() => { S.loaded = false; const t = countFor('f0-c0'); S.loaded = true; return t; })()") == "Loading…")
+        await pg5.focus("#bellBtn")
         face0 = await pg5.evaluate("S.face")
         await pg5.keyboard.press("ArrowDown")
         await pg5.wait_for_timeout(300)
@@ -641,7 +654,7 @@ async def main():
             await ro.click("#login .login-card[data-who='vida']")
             await ro.wait_for_timeout(500)
         check("a viewer whose writes are refused gets a read-only page, not endless failures",
-              "зөвхөн унших" in await ro.inner_text("#notice") and not await ro.locator("#login").is_visible() and await ro.evaluate("S.canWrite") is False)
+              "only read" in await ro.inner_text("#notice") and not await ro.locator("#login").is_visible() and await ro.evaluate("S.canWrite") is False)
         # A font request that never answers (weak phone network) does not hold the page.
         ctxf = await b4.new_context(viewport={"width": 390, "height": 844})
         await ctxf.route("**/fonts.googleapis.com/**", lambda route: None)
@@ -674,19 +687,19 @@ async def main():
         await q.wait_for_timeout(700)
         await login(q, "Vida")
         await q.evaluate("""(async () => { const c = S.db.collection('items');
-          await c.doc('m1').set({ cell: 'f2-c1', text: 'Хөдөлгөх мөр', deps: [], done: false, who: '', url: '', at: 10 });
-          await c.doc('m2').set({ cell: 'f2-c1', text: 'Хоёр дахь', deps: ['m1'], done: false, who: '', url: '', at: 9 }); })()""")
+          await c.doc('m1').set({ cell: 'f2-c1', text: 'A row to move', deps: [], done: false, who: '', url: '', at: 10 });
+          await c.doc('m2').set({ cell: 'f2-c1', text: 'The second', deps: ['m1'], done: false, who: '', url: '', at: 9 }); })()""")
         await q.wait_for_timeout(300)
         # Saving an edit writes only what changed: a teammate's move made meanwhile is kept.
-        await q.click("#items .item-text >> text=Хөдөлгөх мөр")
+        await q.click("#items .item-text >> text=A row to move")
         await q.evaluate("S.db.doc('items/m1').update({ cell: 'f3-c1' })")
-        await q.fill("#area .edit-row input", "Хөдөлгөх мөр засав")
-        await q.click("#area .edit-row .btn >> text=Хадгалах")
+        await q.fill("#area .edit-row input", "A row to move, edited")
+        await q.click("#area .edit-row .btn >> text=Save")
         await q.wait_for_timeout(400)
         m1 = await q.evaluate("S.items.get('m1')")
-        check("an edit saves only its own change; a teammate's move stays", m1["cell"] == "f3-c1" and m1["text"] == "Хөдөлгөх мөр засав", str(m1)[:120])
+        check("an edit saves only its own change; a teammate's move stays", m1["cell"] == "f3-c1" and m1["text"] == "A row to move, edited", str(m1)[:120])
         # A swipe that starts on an open edit box never deletes the to-do.
-        await q.click("#items .item-text >> text=Хоёр дахь")
+        await q.click("#items .item-text >> text=The second")
         lab = await q.locator("#area .dep-label").bounding_box()
         await drag(q, lab["x"] + 200, lab["y"] + 5, lab["x"] - 100, lab["y"] + 5, hold=40)
         await q.wait_for_timeout(500)
@@ -702,7 +715,7 @@ async def main():
         await q.goto("about:blank")
         await q.goto(f"{BASE}/?as=rev2#f2-c1")                 # a fresh open of the page (no ?reset)
         await q.wait_for_timeout(900)
-        check("a pause chosen today holds through a reload", await q.evaluate("!!(myClock() && !myClock().openSince && myClock().paused)") and (await q.text_content("#clockBtn")).strip() == "Эхлүүлэх")
+        check("a pause chosen today holds through a reload", await q.evaluate("!!(myClock() && !myClock().openSince && myClock().paused)") and (await q.text_content("#clockBtn")).strip() == "Start")
         # One person with two accounts open at once is counted once.
         two = await q.evaluate("""(() => { const now = Date.now(), day = dayKey(now);
           const a = { days: {}, openSince: now - 3600000, openCell: 'f0-c0', leftAt: null }, b = { days: {}, openSince: now - 3600000, openCell: 'f0-c0', leftAt: null };
@@ -725,11 +738,11 @@ async def main():
         await q.goto(f"{BASE}/?as=rev2#f2-c1")
         await q.wait_for_timeout(600)
         await q.evaluate("""(() => { const orig = S.db.doc; S.db.doc = p => { const d = orig(p); const set = d.set; d.set = async v => { await new Promise(r => setTimeout(r, 400)); return set(v); }; return d; }; })()""")
-        await q.fill("#newText", "Нэг")
+        await q.fill("#newText", "One")
         await q.press("#newText", "Enter")
-        await q.type("#newText", " дараагийнх")
+        await q.type("#newText", " next")
         await q.wait_for_timeout(900)
-        check("text typed while a to-do saves is kept", (await q.input_value("#newText")).strip() == "дараагийнх", await q.input_value("#newText"))
+        check("text typed while a to-do saves is kept", (await q.input_value("#newText")).strip() == "next", await q.input_value("#newText"))
         # Plans: the picked plan stays; small-plan milestones stay on the timeline; a bridge is not called a loop.
         await q.goto(f"{BASE}/?reset=1&as=rev2b#f1-c3")
         await q.wait_for_timeout(700)
@@ -738,7 +751,7 @@ async def main():
           for (let k = 0; k < 6; k++) await c.doc('p' + k).set({ cell: 'f2-c2', text: 'P ' + k, deps: k ? ['p' + (k - 1)] : [], done: false, who: '', url: '', at: 2000 + k, editedAt: 2000 + k });
           for (let k = 0; k < 6; k++) await c.doc('q' + k).set({ cell: 'f3-c2', text: 'Q ' + k, deps: k ? ['q' + (k - 1)] : [], done: false, who: '', url: '', at: 1000 + k, editedAt: 1000 + k });
           await c.doc('t1').set({ cell: 'f2-c2', text: 'T', deps: [], done: false, who: '', url: '', at: 5 });
-          await c.doc('ms').set({ cell: 'f1-c1', text: '11/25 Жижиг шалгуур', deps: ['t1'], done: false, who: '', url: '', at: 6 }); })()""")
+          await c.doc('ms').set({ cell: 'f1-c1', text: '11/25 Small milestone', deps: ['t1'], done: false, who: '', url: '', at: 6 }); })()""")
         await q.wait_for_timeout(500)
         first = await q.evaluate("G.group")
         await q.evaluate("patchItem('q2', { done: true })")
@@ -746,23 +759,23 @@ async def main():
         check("a teammate's tick in another plan does not switch the picked plan", await q.evaluate("G.group") == first and first is not None, str(first))
         await q.goto(f"{BASE}/?as=rev2b#f1-c0")
         await q.wait_for_timeout(600)
-        check("a milestone in a small plan stays on the timeline", "Жижиг шалгуур" in await q.inner_text("#planView"))
+        check("a milestone in a small plan stays on the timeline", "Small milestone" in await q.inner_text("#planView"))
         loops = await q.evaluate("""(() => { const save = new Map(S.items); const mk = (id, deps) => S.items.set(id, { id, cell: 'f2-c2', text: id, deps, done: false, at: 1 });
           mk('A', ['B']); mk('B', ['A']); mk('X', ['A']); mk('C', ['X', 'D']); mk('D', ['C']);
           const L = plan().loop.slice().sort().join(''); S.items = save; return L; })()""")
         check("a to-do between two loops is not called part of a loop", loops == "ABCD", loops)
         await q.goto(f"{BASE}/?as=rev2b#f0-c0")
         await q.wait_for_timeout(500)
-        await q.fill("#newText", "Пилотын шинэ ажил")
+        await q.fill("#newText", "A new pilot to-do")
         await q.press("#newText", "Enter")
         await q.wait_for_timeout(400)
-        owner = await q.evaluate("[...S.items.values()].find(i => i.text === 'Пилотын шинэ ажил').who")
+        owner = await q.evaluate("[...S.items.values()].find(i => i.text === 'A new pilot to-do').who")
         await menu(q)
         roles = await q.evaluate("[...document.querySelectorAll('#team small.role')].map(n => n.textContent)")
         await close_sheet(q)
         check("a new to-do on Pilots starts with Anand (forward deployed engineer)", owner == "anand", owner)
         check("the team card shows each person's role", len(roles) == 3 and "Forward deployed" in roles[1], str(roles))
-        check("a milestone date may be followed by a period", await q.evaluate("!!milestoneDate('11/22. Нээлт') && milestoneDate('1.5 хоног') === null"))
+        check("a milestone date may be followed by a period", await q.evaluate("!!milestoneDate('11/22. Launch') && milestoneDate('1.5 days') === null"))
         await b5.close()
 
     # Language, theme, the timeline HUD, and the graph adapting live to changes in the data.
@@ -774,22 +787,11 @@ async def main():
         await g.goto(f"{BASE}/?reset=1&as=live#f0")
         await g.wait_for_timeout(700)
         await login(g, "Obama")
-        await g.click("#langBtn")
-        await g.wait_for_timeout(300)
         await menu(g)
-        en = {"lang": await g.evaluate("document.documentElement.lang"), "send": await g.text_content("#chatSend"), "team": await g.inner_text("#team"), "btn": await g.inner_text("#langBtn"), "theme": await g.inner_text("#themeBtn")}
-        check("EN toggle switches the screen to English", en["lang"] == "en" and en["send"] == "Send" and "Business, marketing, branding" in en["team"] and en["btn"] == "МН" and "theme" in en["theme"], str(en)[:160])
-        await close_sheet(g)
-        await g.goto("about:blank")
-        await g.goto(f"{BASE}/?as=live#f0")                     # open again, without ?reset
-        await g.wait_for_timeout(700)
-        check("the language choice is kept for this viewer", await g.text_content("#chatSend") == "Send")
-        check("default space names follow the language, team names do not change", "Restaurant 1" in await g.inner_text("#cube"))
-        await g.click("#langBtn")
-        await g.wait_for_timeout(300)
-        check("МН switches back to Mongolian", await g.text_content("#chatSend") == "Илгээх" and await g.evaluate("document.documentElement.lang") == "mn")
-        await menu(g)
-        check("the theme button's label follows the language", "горим" in await g.inner_text("#themeBtn") and await g.get_attribute("#themeBtn", "aria-pressed") is None)
+        en = {"lang": await g.evaluate("document.documentElement.lang"), "send": await g.text_content("#chatSend"), "team": await g.inner_text("#team"),
+              "langBtn": await g.locator("#langBtn").count(), "theme": await g.inner_text("#themeBtn")}
+        check("the page is in English, with no language button", en["lang"] == "en" and en["send"] == "Send" and "Business, marketing, branding" in en["team"] and en["langBtn"] == 0 and "theme" in en["theme"].lower(), str(en)[:160])
+        check("the theme button starts with no stored choice", await g.get_attribute("#themeBtn", "aria-pressed") is None)
         await g.click("#themeBtn")
         theme1 = await g.evaluate("document.documentElement.dataset.theme")
         bg = await g.evaluate("getComputedStyle(document.body).backgroundColor")
@@ -797,11 +799,12 @@ async def main():
         theme2 = await g.evaluate("document.documentElement.dataset.theme")
         check("the theme button switches light and dark", {theme1, theme2} == {"light", "dark"}, f"{theme1} {theme2} {bg}")
         await close_sheet(g)
+        check("default space names are English", "Restaurant 1" in await g.inner_text("#cube"))
         # Two separate plans, then link them while the graph is open: one plan; unlink: two again.
         await g.evaluate("""(async () => { const c = S.db.collection('items');
           for (let k = 0; k < 5; k++) await c.doc('a' + k).set({ cell: 'f2-c2', text: 'A ' + k, deps: k ? ['a' + (k - 1)] : [], done: false, who: '', url: '', at: 3000 + k });
           for (let k = 0; k < 5; k++) await c.doc('b' + k).set({ cell: 'f3-c2', text: 'B ' + k, deps: k ? ['b' + (k - 1)] : [], done: false, who: '', url: '', at: 1000 + k });
-          await c.doc('ms1').set({ cell: 'f1-c1', text: '11/30 · M1 Нэгдсэн', deps: ['a4'], done: false, who: '', url: '', at: 9 }); })()""")
+          await c.doc('ms1').set({ cell: 'f1-c1', text: '11/30 · M1 Joined', deps: ['a4'], done: false, who: '', url: '', at: 9 }); })()""")
         await g.evaluate("openKey('f1-c3')")
         await g.wait_for_timeout(500)
         before = await g.locator(".gchip").count()
@@ -822,7 +825,7 @@ async def main():
         await g.wait_for_timeout(500)
         tlg = await g.evaluate("""(() => ({ ms: [...document.querySelectorAll('.gnode.ms')].map(n => n.getAttribute('aria-label')), band: [...document.querySelectorAll('.gband')].map(n => n.textContent),
           today: !!document.querySelector('.gtoday'), edges: document.querySelectorAll('.gedge').length, sum: (document.querySelector('.flow-sum') || {}).textContent || '' }))()""")
-        check("the timeline graph groups by milestone, draws today, and words each milestone", len(tlg["ms"]) == 1 and "M1" in tlg["ms"][0] and "хоног" in tlg["ms"][0] and tlg["today"] and tlg["edges"] >= 5 and any("M1" in b for b in tlg["band"]) and "ДУУССАН" in tlg["sum"], str(tlg)[:200])
+        check("the timeline graph groups by milestone, draws today, and words each milestone", len(tlg["ms"]) == 1 and "M1" in tlg["ms"][0] and "days" in tlg["ms"][0] and tlg["today"] and tlg["edges"] >= 5 and any("M1" in b for b in tlg["band"]) and "DONE" in tlg["sum"], str(tlg)[:200])
         await g.click(".flow-btn")
         await g.wait_for_timeout(200)
         full = await g.evaluate("getComputedStyle(document.querySelector('.flow')).position")
@@ -839,12 +842,30 @@ async def main():
         await g.evaluate("openKey('f1-c1')")
         await g.wait_for_timeout(500)
         msrow = await g.inner_text("#items .flow-tag[class*='ms-']")
-        check("each milestone row in the Milestones list says its date state and progress", "1/5 дууссан" in msrow and "хоног" in msrow, msrow)
+        check("each milestone row in the Milestones list says its date state and progress", "1/5 done" in msrow and "days" in msrow, msrow)
+        # Nothing on screen is in Mongolian: a space, both plan views, home, the menu, For you and the chat.
+        bad = {}
+        for key in ("f2-c2", "f1-c3", "f1-c0"):
+            await g.evaluate(f"openKey('{key}')")
+            await g.wait_for_timeout(300)
+            if found := await g.evaluate(CYR):
+                bad[key] = found
+        await g.evaluate("location.hash = ''")
+        await g.wait_for_timeout(300)
+        for name, opener in (("home", None), ("menu", "#meBtn"), ("for you", "#bellBtn"), ("chat", "#chatBtn")):
+            if opener:
+                await g.click(opener)
+                await g.wait_for_timeout(250)
+            if found := await g.evaluate(CYR):
+                bad[name] = found
+            await close_sheet(g)
+        check("nothing on screen is in Mongolian", not bad, str(bad)[:160])
         await b6.close()
 
 
-    # Screen text: no key written twice, both languages have the same keys.
-    check("the two dictionaries have no repeated keys and the same keys", *dict_check())
+    # Screen text: one English dictionary, no key written twice.
+    check("the screen-text dictionary has no repeated keys", *dict_check())
+    check("the page source has no Mongolian screen text", *cyrillic_check())
 
     # Third review, login, the minimal phone screen, chat, updates, world clock and English data.
     async with async_playwright() as p7:
@@ -852,59 +873,48 @@ async def main():
         ctx7 = await b7.new_context(viewport={"width": 390, "height": 844})
         a = await ctx7.new_page()
         a.on("pageerror", lambda e: errors.append(str(e)))
-        await a.goto(f"{BASE}/?reset=1&as=rev3a&sample=1#f2-c1")
+        await a.goto(f"{BASE}/?reset=1&as=rev3a#f2-c1")
         await a.wait_for_timeout(700)
-        await a.click("#login .login-foot .btn >> nth=0")
-        await a.wait_for_timeout(200)
-        check("the login page is re-worded when the language changes", "Who is working?" in await a.inner_text("#login") and await a.evaluate("S.lang") == "en")
-        await a.click("#login .login-foot .btn >> nth=0")
+        foot = await a.locator("#login .login-foot .btn").all_inner_texts()
+        check("the login page is in English and has no language button", "Who is working?" in await a.inner_text("#login") and len(foot) == 1 and foot[0] not in ("EN", "МН"), str(foot))
         await login(a, "Vida")
-        await a.fill("#newText", "Нэгдүгээр")
+        await a.fill("#newText", "First")
         await a.press("#newText", "Enter")
-        await a.fill("#newText", "Хоёрдугаар")
+        await a.fill("#newText", "Second")
         await a.press("#newText", "Enter")
         await a.wait_for_timeout(300)
-        # The "Waits for" picker starts with "＋ …", in both languages (a key was written twice before).
+        ids = await a.evaluate("[...S.items.values()].filter(i => i.cell === 'f2-c1').sort((x, y) => y.at - x.at).map(i => i.id)")   # Second, First
+        # The "Waits for" picker starts with "＋ …" (a key was written twice before).
         await a.click("#items .item-text >> nth=0")
         first_opt = await a.inner_text(".dep-edit select option >> nth=0")
-        await a.fill("#area .edit-row input", "Бичсэн боловч хадгалаагүй")
-        await a.click("#langBtn")
-        await a.wait_for_timeout(300)
-        kept = await a.evaluate("(() => { const i = document.querySelector('#area [data-editing] input'); return i ? i.value : null; })()")
-        check("the Waits-for picker offers to add, not a loading message", first_opt.startswith("＋") and await a.inner_text(".dep-edit select option >> nth=0") == "＋ Add something it waits for", first_opt)
-        check("switching the language keeps an open edit and its text", kept == "Бичсэн боловч хадгалаагүй" and await a.inner_text("#area .edit-row .btn >> nth=0") == "Save", str(kept))
+        check("the Waits-for picker offers to add, not a loading message", first_opt == "＋ Add something it waits for", first_opt)
         await a.press("#area .edit-row input", "Escape")
-        await a.click("#langBtn")
         await a.wait_for_timeout(200)
         # A failed paste stays on screen when another space is opened.
-        await a.evaluate("showLeftover(['мөр А', 'мөр Б'], 'f2-c1')")
+        await a.evaluate("showLeftover(['line A', 'line B'], 'f2-c1')")
         await a.evaluate("openKey('f2-c2')")
         await a.wait_for_timeout(200)
-        check("lines of a failed paste stay on screen in another space", await a.locator("#captureErr").is_visible() and "мөр А" in await a.inner_text("#captureErr"))
+        check("lines of a failed paste stay on screen in another space", await a.locator("#captureErr").is_visible() and "line A" in await a.inner_text("#captureErr"))
         await a.click("#captureErr .btn >> nth=1")
-        # English: each to-do may carry an English version; in English it is shown, and editing edits it.
+        # Older to-dos were written in Mongolian with an English version next to them (en, made from enSrc).
+        # The page shows the English while it was made from the current text; editing stores the English as the text.
         await a.evaluate("openKey('f2-c1')")
         await a.wait_for_timeout(200)
-        ids = await a.evaluate("[...S.items.values()].filter(i => i.cell === 'f2-c1').sort((x, y) => y.at - x.at).map(i => i.id)")
-        await a.evaluate(f"S.db.doc('items/{ids[0]}').update({{ en: 'Second', enSrc: 'Хоёрдугаар' }})")
-        await a.click("#langBtn")
+        await a.evaluate("""(async () => { const c = S.db.collection('items');
+          await c.doc('old1').set({ cell: 'f2-c1', text: 'Хуучин мөр', en: 'An older line', enSrc: 'Хуучин мөр', deps: [], done: false, who: '', url: '', at: 5 });
+          await c.doc('old2').set({ cell: 'f2-c1', text: 'Засварласан мөр', en: 'A stale English line', enSrc: 'Өмнөх мөр', deps: [], done: false, who: '', url: '', at: 4 }); })()""")
         await a.wait_for_timeout(300)
         rows = await a.locator("#items .item-text").all_inner_texts()
-        check("in English a to-do shows its English version; one without stays as written", rows[0] == "Second" and rows[1] == "Нэгдүгээр", str(rows))
-        check("in English the page says what has no English yet", "1 to-do is not in English yet." in await a.inner_text("#trLine"))
-        await a.click("#trLine .btn")
-        await a.wait_for_timeout(500)
-        check("Translate asks Claude and stores the English next to the text", await a.evaluate(f"S.items.get('{ids[1]}').en") == "EN Нэгдүгээр" and await a.evaluate(f"S.items.get('{ids[1]}').text") == "Нэгдүгээр")
-        await a.click("#items .item-text >> text=Second")
-        await a.fill("#area .edit-row input", "Second line")
+        check("an older to-do shows its English version", "An older line" in rows and "Хуучин мөр" not in rows, str(rows))
+        check("an English version made from older text is not shown", "Засварласан мөр" in rows and "A stale English line" not in rows, str(rows))
+        await a.click("#items .item-text >> text=An older line")
+        await a.fill("#area .edit-row input", "An older line, edited")
         await a.keyboard.press("Enter")
         await a.wait_for_timeout(300)
-        it = await a.evaluate(f"S.items.get('{ids[0]}')")
-        check("editing in English changes the English version, not the text", it["en"] == "Second line" and it["text"] == "Хоёрдугаар", str(it)[:120])
-        await a.evaluate(f"S.db.doc('items/{ids[0]}').update({{ text: 'Хоёрдугаар засав' }})")
-        await a.wait_for_timeout(300)
-        check("an English version made from older text is not shown", "Хоёрдугаар засав" in await a.inner_text("#items"))
-        await a.click("#langBtn")
+        it = await a.evaluate("S.items.get('old1')")
+        check("editing an older to-do stores the English as its text", it["text"] == "An older line, edited" and not it.get("en") and not it.get("enSrc"), str(it)[:140])
+        await a.evaluate("S.db.doc('items/old2').delete()")
+        await a.evaluate("S.db.doc('items/old1').delete()")
         await a.wait_for_timeout(200)
         # World clock: each person's city and local time.
         await a.evaluate("S.db.doc('team/anand').set({ city: 'Chicago', tz: 'America/Chicago' })")
@@ -935,20 +945,20 @@ async def main():
         await a.click("#bellBtn")
         await a.wait_for_timeout(300)
         upd = await a.inner_text("#updList")
-        check("updates list what others changed, in words", "Anand" in upd and "дуусгасан" in upd and "Шинэ" in upd, upd[:120])
+        check("updates list what others changed, in words", "Anand" in upd and "finished" in upd and "New" in upd, upd[:120])
         await close_sheet(a)
         check("opening updates clears the count", not await a.locator("#bellBadge").is_visible())
         await b.click("#chatBtn")
         await b.wait_for_timeout(200)
-        await b.fill("#chatText", "Сайн уу, багийнхан")
+        await b.fill("#chatText", "Hello, team")
         await b.keyboard.press("Enter")
         await b.wait_for_timeout(500)
-        check("a chat message is sent and kept", await b.evaluate("S.chat.length") == 1 and "Сайн уу" in await b.inner_text("#chatList") and await b.input_value("#chatText") == "")
+        check("a chat message is sent and kept", await b.evaluate("S.chat.length") == 1 and "Hello" in await b.inner_text("#chatList") and await b.input_value("#chatText") == "")
         check("the other person sees a count on the chat button", await a.locator("#chatBadge").is_visible() and await a.inner_text("#chatBadge") == "1")
         await a.click("#chatBtn")
         await a.wait_for_timeout(300)
         chat = await a.inner_text("#chatList")
-        check("the chat shows who wrote what, with local times of the team", "Anand" in chat and "Сайн уу, багийнхан" in chat and "Seoul" in await a.inner_text("#chatClocks"))
+        check("the chat shows who wrote what, with local times of the team", "Anand" in chat and "Hello, team" in chat and "Seoul" in await a.inner_text("#chatClocks"))
         await close_sheet(a)
         check("reading the chat clears its count", not await a.locator("#chatBadge").is_visible())
         # The timeline's on-plan line: a late milestone reads as behind even when later work is done.
@@ -956,12 +966,12 @@ async def main():
           const md = x => `${x.getMonth() + 1}/${x.getDate()}`;
           await c.doc('ta').set({ cell: 'f2-c2', text: 'TA', deps: [], done: false, who: '', url: '', at: 1 });
           await c.doc('tb').set({ cell: 'f2-c2', text: 'TB', deps: [], done: true, who: '', url: '', at: 2 });
-          await c.doc('mx').set({ cell: 'f1-c1', text: md(d) + ' · M1 Хоцорсон', deps: ['ta'], done: false, who: '', url: '', at: 3 });
-          await c.doc('my').set({ cell: 'f1-c1', text: md(e) + ' · M2 Хожмын', deps: ['tb'], done: false, who: '', url: '', at: 4 }); })()""")
+          await c.doc('mx').set({ cell: 'f1-c1', text: md(d) + ' · M1 Late one', deps: ['ta'], done: false, who: '', url: '', at: 3 });
+          await c.doc('my').set({ cell: 'f1-c1', text: md(e) + ' · M2 Later one', deps: ['tb'], done: false, who: '', url: '', at: 4 }); })()""")
         await a.evaluate("G.group = 'all'; openKey('f1-c0')")
         await a.wait_for_timeout(500)
         sm = await a.inner_text(".flow-sum")
-        check("a late milestone with nothing done reads as behind, not on plan", "Хоцорч" in sm and "1 шалгуур хэтэрсэн" in sm, sm.replace("\n", " | "))
+        check("a late milestone with nothing done reads as behind, not on plan", "Behind" in sm and "1 milestone late" in sm, sm.replace("\n", " | "))
         # Time: a phone that went away still counts up to when it left; a stale leftAt is not away time.
         t = await a.evaluate("""(() => { const now = Date.now(), day = dayKey(now);
           const phone = { days: {}, openSince: now - 3 * 3600000, leftAt: now - 2 * 3600000, openCell: 'home' }, laptop = { days: {}, openSince: now - 90 * 60000, leftAt: null, openCell: 'home' };
@@ -972,14 +982,14 @@ async def main():
         # Import: a teammate's newer side name is not overwritten by an older backup.
         await a.click("#back")
         await a.wait_for_timeout(300)
-        old = '{"app":"cubic","faces":[{"id":"f0","title":"Pilots (хуучин нөөц)","cells":["A","B","C","D"],"editedAt":1000}]}'
+        old = '{"app":"cubic","faces":[{"id":"f0","title":"Pilots (old backup)","cells":["A","B","C","D"],"editedAt":1000}]}'
         await open_data(a)
         await a.fill("#importText", old)
         await a.click("#importCheck")
         await a.wait_for_timeout(200)
         await b.evaluate("renameFace(0, 'Pilots · Anand')")
         await b.wait_for_timeout(300)
-        await a.click("#importPlan .btn >> text=Оруулах")
+        await a.click("#importPlan .btn >> text=Import (")
         await a.wait_for_timeout(400)
         check("import does not overwrite a teammate's newer rename", await a.evaluate("S.faces[0].title") == "Pilots · Anand")
         await close_sheet(a)
@@ -994,15 +1004,15 @@ async def main():
         await login(o, "Obama")
         await a.evaluate("openKey('f2-c2')")
         await a.wait_for_timeout(200)
-        await a.fill("#newText", "Шилжүүлэх ажил")
+        await a.fill("#newText", "A to-do to hand off")
         await a.press("#newText", "Enter")
         await a.wait_for_timeout(300)
-        hid = await a.evaluate("[...S.items.values()].find(i => i.text === 'Шилжүүлэх ажил').id")
+        hid = await a.evaluate("[...S.items.values()].find(i => i.text === 'A to-do to hand off').id")
         await a.click(f"#items .who[data-fkey='w:{hid}']")
         await a.wait_for_timeout(250)
         cands = await a.evaluate("[...document.querySelectorAll('#handBody .cand')].map(c => ({ who: c.dataset.who, best: c.classList.contains('best'), text: c.textContent }))")
-        check("the owner sheet suggests whom to ask and says why", len(cands) == 2 and cands[0]["who"] == "anand" and cands[0]["best"] and "Санал болгож буй" in cands[0]["text"] and "чиглэл" in cands[0]["text"] and "нээлттэй" in cands[0]["text"], str(cands)[:200])
-        await a.fill("#handBody input", "SpotOn эрх надад алга")
+        check("the owner sheet suggests whom to ask and says why", len(cands) == 2 and cands[0]["who"] == "anand" and cands[0]["best"] and "Suggested" in cands[0]["text"] and "fits their role" in cands[0]["text"] and "open" in cands[0]["text"], str(cands)[:200])
+        await a.fill("#handBody input", "I have no SpotOn access")
         await a.click("#handBody .cand[data-who='anand']")
         await a.wait_for_timeout(400)
         check("a request goes out; the owner stays Vida until Anand answers", await a.evaluate(f"S.items.get('{hid}').who") == "vida" and await a.evaluate(f"askOf(S.items.get('{hid}')).to") == "anand" and "Anand" in await a.inner_text(f"#items .flow-tag.ask-out"))
@@ -1012,7 +1022,7 @@ async def main():
         await b.click("#bellBtn")
         await b.wait_for_timeout(300)
         fy = await b.inner_text("#forYou")
-        check("the one asked sees it under For you, with the note and Accept / Decline", bb == 1 and "Шилжүүлэх ажил" in fy and "SpotOn эрх надад алга" in fy and await b.locator("#forYou .mini").count() == 2, fy[:160])
+        check("the one asked sees it under For you, with the note and Accept / Decline", bb == 1 and "A to-do to hand off" in fy and "I have no SpotOn access" in fy and await b.locator("#forYou .mini").count() == 2, fy[:160])
         await b.click("#forYou .mini.ghost")
         await b.wait_for_timeout(400)
         it = await b.evaluate(f"S.items.get('{hid}')")
@@ -1023,7 +1033,7 @@ async def main():
         await a.wait_for_timeout(250)
         sheet = await a.inner_text("#handBody")
         best = await a.evaluate("(document.querySelector('#handBody .cand.best') || {}).dataset?.who")
-        check("after a no, the asker sees it and the next suggestion is the other person", "Anand татгалзсан" in sheet and best == "obama", f"{best} {sheet[:120]}")
+        check("after a no, the asker sees it and the next suggestion is the other person", "Anand declined" in sheet and best == "obama", f"{best} {sheet[:120]}")
         await a.click("#handBody .cand[data-who='obama']")
         await a.wait_for_timeout(400)
         await o.evaluate(f"openKey('f2-c2')")
@@ -1033,10 +1043,10 @@ async def main():
         await a.wait_for_timeout(300)
         await a.click(f"#items .who[data-fkey='w:{hid}']")
         await a.wait_for_timeout(250)
-        check("when both decline, the page says so and offers to decide in chat", "Хоёулаа татгалзсан" in await a.inner_text("#handBody") and await a.locator("#handBody .btn >> text=Чатаар шийдэх").count() == 1)
-        await a.click("#handBody .btn >> text=Чатаар шийдэх")
+        check("when both decline, the page says so and offers to decide in chat", "Both declined" in await a.inner_text("#handBody") and await a.locator("#handBody .btn >> text=Decide in chat").count() == 1)
+        await a.click("#handBody .btn >> text=Decide in chat")
         await a.wait_for_timeout(300)
-        check("deciding in chat opens the chat with the question written", await a.evaluate("S.sheet") == "chatSheet" and "Шилжүүлэх ажил" in await a.input_value("#chatText"))
+        check("deciding in chat opens the chat with the question written", await a.evaluate("S.sheet") == "chatSheet" and "A to-do to hand off" in await a.input_value("#chatText"))
         await a.fill("#chatText", "")
         await close_sheet(a)
         await a.evaluate(f"keepIt('{hid}').then(() => askHand('{hid}', 'anand', ''))")
@@ -1047,12 +1057,12 @@ async def main():
         await b.wait_for_timeout(400)
         it = await a.evaluate(f"S.items.get('{hid}')")
         check("accepting from the row makes Anand the owner and clears the request", it["who"] == "anand" and not it.get("ask") and not it.get("nope") and not it.get("declined"), str(it)[:160])
-        check("the asker is told who took it", "хүлээн авав" in await a.evaluate(f"updLine(S.items.get('{hid}'))"))
+        check("the asker is told who took it", "took" in await a.evaluate(f"updLine(S.items.get('{hid}'))"))
         # A request with no answer for 12 hours offers the other person.
-        await a.fill("#newText", "Хариугүй ажил")
+        await a.fill("#newText", "A to-do with no answer")
         await a.press("#newText", "Enter")
         await a.wait_for_timeout(300)
-        sid = await a.evaluate("[...S.items.values()].find(i => i.text === 'Хариугүй ажил').id")
+        sid = await a.evaluate("[...S.items.values()].find(i => i.text === 'A to-do with no answer').id")
         await a.evaluate(f"askHand('{sid}', 'anand', '')")
         await a.wait_for_timeout(300)
         await a.evaluate(f"(() => {{ const i = S.items.get('{sid}'); return S.db.doc('items/{sid}').update({{ ask: {{ ...i.ask, at: Date.now() - 13 * 3600000 }} }}); }})()")
@@ -1060,22 +1070,22 @@ async def main():
         tag = await a.inner_text(f"#items .flow-tag.ask-out")
         await a.click(f"#items .who[data-fkey='w:{sid}']")
         await a.wait_for_timeout(250)
-        check("a request with no answer for 12 hours says so and offers the other person", "13 цаг хариугүй" in tag and await a.locator("#handBody .btn >> text=Оронд нь хүсэх: Obama").count() == 1, tag)
+        check("a request with no answer for 12 hours says so and offers the other person", "no answer for 13 h" in tag and await a.locator("#handBody .btn >> text=Ask Obama").count() == 1, tag)
         await close_sheet(a)
         # Do next: my to-dos that can start now, the nearest milestone first, then what unblocks more.
         order = await a.evaluate("""(async () => { const c = S.db.collection('items'), md = d => { const x = new Date(Date.now() + d * 86400000); return `${x.getMonth() + 1}/${x.getDate()}`; };
-          await c.doc('dn1').set({ cell: 'f2-c2', text: 'DN хожуу', deps: [], done: false, who: 'vida', url: '', at: 10 });
-          await c.doc('dn2').set({ cell: 'f2-c2', text: 'DN ойр', deps: [], done: false, who: 'vida', url: '', at: 11 });
-          await c.doc('dn3').set({ cell: 'f2-c2', text: 'DN нээдэг', deps: [], done: false, who: 'vida', url: '', at: 12 });
-          await c.doc('dn4').set({ cell: 'f2-c2', text: 'DN дараах', deps: ['dn3'], done: false, who: 'anand', url: '', at: 13 });
-          await c.doc('dm1').set({ cell: 'f1-c1', text: md(3) + ' · M7 Ойр', deps: ['dn2'], done: false, who: '', url: '', at: 14 });
-          await c.doc('dm2').set({ cell: 'f1-c1', text: md(30) + ' · M8 Хожуу', deps: ['dn1'], done: false, who: '', url: '', at: 15 });
+          await c.doc('dn1').set({ cell: 'f2-c2', text: 'DN later', deps: [], done: false, who: 'vida', url: '', at: 10 });
+          await c.doc('dn2').set({ cell: 'f2-c2', text: 'DN near', deps: [], done: false, who: 'vida', url: '', at: 11 });
+          await c.doc('dn3').set({ cell: 'f2-c2', text: 'DN unblocks', deps: [], done: false, who: 'vida', url: '', at: 12 });
+          await c.doc('dn4').set({ cell: 'f2-c2', text: 'DN after', deps: ['dn3'], done: false, who: 'anand', url: '', at: 13 });
+          await c.doc('dm1').set({ cell: 'f1-c1', text: md(3) + ' · M7 Near', deps: ['dn2'], done: false, who: '', url: '', at: 14 });
+          await c.doc('dm2').set({ cell: 'f1-c1', text: md(30) + ' · M8 Later', deps: ['dn1'], done: false, who: '', url: '', at: 15 });
           await new Promise(r => setTimeout(r, 300));
           return doNext(10).map(x => x.i.text).filter(t => t.startsWith('DN')); })()""")
-        check("Do next puts the nearest milestone first, then what unblocks the most", order[:3] == ["DN ойр", "DN хожуу", "DN нээдэг"] or order[:3] == ["DN ойр", "DN хожуу", "DN нээдэг"], str(order))
+        check("Do next puts the nearest milestone first, then what unblocks the most", order[:3] == ["DN near", "DN later", "DN unblocks"], str(order))
         await a.click("#bellBtn")
         await a.wait_for_timeout(300)
-        check("For you lists Do next with the reason in words", "DN ойр" in await a.inner_text("#forYou") and "M7" in await a.inner_text("#forYou"))
+        check("For you lists Do next with the reason in words", "DN near" in await a.inner_text("#forYou") and "M7" in await a.inner_text("#forYou"))
         await close_sheet(a)
         await o.close()
         # A refused update on a to-do that still exists turns the page read-only (not only a refused set).
@@ -1088,7 +1098,7 @@ async def main():
         some = await r.evaluate("[...S.items.keys()][0]")
         await r.evaluate(f"patchItem('{some}', {{ done: true }})")
         await r.wait_for_timeout(400)
-        check("a refused update on a to-do that exists turns the page read-only", await r.evaluate("S.canWrite") is False and "зөвхөн унших" in await r.inner_text("#notice"))
+        check("a refused update on a to-do that exists turns the page read-only", await r.evaluate("S.canWrite") is False and "only read" in await r.inner_text("#notice"))
         await r.close()
         if SHOTS:
             await a.set_viewport_size({"width": 390, "height": 844})

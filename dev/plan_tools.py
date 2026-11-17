@@ -15,7 +15,7 @@ first comes first. "check" is optional; each key in it is compared and the scrip
 plan disagrees (layers of the tasks, length of the critical path in days, number of "after"
 links already implied by others).
 
-OUT.json is a normal CUBIC export: import it from "Өгөгдөл" › "Оруулах". Import adds or updates,
+OUT.json is a normal CUBIC export: import it from "Data" › "Import". Import adds or updates,
 never deletes, so importing it twice changes nothing. Each to-do gets a timestamp that falls with
 its place in the build order, so every space lists its tasks top to bottom in build order.
 

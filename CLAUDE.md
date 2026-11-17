@@ -7,10 +7,11 @@ file: no build step, no framework, no dependencies beyond the two Google Fonts.
 
 - Slug: `e702c5a1-64a8-4f1c-9d1b-7dfb135f1869`
 - URL: https://claude.ai/artifact/VXX9JmKG23SPdy8pm1ZMSp
-- Declared capabilities: `{"db": {}, "user": {"scopes": ["profile"]}, "downloads": true, "sample": {}}`
-  (`downloads` lets "JSON татах" save a backup file; on a phone the share sheet
-  offers Proton Drive. `sample` lets "Translate" ask the viewer's own Claude for
-  English versions of to-dos. Pass the whole set when publishing.)
+- Declared capabilities: `{"db": {}, "user": {"scopes": ["profile"]}, "downloads": true}`
+  (`downloads` lets "Save JSON" save a backup file; on a phone the share sheet
+  offers Proton Drive. Pass the whole set when publishing. Version 8 still
+  declares `sample`, from the Translate button that is gone; the next publish
+  drops it.)
 - Collections: `faces`, `items`, `people`, `clock`, `chat` (messages:
   `{by: account id, text, at}`), `team` (`team/<vida|anand|obama>`: `{city, tz}`
   for the world clock), `seen` (`seen/<account id>`: when that person last
@@ -26,7 +27,7 @@ a second artifact for the same workspace: the team's data is tied to this one.
 - Vercel serves the same `index.html` as a static site. Without
   `window.claude` the page uses `localStore()`: data stays in that browser,
   and the page says so. The artifact remains the team's shared copy.
-- Moving data between them is the "Өгөгдөл" export/import. Import only adds
+- Moving data between them is the "Data" export/import. Import only adds
   or updates newer records; it never deletes.
 
 ## Working from a phone
@@ -83,15 +84,15 @@ The team works mostly from phones, through Claude sessions on this repository.
   and outlines, `--accent-fill` for filled buttons (white text must pass 4.5:1).
   The theme button stores a per-viewer choice; with none, the phone decides.
   The timeline HUD (`--hud-*`) is a dark screen in both themes.
-- **Two languages.** Screen text is Mongolian by default with an МН/EN toggle.
-  Every string on screen goes through `tr(key, ...)` with entries in both
-  `L.mn` and `L.en`; static markup uses `data-t`, `data-t-ph`, `data-t-al`,
+- **English only.** Every string on screen goes through `tr(key, ...)` with an
+  entry in `L.en`; static markup uses `data-t`, `data-t-ph`, `data-t-al`,
   `data-t-ti`. Never hard-code screen text. Side and space names are the team's
-  own words (only untouched default names are translated). A to-do's text is
-  never changed by a translation: it may carry an English version (`en`, made
-  from `enSrc`), shown in English only while `enSrc` still equals `text`
-  (`txt(i)`, `hasEn(i)`). Editing in English edits `en`. "Translate" asks the
-  viewer's Claude through `sample` and writes `en`/`enSrc` with `patchItem`.
+  own words. Older to-dos were written in Mongolian and may carry an English
+  version (`en`, made from `enSrc`): the page shows it while `enSrc` still
+  equals `text` (`txt(i)`, `hasEn(i)`). Saving an edit of such a to-do writes
+  the English as its `text` and clears `en`/`enSrc`. The checks fail on any
+  Mongolian letter in the page source (apart from the pattern that reads an old
+  `М1` milestone tag) or on screen.
 - **Plain words on screen.** No jargon, and never a status the page cannot
   back up.
 
@@ -103,12 +104,12 @@ strings, so routing uses `#f2` and `#f2-c1`.
 
 ## The phone screen
 
-- Home is the top bar (wordmark, МН/EN, bell, chat, the person) and the cube.
+- Home is the top bar (wordmark, bell, chat, the person) and the cube.
   Nothing else: the timer, search, "All spaces", the team with its world
   clock, data and backup, and the theme live in the menu (the person button).
 - The login page (`showLogin`) asks which of the three this account is, once.
   It is not a password: the Claude account (or this browser, off Claude) is
-  the identity. "Хүн солих" in the menu brings it back.
+  the identity. "Switch person" in the menu brings it back.
 - Sheets (`openSheet`/`closeSheets`) make the page under them inert; Escape
   closes them. Only one is open at a time.
 
@@ -135,7 +136,7 @@ strings, so routing uses `#f2` and `#f2-c1`.
 - A space is a plain to-do list: short lines, tick, owner, swipe to delete.
   No due dates, priorities or required fields.
 - Sides: Pilots, Plan, Technology, Marketing, Business & Finance, Branding
-  (`DEFAULT_FACES`). Side and space names are English; to-do text is Mongolian.
+  (`DEFAULT_FACES`). Side names, space names and to-do text are English.
 - A to-do may wait for others: `deps` is a list of item ids. Status is always
   derived by `flow()` (done / blocked / blocking / open), never stored.
   `wouldLoop()` must guard every place that adds a dependency (the editor at
@@ -149,8 +150,7 @@ strings, so routing uses `#f2` and `#f2-c1`.
   date the Timeline sorts by. Milestone nodes and Milestones rows carry the
   date state and progress (`milestoneData`).
 - Status is written in words and a mark, never by colour alone.
-- Screen text is Mongolian first (English on the toggle); seeded content is
-  Mongolian. Keep lines short in both.
+- Screen text and seeded content are English. Keep lines short.
 - The graph screen is dark with neon in both themes (`--hud-*`), zooms, and
   opens full screen. Its bar says what is done and whether the plan is on time
   (due by today = what the milestones dated today or earlier need). Nothing
