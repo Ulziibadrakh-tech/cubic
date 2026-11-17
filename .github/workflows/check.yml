@@ -1,0 +1,41 @@
+# Runs on every push and pull request: the plan tool on the neutral example plan, then the
+# phone-sized browser check of the page (tests/check_flow.py) against dev/serve.py.
+name: check
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  page:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Playwright and Chromium
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install playwright==1.48.0
+          python -m playwright install --with-deps chromium
+      - name: Plan tool (topological sort) on the example plan
+        run: python dev/plan_tools.py tests/fixtures/plan-shape.json
+      - name: Start the local server
+        run: |
+          python dev/serve.py > serve.log 2>&1 &
+          for i in $(seq 1 30); do curl -fs http://127.0.0.1:8800/ > /dev/null && exit 0; sleep 1; done
+          cat serve.log; exit 1
+      - name: Browser check
+        run: python tests/check_flow.py - shots
+      - name: Keep the phone screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phone-shots
+          path: shots/
+          if-no-files-found: ignore

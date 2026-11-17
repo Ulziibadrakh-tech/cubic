@@ -30,7 +30,8 @@ The team works mostly from phones, through Claude sessions on this repository.
 
 - Work on a branch and open a pull request; say what changed and how it was
   checked. Run `tests/check_flow.py` in the session before opening the PR and
-  paste its last line into the PR; there is no CI yet.
+  paste its last line into the PR. CI (`.github/workflows/check.yml`) runs the
+  same check on every push.
 - Merging to `main` redeploys the Vercel copy by itself. The Claude artifact
   (the team's shared data) is separate: republish `index.html` to it after the
   merge, as described above.
@@ -46,11 +47,18 @@ The team works mostly from phones, through Claude sessions on this repository.
 
 ## Rules the page must keep
 
+- **Plans are private.** This repository and the Vercel site are public. A
+  team's real plan goes into the artifact's database (or `data/`, ignored by
+  git and Vercel), never into a tracked file, a screenshot or a PR text.
 - **Data is the team's.** Never hardcode entries in the page. Never delete or
   rewrite `items` or `clock` documents unless the user asks for that exact
   change. Read with `db_list` before any `db_write`, and pass `ifVersion`.
-- **No silent loss.** Every write goes through `save()` or `writeClock()`. A
-  failed save keeps the person's text on screen and says so.
+- **No silent loss.** Every write goes through `save()` or `writeClock()`, and
+  each one through `dbWrite()` (one write at a time per document, one retry on
+  `unavailable`). A failed save keeps the person's text on screen and says so.
+  Changing a to-do is `patchItem()`, a merge of the changed fields, never a
+  rewrite of the cached document. No write before the data has loaded
+  (`canWriteNow()`), and no clock write before that person's clock has loaded.
 - **Subscribe once.** `onSnapshot` is called once per collection in
   `connect()`. Never from a render function.
 - **No writes on a tick.** The timer writes only on a change of state (start,
@@ -63,7 +71,15 @@ The team works mostly from phones, through Claude sessions on this repository.
 - **Works without the cube.** Every space stays reachable from "All spaces",
   by keyboard, and with reduced motion.
 - **Both themes.** Colors come from the tokens in `:root`; the dark values are
-  defined twice (media query and `[data-theme="dark"]`).
+  defined twice (media query and `[data-theme="dark"]`). `--accent` is for text
+  and outlines, `--accent-fill` for filled buttons (white text must pass 4.5:1).
+  The theme button stores a per-viewer choice; with none, the phone decides.
+  The timeline HUD (`--hud-*`) is a dark screen in both themes.
+- **Two languages.** Screen text is Mongolian by default with an МН/EN toggle.
+  Every string on screen goes through `tr(key, ...)` with entries in both
+  `L.mn` and `L.en`; static markup uses `data-t`, `data-t-ph`, `data-t-al`,
+  `data-t-ti`. Never hard-code screen text. To-do text and the team's own side
+  and space names are never translated (only untouched default names are).
 - **Plain words on screen.** No jargon, and never a status the page cannot
   back up.
 
@@ -75,19 +91,29 @@ strings, so routing uses `#f2` and `#f2-c1`.
 
 ## Product stance
 
-- Three skilled people: Vida, Anand, Obama (`TEAM` in `index.html`).
+- Three skilled people (`TEAM` in `index.html`): Vida and Anand build the
+  technology, Anand as forward deployed engineer with the restaurants; Obama
+  runs business, marketing and branding. A new to-do starts with its side's
+  owner (`SIDE_OWNER`: Pilots → Anand, Technology → Vida, Marketing, Business &
+  Finance and Branding → Obama, Plan → nobody); one tap changes it.
 - A space is a plain to-do list: short lines, tick, owner, swipe to delete.
   No due dates, priorities or required fields.
 - Sides: Pilots, Plan, Technology, Marketing, Business & Finance, Branding
   (`DEFAULT_FACES`). Side and space names are English; to-do text is Mongolian.
 - A to-do may wait for others: `deps` is a list of item ids. Status is always
   derived by `flow()` (done / blocked / blocking / open), never stored.
-  `wouldLoop()` must guard every place that adds a dependency.
+  `wouldLoop()` must guard every place that adds a dependency (the editor at
+  save time, import through `dropImportLoops()`). `plan()` is the topological
+  sort (Kahn): build order, layers, loops, separate plans, implied links.
 - Two Plan spaces are views, not lists (`isViewCell`): `f1-c0` Timeline and
   `f1-c3` Dependency graph. Milestones are the to-dos in `f1-c1`; a leading
   `MM/DD` in the text is the date the Timeline sorts by.
 - Status is written in words and a mark, never by colour alone.
-- Screen text and seeded content are Mongolian. Keep lines short.
+- Screen text is Mongolian first (English on the toggle); seeded content is
+  Mongolian. Keep lines short in both.
+- Timeline and Milestones draw an SVG chart: planned tasks by milestone date,
+  today, and what is done now. Nothing stores when a to-do was ticked, so the
+  chart never invents a history; status is also written in words.
 - The cube should feel physical: free drag, momentum, a soft settle. Do not
   replace it with fixed step animations.
 - Time is shown per person and per space, never as a ranking.
