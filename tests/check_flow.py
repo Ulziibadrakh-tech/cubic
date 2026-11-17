@@ -13,7 +13,7 @@ from pathlib import Path
 
 from playwright.async_api import async_playwright
 
-BASE = "http://127.0.0.1:8800"
+BASE = __import__("os").environ.get("CUBIC_BASE", "http://127.0.0.1:8800")
 CHROME = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] not in ("", "-") else None   # "-" keeps Playwright's own
 SHOTS = sys.argv[2] if len(sys.argv) > 2 else None
 ROOT = Path(__file__).resolve().parent.parent
@@ -288,6 +288,7 @@ async def main():
     async with async_playwright() as p2:
         b2 = await p2.chromium.launch(executable_path=CHROME, args=["--no-sandbox"])
         ctx4 = await b2.new_context(viewport={"width": 390, "height": 844})
+        await ctx4.add_init_script("window.__csp = []; document.addEventListener('securitypolicyviolation', e => window.__csp.push(e.violatedDirective + ' ' + e.blockedURI));")
         pg4 = await ctx4.new_page()
         pg4.on("pageerror", lambda e: errors.append(str(e)))
         await pg4.goto(f"{BASE}/?bare=1")
@@ -351,6 +352,7 @@ async def main():
         await pg4.evaluate("""S.db.doc('items/tp-01').set({ ...S.items.get('tp-01'), id: undefined, deps: ['tp-39'] })""")
         await pg4.goto(f"{BASE}/?bare=1#f1-c3")
         await pg4.wait_for_timeout(600)
+        check("the Vercel security headers block nothing the page uses", await pg4.evaluate("window.__csp.length") == 0, str(await pg4.evaluate("window.__csp")))
         check("a loop made outside the editor is named on the graph", "тойрог" in (await pg4.inner_text("#planView")).lower() and await pg4.locator(".gnode.loop").count() >= 2)
         if SHOTS:
             await pg4.evaluate("S.db.doc('items/tp-01').set({ ...S.items.get('tp-01'), id: undefined, deps: [] })")
@@ -361,6 +363,166 @@ async def main():
             await pg4.wait_for_timeout(600)
             await pg4.screenshot(path=f"{SHOTS}/plan_timeline.png")
         await b2.close()
+
+    # Data and time: fixes that must not come back.
+    async with async_playwright() as p3:
+        b3 = await p3.chromium.launch(executable_path=CHROME, args=["--no-sandbox"])
+        pg5 = await (await b3.new_context(viewport={"width": 390, "height": 844})).new_page()
+        pg5.on("pageerror", lambda e: errors.append(str(e)))
+        await pg5.goto(f"{BASE}/?reset=1&as=fixes#f2-c1")
+        await pg5.wait_for_timeout(700)
+        await pg5.click("#whoBox .btn >> text=Anand")
+        await pg5.fill("#newText", "Нэг мөр")
+        await pg5.press("#newText", "Enter")
+        await pg5.wait_for_timeout(300)
+        iid = await pg5.evaluate("[...S.items.keys()][0]")
+        # A teammate's change that this page has not seen yet is kept when this page ticks the row.
+        await pg5.evaluate(f"S.db.doc('items/{iid}').update({{ text: 'Нөгөө хүний засвар' }})")
+        await pg5.wait_for_timeout(200)
+        await pg5.evaluate(f"S.items.get('{iid}').text = 'Нэг мөр'")      # this page's copy is now behind
+        await pg5.evaluate(f"patchItem('{iid}', {{ done: true }})")
+        await pg5.wait_for_timeout(300)
+        stored = await pg5.evaluate(f"JSON.parse(localStorage.getItem('cubic-dev-db'))['items/{iid}']")
+        check("ticking a row keeps a teammate's unseen edit (merge, not overwrite)", stored["done"] is True and stored["text"] == "Нөгөө хүний засвар", str(stored)[:120])
+        # Pasted lines land in the space they were pasted in, even after moving on.
+        await pg5.evaluate("""(async () => { const p = addLines(['A мөр', 'B мөр', 'C мөр'], 'f2-c1'); S.cell = 'f3-c0'; await p; S.cell = 'f2-c1'; })()""")
+        await pg5.wait_for_timeout(400)
+        check("pasted lines stay in their space when the person moves on", await pg5.evaluate("[...S.items.values()].filter(i => /^[ABC] мөр$/.test(i.text) && i.cell === 'f2-c1').length") == 3)
+        # The clock: never written before it has loaded, pause kept on return, midnight split, away time not shown.
+        check("the clock is not written before it has loaded", await pg5.evaluate("(async () => { S.clockReady = false; const r = await startClock(); S.clockReady = true; return r; })()") is False)
+        await pg5.evaluate("pauseClock()")
+        await pg5.wait_for_timeout(200)
+        await pg5.evaluate("reconcileClock(false)")
+        await pg5.wait_for_timeout(300)
+        check("a chosen pause survives coming back to the page", await pg5.evaluate("!myClock().openSince && myClock().paused === true") and await pg5.inner_text("#clockBtn") == "Эхлүүлэх")
+        split = await pg5.evaluate("""(() => { const m = new Date(2026, 10, 18).getTime(); const c = { days: {}, openSince: m - 3600000, openCell: 'home' };
+          const live = [liveMs({ ...c, leftAt: m + 1800000 }, '2026-11-17'), liveMs({ ...c, leftAt: m + 1800000 }, '2026-11-18')];
+          closeStretch(c, m + 1800000); return { live, d17: c.days['2026-11-17'].ms, d18: c.days['2026-11-18'].ms }; })()""")
+        check("a stretch across midnight is split between the two days", split["d17"] == 3600000 and split["d18"] == 1800000 and split["live"] == [3600000, 1800000], str(split))
+        away = await pg5.evaluate("(() => { const c = { days: {}, openSince: Date.now() - 3600000, leftAt: Date.now() - 1800000, openCell: 'home' }; return liveMs(c, dayKey(Date.now())); })()")
+        check("time after leaving is not shown until it is confirmed", abs(away - 1800000) < 5000, str(away))
+        # An edit left open in the hidden view does not hold back redraws of the view on screen.
+        await pg5.goto(f"{BASE}/?as=fixes#f0")
+        await pg5.wait_for_timeout(600)
+        await pg5.click("#renameFace")
+        await pg5.evaluate("openKey('f2-c1')")
+        await pg5.wait_for_timeout(300)
+        await pg5.fill("#newText", "Харагдах ёстой мөр")
+        await pg5.press("#newText", "Enter")
+        await pg5.wait_for_timeout(500)
+        check("a new to-do shows even with an edit open on the other view", "Харагдах ёстой мөр" in await pg5.inner_text("#items"))
+        # Import never puts to-dos where nobody can see them, and a CSV round trip keeps dependencies.
+        n0 = await pg5.evaluate("S.items.size")
+        await pg5.goto(f"{BASE}/?as=fixes#f0")
+        await pg5.wait_for_timeout(500)
+        await pg5.fill("#importText", "id,cell,text\nv1,f1-c0,view row\nv2,f1-c3,graph row\nv3,f2-c2,real row\n")
+        await pg5.click("#importCheck")
+        await pg5.wait_for_timeout(200)
+        plan_txt = await pg5.inner_text("#importPlan")
+        check("import skips rows aimed at view spaces and says so", "Алгасах мөр" in plan_txt and "2" in plan_txt, plan_txt.replace("\n", " "))
+        await pg5.click("#importPlan .btn >> text=Оруулах")
+        await pg5.wait_for_timeout(400)
+        await pg5.evaluate("""(async () => { await S.db.doc('items/d1').set({ cell: 'f2-c2', text: 'd1', deps: [], done: false, who: '', url: '', at: 1 });
+          await S.db.doc('items/d2').set({ cell: 'f2-c2', text: 'd2', deps: ['d1'], done: false, who: '', url: '', at: 2, editedAt: 5 }); })()""")
+        await pg5.wait_for_timeout(300)
+        csv = await pg5.evaluate("exportCsv()")
+        newer = csv.replace(",d2,", ",d2 засвар,").replace(",5,d1", ",9999999999999,d1")
+        await pg5.fill("#importText", newer)
+        await pg5.click("#importCheck")
+        await pg5.wait_for_timeout(200)
+        await pg5.click("#importPlan .btn >> text=Оруулах")
+        await pg5.wait_for_timeout(400)
+        check("a CSV round trip keeps a to-do's dependencies", await pg5.evaluate("JSON.stringify(S.items.get('d2').deps)") == '["d1"]' and await pg5.evaluate("S.items.get('d2').text") == "d2 засвар")
+        older = "id,cell,text,editedAt\nd2,f2-c2,d2 хуучин CSV,99999999999999\n"
+        await pg5.fill("#importText", older)
+        await pg5.click("#importCheck")
+        await pg5.wait_for_timeout(200)
+        await pg5.click("#importPlan .btn >> text=Оруулах")
+        await pg5.wait_for_timeout(400)
+        check("a CSV without a deps column leaves dependencies alone", await pg5.evaluate("JSON.stringify(S.items.get('d2').deps)") == '["d1"]')
+        # Saving an edit applies only what it changed to the dependencies.
+        await pg5.goto(f"{BASE}/?as=fixes#f2-c2")
+        await pg5.wait_for_timeout(500)
+        await pg5.click("#items .item-text >> text=d1")
+        await pg5.evaluate("S.db.doc('items/d1').update({ deps: ['v3'] })")    # someone else adds a need meanwhile
+        await pg5.wait_for_timeout(200)
+        await pg5.fill("#area .edit-row input", "d1 шинэ")
+        await pg5.click("#area .edit-row .btn >> text=Хадгалах")
+        await pg5.wait_for_timeout(300)
+        check("saving an edit keeps a need someone else added meanwhile", "v3" in await pg5.evaluate("JSON.stringify(S.items.get('d1').deps)"))
+        # Keyboard focus stays on the checkbox after ticking.
+        await pg5.focus("#items input[type=checkbox] >> nth=0")
+        await pg5.keyboard.press("Space")
+        await pg5.wait_for_timeout(400)
+        check("focus stays on the checkbox after ticking by keyboard", await pg5.evaluate("document.activeElement && document.activeElement.type === 'checkbox'"))
+        # Dates: MM/DD only, an explicit year is used.
+        dates = await pg5.evaluate("[milestoneDate('1.5 хоног'), milestoneDate('06/30/2027 x') && milestoneDate('06/30/2027 x').getFullYear(), milestoneDate('11/20 · M1') && milestoneDate('11/20 · M1').getDate()]")
+        check("a milestone date is MM/DD, with a written year kept", dates == [None, 2027, 20], str(dates))
+        # The phone's back gesture returns from a space to the cube.
+        await pg5.goto("about:blank")
+        await pg5.goto(f"{BASE}/?as=fixes#f0")
+        await pg5.wait_for_timeout(600)
+        await pg5.evaluate("openKey('f0-c1')")
+        await pg5.wait_for_timeout(300)
+        await pg5.go_back()
+        await pg5.wait_for_timeout(500)
+        check("back from a space returns to the cube, not out of CUBIC", pg5.url.endswith("#f0") and await pg5.locator("#home").is_visible(), pg5.url)
+        # Two taps on «Нэр солих» give one edit box.
+        await pg5.click("#renameFace")
+        await pg5.click("#renameFace")
+        check("tapping rename twice opens one edit box", await pg5.locator("#faceEdit [data-editing]").count() == 1)
+        # Production: fonts never hold the page, keys stay with the page, contrast, read-only, two devices.
+        await pg5.goto(f"{BASE}/?as=fixes#f0")
+        await pg5.wait_for_timeout(600)
+        check("the font stylesheet is switched on by the script, not blocking it", await pg5.evaluate("document.getElementById('fonts').media") == "all")
+        check("nothing reads as empty before the data arrives", await pg5.evaluate("(() => { S.loaded = false; const t = countFor('f0-c0'); S.loaded = true; return t; })()") == "Ачаалж байна…")
+        await pg5.focus("#exportCopy")
+        face0 = await pg5.evaluate("S.face")
+        await pg5.keyboard.press("ArrowDown")
+        await pg5.wait_for_timeout(300)
+        check("arrow keys elsewhere on the page do not turn the cube", await pg5.evaluate("S.face") == face0)
+        await pg5.focus("#scene")
+        await pg5.keyboard.press("ArrowRight")
+        await pg5.wait_for_timeout(700)
+        check("arrow keys turn the cube when it has focus", await pg5.evaluate("S.face") != face0)
+        await pg5.emulate_media(color_scheme="dark")
+        ratio = await pg5.evaluate("""(() => { const lum = c => { const [r, g, b] = c.match(/\\d+(\\.\\d+)?/g).slice(0, 3).map(Number).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+          const cs = getComputedStyle(document.getElementById('exportJson')); const a = lum(cs.color), b = lum(cs.backgroundColor);
+          return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05); })()""")
+        check("primary buttons pass 4.5:1 contrast in the dark theme", ratio >= 4.5, f"{ratio:.2f}")
+        await pg5.emulate_media(color_scheme="light")
+        await b3.close()
+        b4 = await p3.chromium.launch(executable_path=CHROME, args=["--no-sandbox"])
+        ro = await (await b4.new_context(viewport={"width": 390, "height": 844})).new_page()
+        ro.on("pageerror", lambda e: errors.append(str(e)))
+        await ro.goto(f"{BASE}/?refuse=1&as=outsider")
+        await ro.wait_for_timeout(900)
+        if await ro.locator("#whoBox").is_visible():
+            await ro.click("#whoBox .btn >> text=Vida")
+            await ro.wait_for_timeout(400)
+        check("a viewer whose writes are refused gets a read-only page, not endless failures",
+              "зөвхөн унших" in await ro.inner_text("#notice") and not await ro.locator("#whoBox").is_visible() and await ro.evaluate("S.canWrite") is False)
+        # A font request that never answers (weak phone network) does not hold the page.
+        ctxf = await b4.new_context(viewport={"width": 390, "height": 844})
+        await ctxf.route("**/fonts.googleapis.com/**", lambda route: None)
+        stall = await ctxf.new_page()
+        await stall.goto(f"{BASE}/?bare=1", wait_until="commit")
+        await stall.wait_for_timeout(2000)
+        check("a stalled font request does not hold the page", await stall.evaluate("typeof S === 'object' && document.getElementById('cube').children.length === 6"))
+        await ctxf.close()
+        # Same account on two devices: the one in use takes the clock back when the other is hidden.
+        ctxd = await b4.new_context(viewport={"width": 390, "height": 844})
+        dev_a = await ctxd.new_page()
+        await dev_a.goto(f"{BASE}/?reset=1&as=twodev")
+        await dev_a.wait_for_timeout(700)
+        await dev_a.click("#whoBox .btn >> text=Obama")
+        dev_b = await ctxd.new_page()
+        await dev_b.goto(f"{BASE}/?as=twodev")
+        await dev_b.wait_for_timeout(800)
+        await dev_b.evaluate("Object.defineProperty(document, 'hidden', { value: true, configurable: true }); document.dispatchEvent(new Event('visibilitychange'))")
+        await dev_a.wait_for_timeout(800)
+        check("the device in use takes the clock back from one that went hidden", await dev_a.evaluate("!!(myClock() && myClock().openSince && !myClock().leftAt)"))
+        await b4.close()
 
     check("no script errors", not errors, "; ".join(errors[:3]))
     print(f"\n{sum(results)}/{len(results)} checks passed")

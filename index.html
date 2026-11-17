@@ -4,9 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CUBIC Best-shot Workspace</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='3' width='26' height='26' rx='7' fill='%230071E3'/%3E%3Crect x='10' y='10' width='12' height='12' rx='3' fill='%23FFB800'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<link id="fonts" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet" media="print">
 <style>
 /* Apple-like calm with the warmth of an animated film: one column, phone first, grouped
    panels, rounded friendly type, candy colours with soft light on the cube, and motion that
@@ -15,7 +16,7 @@
   --bg: #F5F5F7; --sunk: #FFFFFF;
   --ink: #1D1D1F; --ink-2: #6E6E73;
   --line: #1D1D1F; --hair: #E3E3E8;
-  --accent: #0071E3; --on-accent: #FFFFFF; --warm: #FFB800; --good: #1E8E3E; --bad: #D93025; --away: #B25E00;
+  --accent: #0071E3; --on-accent: #FFFFFF; --warm: #FFB800; --good: #188038; --on-good: #FFFFFF; --bad: #D93025; --away: #B25E00;
   --f0: #FF6B5B; --fi0: #1D1D1F;  --f1: #4DA3FF; --fi1: #0B1B33;  --f2: #FFC93C; --fi2: #1D1D1F;
   --f3: #3CCB97; --fi3: #0B2A1F;  --f4: #A78BFA; --fi4: #1D1D1F;  --f5: #FF8FB1; --fi5: #1D1D1F;
   --p-vida: #0071E3; --p-anand: #D93025; --p-obama: #7B4AE2; --p-ink: #FFFFFF;
@@ -29,10 +30,10 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #000000; --sunk: #1C1C1E; --ink: #F5F5F7; --ink-2: #A1A1A6; --line: #F5F5F7; --hair: #2C2C2E;
-    --accent: #0A84FF; --on-accent: #FFFFFF; --warm: #FFD60A; --good: #32D74B; --bad: #FF453A; --away: #FF9F0A;
+    --accent: #0A84FF; --on-accent: #000000; --warm: #FFD60A; --good: #32D74B; --on-good: #000000; --bad: #FF453A; --away: #FF9F0A;
     --f0: #FF6B5B; --fi0: #1D1D1F;  --f1: #4DA3FF; --fi1: #0B1B33;  --f2: #FFC93C; --fi2: #1D1D1F;
     --f3: #3CCB97; --fi3: #0B2A1F;  --f4: #A78BFA; --fi4: #1D1D1F;  --f5: #FF8FB1; --fi5: #1D1D1F;
-    --p-vida: #0A84FF; --p-anand: #E5352B; --p-obama: #7D5BF0;
+    --p-vida: #0062CC; --p-anand: #C42B22; --p-obama: #6A48E0;
     --glow: color-mix(in srgb, #0A84FF 18%, #000000);
     --shadow: 0 1px 0 rgba(255,255,255,.04), 0 12px 32px rgba(0,0,0,.5);
     color-scheme: dark;
@@ -40,10 +41,10 @@
 }
 :root[data-theme="dark"] {
   --bg: #000000; --sunk: #1C1C1E; --ink: #F5F5F7; --ink-2: #A1A1A6; --line: #F5F5F7; --hair: #2C2C2E;
-  --accent: #0A84FF; --on-accent: #FFFFFF; --warm: #FFD60A; --good: #32D74B; --bad: #FF453A; --away: #FF9F0A;
+  --accent: #0A84FF; --on-accent: #000000; --warm: #FFD60A; --good: #32D74B; --on-good: #000000; --bad: #FF453A; --away: #FF9F0A;
   --f0: #FF6B5B; --fi0: #1D1D1F;  --f1: #4DA3FF; --fi1: #0B1B33;  --f2: #FFC93C; --fi2: #1D1D1F;
   --f3: #3CCB97; --fi3: #0B2A1F;  --f4: #A78BFA; --fi4: #1D1D1F;  --f5: #FF8FB1; --fi5: #1D1D1F;
-  --p-vida: #0A84FF; --p-anand: #E5352B; --p-obama: #7D5BF0;
+  --p-vida: #0062CC; --p-anand: #C42B22; --p-obama: #6A48E0;
   --glow: color-mix(in srgb, #0A84FF 18%, #000000);
   --shadow: 0 1px 0 rgba(255,255,255,.04), 0 12px 32px rgba(0,0,0,.5);
   color-scheme: dark;
@@ -151,8 +152,8 @@ button { cursor: pointer; }
 .icon-btn:hover { background: var(--ink); color: var(--bg); }
 .field { width: 100%; border: var(--rule) solid var(--line); background: var(--bg); border-radius: 0; padding: 10px 12px; font-size: 16px; }
 .field:focus { outline: none; box-shadow: inset 0 0 0 2px var(--accent); border-color: var(--accent); }
-textarea.field { min-height: 120px; resize: vertical; font-size: 13px; font-family: ui-monospace, Consolas, monospace; }
-select.field { padding: 8px 10px; font-size: 14px; }
+textarea.field { min-height: 120px; resize: vertical; font-size: 16px; font-family: ui-monospace, Consolas, monospace; }
+select.field { padding: 8px 10px; font-size: 16px; }
 .edit-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; width: 100%; }
 .edit-row .field { flex: 1 1 200px; }
 .btn { border: var(--rule) solid var(--ink); padding: 9px 16px; font-weight: 700; background: var(--ink); color: var(--bg); }
@@ -271,7 +272,7 @@ select.field { padding: 8px 10px; font-size: 14px; }
 .gnode.s-blocking { border-color: var(--away); box-shadow: 4px 4px 0 var(--away); }
 .gnode.s-open { border-color: var(--ink); }
 .gnode.ms { font-weight: 700; background: var(--ink); color: var(--bg); }
-.gnode.ms.s-done { background: var(--good); color: #fff; }
+.gnode.ms.s-done { background: var(--good); color: var(--on-good); }
 .gnode.dim { opacity: .22; }
 .gnode.picked { outline: 3px solid var(--accent); outline-offset: 2px; }
 .gdetail { display: flex; flex-direction: column; gap: 6px; }
@@ -423,7 +424,7 @@ details.build[open] > summary::after { content: '－'; }
         <ul class="recent" id="resultsList"></ul>
       </section>
       <section class="stage" id="cubeView" aria-label="Шоо">
-        <div class="scene" id="scene"><div class="cube" id="cube"></div></div>
+        <div class="scene" id="scene" tabindex="0" role="group" aria-label="Шоо. Сумаар эргүүлнэ."><div class="cube" id="cube"></div></div>
         <div class="now"><h2 id="faceTitle"></h2><button type="button" class="icon-btn" id="renameFace">Нэр солих</button></div>
         <div class="edit-row" id="faceEdit" hidden style="max-width:420px"></div>
         <p class="hint">Шоог чирж эргүүлнэ. Нүдэн дээр дарж нээнэ.</p>
@@ -542,11 +543,40 @@ const cellNum = (f, c) => num(f * 4 + c + 1);
 
 /* ── Хадгалалтын төлөв: засвар чимээгүй алга болохгүй ── */
 function setSync(state, text) { const s = $('sync'); s.dataset.state = state; s.textContent = text; }
+/* Every write goes through dbWrite(): writes to one document wait in line (the db asks for one at
+   a time), and a passing `unavailable` is retried once after a short pause. */
+const writeLines = new Map();
+function dbWrite(path, op, data) {
+  const run = () => (op === 'delete' ? S.db.doc(path).delete() : S.db.doc(path)[op](data));
+  const once = async () => {
+    try { return await run(); }
+    catch (e) { if (e && e.code === 'unavailable') { await new Promise(res => setTimeout(res, 300 + Math.floor(Math.random() * 500))); return run(); } throw e; }
+  };
+  const next = (writeLines.get(path) || Promise.resolve()).catch(() => {}).then(once);
+  writeLines.set(path, next);
+  next.catch(() => {}).then(() => { if (writeLines.get(path) === next) writeLines.delete(path); });
+  return next;
+}
+const failText = e => (e && e.code === 'quota_exceeded' ? 'Өгөгдлийн сан дүүрсэн тул хадгалагдсангүй.'
+  : e && (e.code === 'revoked' || e.code === 'not_granted') ? 'Хадгалах эрх алга болсон. Хуудсаа дахин нээнэ үү.'
+  : 'Хадгалагдсангүй. Дахин оролдоно уу.');
 async function save(fn) {
   S.pending += 1; setSync('saving', 'Хадгалж байна…');
-  try { await fn(); S.pending -= 1; if (!S.pending) setSync('saved', 'Хадгаллаа'); return true; }
-  catch (e) { S.pending -= 1; setSync('failed', 'Хадгалагдсангүй. Дахин оролдоно уу.'); return false; }
+  try { await fn(); S.pending -= 1; S.wroteOnce = true; if (!S.pending) setSync('saved', 'Хадгаллаа'); return true; }
+  catch (e) { S.pending -= 1; if (refusedWrite(e)) setSync('', ''); else setSync('failed', failText(e)); return false; }
 }
+/* When the host does not say whether this viewer may write (can() is null), the first refused write
+   says it: the page turns read-only instead of failing on every tap. */
+function refusedWrite(e) {
+  if (!e || e.code !== 'invalid_argument' || S.canSaid === true || S.wroteOnce || !S.canWrite) return false;
+  S.canWrite = false; S.sticky = true;
+  $('whoBox').hidden = true; $('awayBox').hidden = true;
+  notice('Та зөвхөн унших эрхтэй. Эзэмшигчээс Contributor эрх хүсээрэй.');
+  initData(); renderAll(); renderClock();
+  return true;
+}
+/* Writes wait until the shared data has arrived, so nothing is written over what is not yet seen. */
+const canWriteNow = () => !!(S.canWrite && S.db && S.loaded);
 function notice(text) { const n = $('notice'); n.hidden = !text; n.textContent = text || ''; }
 let undoTimer = null;
 function toast(text, undo) {
@@ -564,7 +594,12 @@ function askWho() {
   const box = $('whoBox'); box.hidden = false;
   box.replaceChildren(el('span', { text: 'Та хэн бэ?' }),
     el('div', { class: 'pick' }, TEAM.map(m => el('button', { type: 'button', class: 'btn', text: m.name,
-      onclick: async () => { box.hidden = true; S.people.set(S.me, { who: m.id }); renderAll(); renderClock(); await save(() => S.db.doc(`people/${S.me}`).set({ who: m.id, at: Date.now() })); } }))));
+      onclick: async () => {
+        const prev = S.people.get(S.me);
+        box.hidden = true; S.people.set(S.me, { who: m.id }); renderAll(); renderClock();
+        const ok = await save(() => dbWrite(`people/${S.me}`, 'set', { who: m.id, at: Date.now() }));
+        if (!ok) { if (prev) S.people.set(S.me, prev); else S.people.delete(S.me); if (S.canWrite) box.hidden = false; renderAll(); renderClock(); }
+      } }))));
 }
 
 /* ── Байранд нь засах: дарна, бичнэ, Хадгалах эсвэл Болих. Алдаа гарвал бичвэр үлдэнэ.
@@ -602,7 +637,9 @@ function depEditor(itemId, chosen) {
   return box;
 }
 function inlineEdit(host, { value, label, onSave, cell, itemId }) {
-  if (!S.canWrite) return;
+  if (!canWriteNow()) return;
+  const open = host.querySelector('[data-editing] input');
+  if (open) { open.focus(); return; }
   const input = el('input', { class: 'field', 'aria-label': label, maxlength: '200' });
   input.value = value;
   const picker = cell ? cellPicker(cell) : null;
@@ -622,7 +659,17 @@ function inlineEdit(host, { value, label, onSave, cell, itemId }) {
     const depsSame = before.length === chosen.length && before.every(d => chosen.includes(d));
     if (v === value && (!picker || to === cell) && depsSame) return close();
     saveBtn.disabled = true;
-    const ok = await onSave(v, to, chosen.slice());
+    let deps = chosen.slice();
+    if (itemId) {
+      /* Apply what this editor added and removed to the to-do as it is now, so a dependency someone
+         else added meanwhile stays, and an addition that would now close a loop is left out. */
+      const now = depsOf(S.items.get(itemId) || {});
+      const added = chosen.filter(d => !before.includes(d)), removed = before.filter(d => !chosen.includes(d));
+      const safe = added.filter(d => !wouldLoop(itemId, d));
+      deps = [...new Set([...now.filter(d => !removed.includes(d)), ...safe])];
+      if (safe.length < added.length) toast(`${added.length - safe.length} хамаарал тойрог үүсгэх тул нэмсэнгүй.`);
+    }
+    const ok = await onSave(v, to, deps);
     saveBtn.disabled = false;
     if (ok) close(); else { err.hidden = false; err.textContent = 'Хадгалж чадсангүй. Бичсэн зүйл тань хэвээр байна.'; }
   };
@@ -633,32 +680,36 @@ function inlineEdit(host, { value, label, onSave, cell, itemId }) {
     if (e.key === 'Enter') { e.preventDefault(); commit(); }
   });
 }
-const isEditing = () => !!document.querySelector('[data-editing]');
+/* Only an edit in the view on screen holds back redraws; one left open in the hidden view does not. */
+const isEditing = () => !!(S.cell ? $('area') : $('home')).querySelector('[data-editing]');
 
 /* ── Бичилт ── */
 const stamp = () => ({ editedBy: S.me || null, editedAt: Date.now() });
 function saveFace(f) {
   const face = S.faces[f], s = stamp();
-  return save(() => S.db.doc(`faces/f${f}`).set({ title: face.title, cells: face.cells.slice(), ...s })).then(ok => { if (ok) { face.editedAt = s.editedAt; face.stored = true; } return ok; });
+  return save(() => dbWrite(`faces/f${f}`, 'set', { title: face.title, cells: face.cells.slice(), ...s })).then(ok => { if (ok) { face.editedAt = s.editedAt; face.stored = true; } return ok; });
 }
-function renameFace(f, title) { const old = S.faces[f].title; S.faces[f].title = title; return saveFace(f).then(ok => { if (!ok) S.faces[f].title = old; renderAll(); return ok; }); }
-function renameCell(f, c, title) { const old = S.faces[f].cells[c]; S.faces[f].cells[c] = title; return saveFace(f).then(ok => { if (!ok) S.faces[f].cells[c] = old; renderAll(); return ok; }); }
-const newItem = (text, at) => ({ cell: S.cell, text, url: '', who: '', done: false, deps: [], by: S.me || null, at, ...stamp() });
-function addItem(text) {
-  const ref = S.db.collection('items').doc();
-  return save(() => ref.set(newItem(text, Date.now())));
+/* A failed rename puts the old name back and leaves the edit box open with its message; the edit
+   box redraws the page itself when it closes. */
+function renameFace(f, title) { const old = S.faces[f].title; S.faces[f].title = title; return saveFace(f).then(ok => { if (!ok) S.faces[f].title = old; return ok; }); }
+function renameCell(f, c, title) { const old = S.faces[f].cells[c]; S.faces[f].cells[c] = title; return saveFace(f).then(ok => { if (!ok) S.faces[f].cells[c] = old; return ok; }); }
+const newItem = (text, at, cell) => ({ cell, text, url: '', who: '', done: false, deps: [], by: S.me || null, at, ...stamp() });
+const newItemPath = () => `items/${S.db.collection('items').doc().id}`;
+function addItem(text, cell) {
+  return save(() => dbWrite(newItemPath(), 'set', newItem(text, Date.now(), cell)));
 }
-/* Many lines pasted at once: one to-do per line, in the order pasted. Stops at the first failure and keeps the rest. */
-async function addLines(lines) {
+/* Many lines pasted at once: one to-do per line, in the order pasted, all into the space where they
+   were pasted even if the person moves on meanwhile. Stops at the first failure and keeps the rest. */
+async function addLines(lines, cell) {
   const base = Date.now();
   let done = 0;
-  await save(async () => { for (const line of lines) { await S.db.collection('items').doc().set(newItem(line, base + lines.length - done)); done += 1; } });
+  await save(async () => { for (const line of lines) { await dbWrite(newItemPath(), 'set', newItem(line, base + lines.length - done, cell)); done += 1; } });
   return lines.slice(done);
 }
+/* Changes only the fields given (a merge), so a teammate's change to another field is kept. */
 function patchItem(id, patch) {
-  const cur = S.items.get(id); if (!cur) return Promise.resolve(false);
-  const { id: _omit, ...body } = cur;
-  return save(() => S.db.doc(`items/${id}`).set({ ...body, ...patch, ...stamp() }));
+  if (!S.items.has(id)) return Promise.resolve(false);
+  return save(() => dbWrite(`items/${id}`, 'update', { ...patch, ...stamp() }));
 }
 function moveItem(id, text, to, deps) {
   const cur = S.items.get(id); if (!cur) return Promise.resolve(false);
@@ -671,9 +722,9 @@ function moveItem(id, text, to, deps) {
 function removeItem(id) {
   const cur = S.items.get(id); if (!cur) return;
   const { id: _omit, ...body } = cur;
-  save(() => S.db.doc(`items/${id}`).delete()).then(ok => {
+  save(() => dbWrite(`items/${id}`, 'delete')).then(ok => {
     if (!ok) { queueRender(true); return; }
-    toast('Устгалаа.', () => save(() => S.db.doc(`items/${id}`).set(body)));
+    toast('Устгалаа.', () => save(() => dbWrite(`items/${id}`, 'set', body)));
   });
 }
 
@@ -802,7 +853,7 @@ function groupChips(P, picked, redraw) {
   if (P.groups.length < 2) return null;
   const big = P.groups.filter(g => g.size >= GROUP_MIN);
   const rest = P.groups.filter(g => g.size < GROUP_MIN).reduce((t, g) => t + g.size, 0);
-  const chip = (key, text, on) => el('button', { type: 'button', class: 'gchip', 'aria-pressed': String(on), onclick: () => { G.group = key; G.pick = null; redraw(); } }, text);
+  const chip = (key, text, on) => el('button', { type: 'button', class: 'gchip', 'data-fkey': `p:${key}`, 'aria-pressed': String(on), onclick: () => { G.group = key; G.pick = null; redraw(); } }, text);
   return el('div', { class: 'gchips', role: 'group', 'aria-label': 'Төлөвлөгөө сонгох' }, [
     ...big.map(g => chip(g.key, `${short(g.label, 30)} · ${g.size}`, !!picked && picked.key === g.key)),
     rest ? chip('other', `Бусад · ${rest}`, !!picked && picked.key === 'other') : null,
@@ -811,6 +862,7 @@ function groupChips(P, picked, redraw) {
 }
 
 function countFor(key) {
+  if (!S.loaded) return 'Ачаалж байна…';
   if (key === GRAPH_CELL) { let b = 0; flow().forEach(x => { if (x.state === 'blocked') b += 1; }); return b ? `${b} гацсан` : 'Гацсан ажилгүй'; }
   if (key === TIMELINE_CELL) { let m = 0; S.items.forEach(i => { if (i.cell === MILESTONE_CELL && !i.done) m += 1; }); return m ? `${m} шалгуур үлдсэн` : 'Шалгуургүй'; }
 
@@ -865,12 +917,12 @@ function renderCube() {
     el('div', { class: `face face-${f}`, style: faceStyle(f) }, [
       el('div', { class: 'face-name' }, [el('i', { 'aria-hidden': 'true', text: num(f + 1) }), el('span', { text: face.title })]),
       el('div', { class: 'cells' }, face.cells.map((title, c) =>
-        el('button', { type: 'button', class: 'cell-tile', 'data-open': cellKey(f, c), 'aria-label': `${title}, ${face.title}. ${countFor(cellKey(f, c))}` },
+        el('button', { type: 'button', class: 'cell-tile', 'data-open': cellKey(f, c), 'data-fkey': `t:${cellKey(f, c)}`, 'aria-label': `${title}, ${face.title}. ${countFor(cellKey(f, c))}` },
           [el('em', { 'aria-hidden': 'true', text: cellNum(f, c) }), el('strong', { text: title }), el('small', { text: countFor(cellKey(f, c)) })]))),
     ])));
   applyCube(); markFront();
 }
-function renderFaceTitle() { $('faceTitle').textContent = S.faces[S.face].title; $('renameFace').hidden = !S.canWrite; }
+function renderFaceTitle() { $('faceTitle').textContent = S.faces[S.face].title; $('renameFace').hidden = !canWriteNow(); }
 function initCubeInput() {
   const scene = $('scene'), cube = $('cube');
   let sx = 0, sy = 0, brx = 0, bry = 0, down = false, moved = false, wasPole = false;
@@ -916,9 +968,12 @@ function initCubeInput() {
   }, true);
   document.querySelectorAll('[data-turn]').forEach(b => b.addEventListener('click', () => turn(b.dataset.turn)));
   document.addEventListener('keydown', e => {
-    if ($('home').hidden || S.mode !== 'cube' || e.target.closest('input, textarea, select')) return;
+    if ($('home').hidden || S.mode !== 'cube' || !e.target.closest || !e.target.closest('#cubeView') || e.target.closest('input, textarea, select')) return;
     const map = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
-    if (map[e.key]) { e.preventDefault(); turn(map[e.key]); }
+    if (map[e.key]) {
+      e.preventDefault(); turn(map[e.key]);
+      if (document.activeElement && document.activeElement.closest('[inert]')) scene.focus({ preventScroll: true });
+    }
   });
 }
 
@@ -931,7 +986,7 @@ function renderGrid() {
       onclick: () => inlineEdit(head, { value: face.title, label: 'Талын нэр', onSave: v => renameFace(f, v) }) }));
     return el('div', { class: 'g-face', style: faceStyle(f) }, [head,
       el('div', { class: 'g-cells' }, face.cells.map((title, c) =>
-        el('button', { type: 'button', class: 'g-cell', onclick: () => openKey(cellKey(f, c)) },
+        el('button', { type: 'button', class: 'g-cell', 'data-fkey': `gc:${cellKey(f, c)}`, onclick: () => openKey(cellKey(f, c)) },
           [el('em', { 'aria-hidden': 'true', text: cellNum(f, c) }), el('strong', { text: title }), el('small', { text: countFor(cellKey(f, c)) })])))]);
   }));
 }
@@ -964,7 +1019,7 @@ function attachSwipe(row, onRemove) {
     row.classList.remove('swiping');
     const fast = Math.abs(dx) / Math.max(1, e.timeStamp - t0) > 0.6 && Math.abs(dx) > 40;
     if (Math.abs(dx) > row.offsetWidth * 0.35 || fast) { row.style.transform = `translateX(${dx < 0 ? -110 : 110}%)`; setTimeout(onRemove, 180); }
-    else row.style.transform = '';
+    else { row.style.transform = ''; if (S.renderQueued) setTimeout(() => queueRender(), 300); }
   };
   row.addEventListener('pointerup', end); row.addEventListener('pointercancel', end);
 }
@@ -996,11 +1051,16 @@ function renderArea() {
   const list = [...S.items.values()].filter(i => i.cell === S.cell)
     .sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0) || (b.at || 0) - (a.at || 0));
   $('itemsEmpty').hidden = list.length > 0;
+  $('itemsEmpty').textContent = S.loaded ? 'Одоогоор ажил алга.' : 'Ачаалж байна…';
   $('swipeHint').hidden = !S.canWrite;
   const opened = ROWS.cell !== S.cell;
   if (opened) { ROWS.cell = S.cell; ROWS.seen = new Set(); ROWS.done = new Set(list.filter(i => i.done).map(i => i.id)); }
+  /* Keyboard focus survives the redraw: back to the same control, or to the next row after a delete. */
+  const active = document.activeElement, itemsBox = $('items');
+  const fkey = active && itemsBox.contains(active) && active.dataset ? active.dataset.fkey || null : null;
+  const fRow = fkey ? [...itemsBox.querySelectorAll('[data-fkey^="c:"]')].findIndex(n => n.dataset.fkey === `c:${fkey.slice(2)}`) : -1;
   $('items').replaceChildren(...list.map((i, k) => {
-    const chk = el('input', { type: 'checkbox', id: `chk-${i.id}`, 'aria-label': `Дууссан: ${i.text}`, disabled: !S.canWrite });
+    const chk = el('input', { type: 'checkbox', id: `chk-${i.id}`, 'data-fkey': `c:${i.id}`, 'aria-label': `Дууссан: ${i.text}`, disabled: !S.canWrite });
     chk.checked = !!i.done; chk.addEventListener('change', () => patchItem(i.id, { done: chk.checked }));
     const main = el('div', { class: 'item-main' });
     const textHost = el('div');
@@ -1014,31 +1074,37 @@ function renderArea() {
     else if (x && x.state === 'blocking') main.append(el('span', { class: 'flow-tag blocking', text: `▶ ${x.holds.length} ажлыг гацааж буй` }));
     if (i.url && /^https?:\/\//i.test(i.url)) main.append(el('a', { href: i.url, target: '_blank', rel: 'noopener', text: 'Нээх ↗' }));
     const m = member(i.who);
-    const who = el(S.canWrite ? 'button' : 'span', { class: 'who', 'data-who': i.who || '', text: m ? m.name[0] : '+',
+    const who = el(S.canWrite ? 'button' : 'span', { class: 'who', 'data-who': i.who || '', 'data-fkey': `w:${i.id}`, text: m ? m.name[0] : '+',
       'aria-label': m ? `Хариуцагч: ${m.name}. Солих` : 'Хариуцагч сонгох', title: m ? m.name : 'Хариуцагч' });
-    if (S.canWrite) { who.type = 'button'; who.addEventListener('click', () => patchItem(i.id, { who: nextWho(i.who) })); }
-    const del = S.canWrite ? el('button', { type: 'button', class: 'x', 'aria-label': `Устгах: ${i.text}`, text: '✕', onclick: () => removeItem(i.id) }) : el('span');
+    if (S.canWrite) { who.type = 'button'; who.addEventListener('click', () => { const cur = S.items.get(i.id); if (cur) patchItem(i.id, { who: nextWho(cur.who) }); }); }
+    const del = S.canWrite ? el('button', { type: 'button', class: 'x', 'data-fkey': `x:${i.id}`, 'aria-label': `Устгах: ${i.text}`, text: '✕', onclick: () => removeItem(i.id) }) : el('span');
     const row = el('div', { class: `todo${i.done ? ' done' : ''}${i.done && !ROWS.done.has(i.id) ? ' just-done' : ''}` }, [chk, main, who, del]);
     if (S.canWrite) attachSwipe(row, () => removeItem(i.id));
     const fresh = !ROWS.seen.has(i.id);
     return el('li', { class: `row-wrap${fresh ? ' enter' : ''}`, style: fresh && opened ? `--d:${Math.min(k, 8) * 45}ms` : '' }, row);
   }));
   ROWS.seen = new Set(list.map(i => i.id)); ROWS.done = new Set(list.filter(i => i.done).map(i => i.id));
+  if (fkey) {
+    const rows = itemsBox.querySelectorAll('[data-fkey^="c:"]');
+    const back = itemsBox.querySelector(`[data-fkey="${CSS.escape(fkey)}"]`) || rows[Math.min(Math.max(0, fRow), rows.length - 1)] || $('newText');
+    if (back) back.focus({ preventScroll: true });
+  }
 }
-function showLeftover(lines) {
+function showLeftover(lines, cell) {
   const err = $('captureErr');
   if (!lines.length) { err.hidden = true; return; }
   err.hidden = false;
   err.replaceChildren(el('span', { text: `${lines.length} мөр нэмэгдсэнгүй: ${lines.join(' · ')} ` }),
-    el('button', { type: 'button', class: 'btn ghost', text: 'Дахин оролдох', onclick: async () => showLeftover(await addLines(lines)) }));
+    el('button', { type: 'button', class: 'btn ghost', text: 'Дахин оролдох', onclick: async () => showLeftover(await addLines(lines, cell), cell) }));
 }
 function initCapture() {
   $('capture').addEventListener('submit', async e => {
     e.preventDefault();
-    const text = $('newText').value.trim(), err = $('captureErr'); err.hidden = true;
+    const text = $('newText').value.trim(), err = $('captureErr'), cell = S.cell; err.hidden = true;
     if (!text) { $('newText').focus(); return; }
+    if (!canWriteNow() || !cell) { err.hidden = false; err.textContent = 'Өгөгдөл ачаалагдаж байна. Түр хүлээгээд дахин дарна уу.'; return; }
     $('addBtn').disabled = true;
-    const ok = await addItem(text);
+    const ok = await addItem(text, cell);
     $('addBtn').disabled = false;
     if (ok) { $('newText').value = ''; $('newText').focus(); }
     else { err.hidden = false; err.textContent = 'Нэмж чадсангүй. Бичсэн зүйл тань хэвээр байна.'; }
@@ -1048,7 +1114,9 @@ function initCapture() {
       .map(l => l.replace(/^\s*(?:[-*•]|\d+[.)]|\[[ xX]?\])\s+/, '').trim().slice(0, 200)).filter(Boolean);
     if (lines.length < 2) return;
     e.preventDefault();
-    showLeftover(await addLines(lines));
+    const cell = S.cell, err = $('captureErr');
+    if (!canWriteNow() || !cell) { err.hidden = false; err.textContent = 'Өгөгдөл ачаалагдаж байна. Түр хүлээгээд дахин буулгана уу.'; return; }
+    showLeftover(await addLines(lines, cell), cell);
   });
 }
 
@@ -1064,34 +1132,51 @@ function fmt(ms) {
   return h ? `${h} ц ${String(m % 60).padStart(2, '0')} мин` : `${m} мин`;
 }
 const myClock = () => S.clocks.get(S.me) || null;
+/* A stretch from start to end, cut at each local midnight: [[day, ms], ...]. */
+function byDay(start, end) {
+  const out = [];
+  for (let t = start; t < end;) {
+    const d = new Date(t), next = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime();
+    const stop = Math.min(end, next);
+    out.push([dayKey(t), stop - t]); t = stop;
+  }
+  return out;
+}
 function closeStretch(c, endTs) {
   if (!c.openSince) return;
-  const dur = Math.max(0, endTs - c.openSince), day = dayKey(c.openSince), where = c.openCell || 'home';
+  const where = c.openCell || 'home';
   c.days = c.days || {};
-  const d = c.days[day] = c.days[day] || { ms: 0, bySpace: {} };
-  d.ms += dur; d.bySpace[where] = (d.bySpace[where] || 0) + dur;
+  byDay(c.openSince, Math.max(c.openSince, endTs)).forEach(([day, ms]) => {
+    const d = c.days[day] = c.days[day] || { ms: 0, bySpace: {} };
+    d.bySpace = d.bySpace || {};
+    d.ms += ms; d.bySpace[where] = (d.bySpace[where] || 0) + ms;
+  });
   c.openSince = null; c.openCell = null; c.leftAt = null;
 }
 let clockChain = Promise.resolve();
+/* Never before this person's clock has loaded: writing then would replace their history. */
 function writeClock(mutate) {
-  if (!S.db || !S.me || !S.canWrite) return Promise.resolve(false);
+  if (!S.db || !S.me || !S.canWrite || !S.clockReady) return Promise.resolve(false);
   clockChain = clockChain.then(async () => {
     const cur = JSON.parse(JSON.stringify(myClock() || { days: {} }));
     mutate(cur);
     S.clocks.set(S.me, cur); renderClock(); renderTeam();
-    try { await S.db.doc(`clock/${S.me}`).set(cur); return true; }
-    catch (e) { setSync('failed', 'Цагийн өөрчлөлт хадгалагдсангүй.'); return false; }
+    try { await dbWrite(`clock/${S.me}`, 'set', cur); S.wroteOnce = true; return true; }
+    catch (e) { if (!refusedWrite(e)) setSync('failed', 'Цагийн өөрчлөлт хадгалагдсангүй.'); return false; }
   });
   return clockChain;
 }
 const here = () => S.cell || 'home';
 function startClock() { return writeClock(c => { closeStretch(c, Date.now()); c.openSince = Date.now(); c.openCell = here(); c.leftAt = null; c.paused = false; }); }
-function pauseClock() { return writeClock(c => { closeStretch(c, Date.now()); c.paused = true; }); }
+function pauseClock() { $('awayBox').hidden = true; return writeClock(c => { closeStretch(c, c.leftAt || Date.now()); c.paused = true; }); }
 function moveClock() { const c = myClock(); if (c && c.openSince && !c.leftAt && c.openCell !== here()) startClock(); }
+/* Time on `day`: closed stretches plus the open one, cut at midnight. Time after leaving is not
+   shown until the person says it was work (leftAt is cleared then). */
 function liveMs(c, day) {
   const closed = (c.days && c.days[day] && c.days[day].ms) || 0;
-  const end = c.leftAt && Date.now() - c.leftAt > AWAY_MAX_MS ? c.leftAt : Date.now();
-  return closed + (c.openSince && dayKey(c.openSince) === day ? Math.max(0, end - c.openSince) : 0);
+  if (!c.openSince) return closed;
+  const end = c.leftAt || Date.now();
+  return closed + byDay(c.openSince, Math.max(c.openSince, end)).reduce((t, [d, ms]) => t + (d === day ? ms : 0), 0);
 }
 function weekMs(c) { let t = 0; for (let k = 0; k < 7; k++) t += liveMs(c, dayKey(Date.now() - k * 86400000)); return t; }
 function statusOf(c) {
@@ -1109,7 +1194,7 @@ function renderClock() {
   $('meDot').className = `dot${running ? ' on' : ''}`;
   $('meTime').textContent = `Өнөөдөр ${fmt(c ? liveMs(c, dayKey(Date.now())) : 0)}`;
   $('clockBtn').textContent = running ? 'Түр зогсоох' : 'Эхлүүлэх';
-  $('clockBtn').hidden = !S.canWrite;
+  $('clockBtn').hidden = !S.canWrite || !S.clockReady;
 }
 /* One row per team member: status, open to-dos, time today and over 7 days. */
 function renderTeam() {
@@ -1121,25 +1206,29 @@ function renderTeam() {
     const today = clocks.reduce((t, c) => t + liveMs(c, dayKey(Date.now())), 0), week = clocks.reduce((t, c) => t + weekMs(c), 0);
     let open = 0; S.items.forEach(i => { if (i.who === m.id && !i.done) open += 1; });
     return el('li', {}, [el('span', { class: 'who', 'data-who': m.id, 'aria-hidden': 'true', text: m.name[0] }),
-      el('div', {}, [el('b', { text: m.name }), el('small', { text: `${st.text} · ${open} ажил` })]),
+      el('div', {}, [el('b', { text: m.name }), el('small', { text: S.loaded && S.peopleReady ? `${st.text} · ${open} ажил` : 'Ачаалж байна…' })]),
       el('div', { class: 'nums' }, [el('div', { text: fmt(today) }), el('small', { text: `7 хоног ${fmt(week)}` })])]);
   }));
 }
 function renderSpaceTime() {
   const box = $('spaceTime'); if (!S.cell) return;
-  const parts = [];
+  const byPerson = new Map();   /* one line per person, even with two accounts */
   S.clocks.forEach((c, id) => {
     let ms = 0;
     Object.values(c.days || {}).forEach(d => { ms += (d.bySpace && d.bySpace[S.cell]) || 0; });
-    if (c.openSince && c.openCell === S.cell && !c.leftAt) ms += Date.now() - c.openSince;
-    if (ms >= 60000) parts.push(`${nameOfUid(id)} ${fmt(ms)}`);
+    if (c.openSince && c.openCell === S.cell && !c.leftAt) ms += Math.max(0, Date.now() - c.openSince);
+    const key = whoOf(id) || id;
+    byPerson.set(key, { name: nameOfUid(id), ms: ((byPerson.get(key) || {}).ms || 0) + ms });
   });
+  const parts = [...byPerson.values()].filter(x => x.ms >= 60000).map(x => `${x.name} ${fmt(x.ms)}`);
   box.hidden = !parts.length; box.textContent = parts.length ? `Энэ нүдэнд: ${parts.join(' · ')}` : '';
 }
-function reconcileClock() {
+/* Opening the workspace starts the timer. Coming back to it (another app, the screen locked) keeps
+   a pause the person chose. */
+function reconcileClock(opening) {
   if (!S.clockReady || !S.me || !S.canWrite || document.hidden) return;
   const c = myClock(), box = $('awayBox');
-  if (!c || !c.openSince) { box.hidden = true; startClock(); return; }
+  if (!c || !c.openSince) { box.hidden = true; if (opening || !c || !c.paused) startClock(); return; }
   const leftAt = c.leftAt || null, gone = leftAt ? Date.now() - leftAt : 0;
   if (!leftAt) { box.hidden = true; moveClock(); return; }
   if (gone > AWAY_MAX_MS) { box.hidden = true; writeClock(x => { closeStretch(x, leftAt); }).then(startClock); return; }
@@ -1158,7 +1247,7 @@ function initClock() {
   document.addEventListener('visibilitychange', () => {
     const c = myClock();
     if (document.hidden) { if (c && c.openSince && !c.leftAt) writeClock(x => { x.leftAt = Date.now(); }); }
-    else reconcileClock();
+    else reconcileClock(false);
   });
   setInterval(() => { renderClock(); if (!S.cell) renderTeam(); else renderSpaceTime(); }, 15000);
 }
@@ -1177,12 +1266,12 @@ function exportData() {
     items, people: Object.fromEntries(S.people), clock: Object.fromEntries(S.clocks),
   };
 }
-const csvCell = v => { const s = v == null ? '' : String(v); return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
-const CSV_HEAD = ['id', 'cell', 'side', 'space', 'text', 'owner', 'done', 'url', 'at', 'editedAt'];
+const csvCell = v => { let s = v == null ? '' : String(v); if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`; return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+const CSV_HEAD = ['id', 'cell', 'side', 'space', 'text', 'owner', 'done', 'url', 'at', 'editedAt', 'deps'];
 function exportCsv() {
   const rows = [...S.items.values()].sort((a, b) => (a.cell > b.cell ? 1 : a.cell < b.cell ? -1 : (a.at || 0) - (b.at || 0))).map(i => {
-    const f = +i.cell[1], c = +i.cell[4], face = S.faces[f] || { title: '', cells: [] };
-    return [i.id, i.cell, face.title, face.cells[c] || '', i.text, i.who || '', i.done ? 1 : 0, i.url || '', i.at || '', i.editedAt || ''];
+    const ok = CELL_RE.test(i.cell || ''), f = ok ? +i.cell[1] : -1, c = ok ? +i.cell[4] : -1, face = S.faces[f] || { title: '', cells: [] };
+    return [i.id, i.cell, face.title, face.cells[c] || '', i.text, i.who || '', i.done ? 1 : 0, i.url || '', i.at || '', i.editedAt || '', depsOf(i).join(' ')];
   });
   return '﻿' + [CSV_HEAD, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n');
 }
@@ -1201,23 +1290,26 @@ function parseCsv(text) {
   return rows.filter(r => r.some(v => v.trim()));
 }
 function cleanItem(v) {
-  if (!v || typeof v.text !== 'string' || !v.text.trim() || !CELL_RE.test(v.cell || '')) return null;
+  if (!v || typeof v.text !== 'string' || !v.text.trim() || !CELL_RE.test(v.cell || '') || isViewCell(v.cell)) return null;
   const n = x => (Number.isFinite(+x) && +x > 0 ? +x : 0);
   return { cell: v.cell, text: v.text.trim().slice(0, 500), url: typeof v.url === 'string' ? v.url : '',
     who: member(String(v.who || '').toLowerCase()) ? String(v.who).toLowerCase() : '', done: v.done === true || v.done === 1 || v.done === '1' || v.done === 'true',
-    deps: Array.isArray(v.deps) ? v.deps.filter(d => typeof d === 'string' && d).slice(0, 40) : [],
+    deps: Array.isArray(v.deps) ? [...new Set(v.deps.filter(d => typeof d === 'string' && /^[^/\s]{1,120}$/.test(d)))].slice(0, 400) : null,
     by: v.by || null, at: n(v.at) || Date.now(), editedBy: v.editedBy || null, editedAt: n(v.editedAt) };
 }
 /* Reads a JSON export or a CSV, returns what it holds. Throws a plain message when it cannot. */
+const plainError = msg => Object.assign(new Error(msg), { plain: true });
 function readImport(text) {
   text = (text || '').trim();
-  if (!text) throw new Error('Хоосон байна.');
+  if (!text) throw plainError('Хоосон байна.');
   if (text[0] === '{' || text[0] === '[') {
-    let d; try { d = JSON.parse(text); } catch (e) { throw new Error('JSON уншигдсангүй.'); }
+    let d; try { d = JSON.parse(text); } catch (e) { throw plainError('JSON уншигдсангүй.'); }
     if (Array.isArray(d)) d = { items: d };
-    if (d.app && d.app !== 'cubic') throw new Error('Энэ CUBIC-ийн файл биш.');
-    const items = (Array.isArray(d.items) ? d.items : []).map(v => ({ id: typeof v.id === 'string' && /^[^/\s]{1,120}$/.test(v.id) ? v.id : null, body: cleanItem(v) })).filter(x => x.body);
-    const faces = (Array.isArray(d.faces) ? d.faces : []).map((f, i) => {
+    if (!d || typeof d !== 'object') throw plainError('Энэ CUBIC-ийн файл биш.');
+    if (d.app && d.app !== 'cubic') throw plainError('Энэ CUBIC-ийн файл биш.');
+    const raw = (Array.isArray(d.items) ? d.items : []).filter(v => v && typeof v === 'object').map(v => ({ id: v && typeof v.id === 'string' && /^[^/\s]{1,120}$/.test(v.id) ? v.id : null, body: cleanItem(v) }));
+    const items = raw.filter(x => x.body), skipped = raw.length - items.length;
+    const faces = (Array.isArray(d.faces) ? d.faces : []).filter(f => f && typeof f === 'object').map((f, i) => {
       const k = /^f([0-5])$/.exec((f && f.id) || `f${i}`); if (!k || !f) return null;
       const cells = Array.isArray(f.cells) ? f.cells.slice(0, 4).map(t => (typeof t === 'string' ? t.trim().slice(0, 200) : '')) : [];
       return { f: +k[1], title: typeof f.title === 'string' ? f.title.trim().slice(0, 200) : '', cells, editedAt: +f.editedAt || 0 };
@@ -1225,27 +1317,31 @@ function readImport(text) {
     const obj = x => (x && typeof x === 'object' && !Array.isArray(x) ? x : {});
     const people = Object.entries(obj(d.people)).filter(([k, v]) => /^[^/\s]{1,120}$/.test(k) && v && member(v.who));
     const clock = Object.entries(obj(d.clock)).filter(([k, v]) => /^[^/\s]{1,120}$/.test(k) && v && typeof v === 'object');
-    if (!items.length && !faces.length && !people.length && !clock.length) throw new Error('Оруулах зүйл олдсонгүй.');
-    return { items, faces, people, clock };
+    if (!items.length && !faces.length && !people.length && !clock.length) throw plainError('Оруулах зүйл олдсонгүй.');
+    return { items, skipped, faces, people, clock };
   }
   const rows = parseCsv(text);
   const head = (rows.shift() || []).map(h => h.trim().toLowerCase());
   const col = name => head.indexOf(name);
-  if (col('text') < 0 || col('cell') < 0) throw new Error('CSV-д "cell", "text" багана хэрэгтэй.');
+  if (col('text') < 0 || col('cell') < 0) throw plainError('CSV-д "cell", "text" багана хэрэгтэй.');
   const items = rows.map(r => {
-    const g = name => (col(name) >= 0 ? (r[col(name)] || '').trim() : '');
+    const g = name => (col(name) >= 0 ? (r[col(name)] || '').trim().replace(/^'(?=[=+\-@\t\r])/, '') : '');
     const id = g('id');
-    return { id: /^[^/\s]{1,120}$/.test(id) ? id : null, body: cleanItem({ cell: g('cell'), text: g('text'), who: g('owner'), done: g('done'), url: g('url'), at: g('at'), editedAt: g('editedat') }) };
-  }).filter(x => x.body);
-  if (!items.length) throw new Error('Оруулах ажил олдсонгүй.');
-  return { items, faces: [], people: [], clock: [] };
+    const deps = col('deps') >= 0 ? g('deps').split(/\s+/).filter(Boolean) : undefined;
+    return { id: /^[^/\s]{1,120}$/.test(id) ? id : null, body: cleanItem({ cell: g('cell'), text: g('text'), who: g('owner'), done: g('done'), url: g('url'), at: g('at'), editedAt: g('editedat'), deps }) };
+  });
+  const kept = items.filter(x => x.body);
+  if (!kept.length) throw plainError('Оруулах ажил олдсонгүй.');
+  return { items: kept, skipped: items.length - kept.length, faces: [], people: [], clock: [] };
 }
 function planImport(d) {
-  const plan = { add: [], update: [], same: 0, older: 0, faces: [], people: [], clock: [] };
+  const plan = { add: [], update: [], same: 0, older: 0, skipped: d.skipped || 0, faces: [], people: [], clock: [] };
   const sameItem = (a, b) => ITEM_FIELDS.filter(k => !['editedAt', 'editedBy', 'by', 'at'].includes(k)).every(k => (k === 'deps' ? JSON.stringify(a.deps || []) === JSON.stringify(b.deps || []) : (a[k] ?? '') === (b[k] ?? '')));
-  d.items.forEach(({ id, body }) => {
+  d.items.forEach(({ id, body: given }) => {
     const cur = id && S.items.get(id);
-    if (!cur) plan.add.push({ id, body });
+    /* A row without a deps column (an older CSV) keeps the to-do's dependencies. */
+    const body = { ...given, deps: Array.isArray(given.deps) ? given.deps : cur && Array.isArray(cur.deps) ? cur.deps.slice() : [] };
+    if (!cur) plan.add.push({ id: id || S.db.collection('items').doc().id, body });
     else if (sameItem(cur, body)) plan.same += 1;
     else if ((body.editedAt || 0) > (cur.editedAt || 0)) plan.update.push({ id, body });
     else plan.older += 1;
@@ -1257,7 +1353,9 @@ function planImport(d) {
     if (differs && (!cur.stored || x.editedAt > (cur.editedAt || 0))) plan.faces.push({ f: x.f, ...next, editedAt: x.editedAt });
   });
   d.people.forEach(([k, v]) => { if (!S.people.has(k)) plan.people.push([k, { who: v.who, at: +v.at || Date.now() }]); });
-  d.clock.forEach(([k, v]) => { if (!S.clocks.has(k)) plan.clock.push([k, JSON.parse(JSON.stringify(v))]); });
+  /* An imported clock may hold an open stretch from the other copy; its end is unknown, so it is
+     closed where it was last seen (when the person left, else where it started). */
+  d.clock.forEach(([k, v]) => { if (!S.clocks.has(k)) { const c = JSON.parse(JSON.stringify(v)); if (c.openSince) closeStretch(c, c.leftAt || c.openSince); c.paused = false; plan.clock.push([k, c]); } });
   plan.loops = dropImportLoops([...plan.add, ...plan.update]);
   return plan;
 }
@@ -1265,7 +1363,9 @@ function planImport(d) {
    Imported dependencies are added one at a time to what the workspace will hold afterwards; one
    that would close a loop of waiting is left out and counted on the plan. */
 function dropImportLoops(incoming) {
-  const next = new Map([...S.items.values()].map(i => [i.id, depsOf(i)]));
+  /* Start from the stored dependencies as written, including ones on to-dos that are gone now:
+     the import may bring such a to-do back. */
+  const next = new Map([...S.items.values()].map(i => [i.id, [...new Set(Array.isArray(i.deps) ? i.deps : [])]]));
   incoming.forEach(x => { if (x.id) next.set(x.id, []); });
   const reaches = (from, target) => {
     const seen = new Set(), stack = [from];
@@ -1293,11 +1393,11 @@ function dropImportLoops(incoming) {
 const planSize = p => p.add.length + p.update.length + p.faces.length + p.people.length + p.clock.length;
 async function applyImport(p) {
   return save(async () => {
-    for (const x of p.faces) await S.db.doc(`faces/f${x.f}`).set({ title: x.title, cells: x.cells, editedBy: S.me || null, editedAt: Math.max(x.editedAt || 0, Date.now()) });
-    for (const x of p.add) await (x.id ? S.db.doc(`items/${x.id}`) : S.db.collection('items').doc()).set(x.body);
-    for (const x of p.update) await S.db.doc(`items/${x.id}`).set(x.body);
-    for (const [k, v] of p.people) await S.db.doc(`people/${k}`).set(v);
-    for (const [k, v] of p.clock) await S.db.doc(`clock/${k}`).set(v);
+    for (const x of p.faces) await dbWrite(`faces/f${x.f}`, 'set', { title: x.title, cells: x.cells, editedBy: S.me || null, editedAt: Math.max(x.editedAt || 0, Date.now()) });
+    for (const x of p.add) await dbWrite(`items/${x.id}`, 'set', x.body);
+    for (const x of p.update) await dbWrite(`items/${x.id}`, 'set', x.body);
+    for (const [k, v] of p.people) await dbWrite(`people/${k}`, 'set', v);
+    for (const [k, v] of p.clock) await dbWrite(`clock/${k}`, 'set', v);
   });
 }
 /* Inside Claude the page may not download itself: the downloads capability asks the
@@ -1321,7 +1421,7 @@ function renderImportPlan(p) {
     line('Шинэ ажил', p.add.length), line('Шинэчлэгдэх ажил', p.update.length), line('Талын нэр', p.faces.length),
     line('Хүн', p.people.length), line('Цагийн бүртгэл', p.clock.length),
     line('Ижил, өөрчлөхгүй', p.same), line('Энд илүү шинэ тул алгасна', p.older),
-    line('Тойрог үүсгэх тул хасах хамаарал', p.loops),
+    line('Тойрог үүсгэх тул хасах хамаарал', p.loops), line('Алгасах мөр (нүд эсвэл бичвэр буруу)', p.skipped),
   ].filter(Boolean));
   const msg = el('p', { class: 'fine', hidden: true });
   const go = el('button', { type: 'button', class: 'btn', text: `Оруулах (${total})`, disabled: !total });
@@ -1336,14 +1436,16 @@ function renderImportPlan(p) {
 }
 function checkImport(text) {
   const err = $('importErr'); err.hidden = true; $('importPlan').hidden = true;
+  if (!canWriteNow()) { err.hidden = false; err.textContent = 'Өгөгдөл ачаалагдаж байна. Түр хүлээгээд дахин шалгана уу.'; return; }
   try { renderImportPlan(planImport(readImport(text))); }
-  catch (e) { err.hidden = false; err.textContent = e.message || 'Уншиж чадсангүй.'; }
+  catch (e) { err.hidden = false; err.textContent = e && e.plain ? e.message : 'Уншиж чадсангүй.'; }
 }
 function initData() {
   // Inside Claude a file can be saved only through the downloads capability; without it, copy only.
   const canSave = S.local || !!S.downloads;
   $('exportJson').hidden = $('exportCsv').hidden = $('backupHint').hidden = !canSave;
   $('importBox').hidden = !S.canWrite || !S.db;
+  ['exportJson', 'exportCsv', 'exportCopy', 'importCheck'].forEach(id => { $(id).disabled = !S.loaded; });
   $('exportJson').onclick = async () => { if (await download(`cubic-${todayStamp()}.json`, JSON.stringify(exportData(), null, 2), 'application/json')) exportMsg('Файл хадгалагдлаа.'); };
   $('exportCsv').onclick = async () => { if (await download(`cubic-${todayStamp()}.csv`, exportCsv(), 'text/csv;charset=utf-8')) exportMsg('Файл хадгалагдлаа.'); };
   $('exportCopy').onclick = async () => {
@@ -1381,17 +1483,18 @@ function graphLayout(P, has) {
   const tall = Math.max(1, ...used.map(l => cols[l].length));
   return { nodes, pos, layers: used.map(l => ({ l, x: xOf.get(l) * (G.W + G.GX) })), w: Math.max(G.W, used.length * (G.W + G.GX) - G.GX), h: G.TOP + tall * (G.H + G.GY) - G.GY };
 }
-function renderGraph() {
+function renderGraph() { keepFocus(drawGraph); }
+function drawGraph() {
   const host = $('planView'), old = host.querySelector('.graph-scroll');
   const keep = old ? { x: old.scrollLeft, y: old.scrollTop } : null;
   const fl = flow(), P = plan(), picked = pickedGroup(P);
   const has = id => !picked || picked.has(id);
   const lay = graphLayout(P, has);
-  if (G.pick && (!S.items.has(G.pick) || !has(G.pick))) G.pick = null;
+  if (G.pick && !lay.pos.has(G.pick)) G.pick = null;
   const tally = { all: lay.nodes.length, done: 0, open: 0, blocked: 0, blocking: 0 };
   lay.nodes.forEach(n => { tally[fl.get(n.id).state] += 1; });
   const filters = el('div', { class: 'gfilters', role: 'group', 'aria-label': 'Төлөвөөр шүүх' }, [['all', 'Бүгд'], ['blocking', STATE.blocking], ['blocked', STATE.blocked], ['open', STATE.open], ['done', STATE.done]].map(([k, label]) =>
-    el('button', { type: 'button', class: `gfilter s-${k}`, 'aria-pressed': String(G.filter === k), onclick: () => { G.filter = k; renderGraph(); } },
+    el('button', { type: 'button', class: `gfilter s-${k}`, 'data-fkey': `f:${k}`, 'aria-pressed': String(G.filter === k), onclick: () => { G.filter = k; renderGraph(); } },
       [el('b', { text: String(tally[k]) }), el('span', { text: `${STATE_MARK[k] ? STATE_MARK[k] + ' ' : ''}${label}` })])));
 
   const chain = G.pick ? new Set([G.pick, ...upstream(G.pick), ...downstream(G.pick)]) : null;
@@ -1419,7 +1522,7 @@ function renderGraph() {
   lay.nodes.forEach(n => {
     const p = lay.pos.get(n.id), x = fl.get(n.id), inLoop = loops.has(n.id);
     canvas.append(el('button', { type: 'button', class: `gnode s-${x.state}${n.cell === MILESTONE_CELL ? ' ms' : ''}${inLoop ? ' loop' : ''}${dim(n) ? ' dim' : ''}${G.pick === n.id ? ' picked' : ''}`,
-      style: `left:${p.x}px;top:${p.y}px;width:${G.W}px;height:${G.H}px`, 'aria-pressed': String(G.pick === n.id),
+      style: `left:${p.x}px;top:${p.y}px;width:${G.W}px;height:${G.H}px`, 'data-fkey': `g:${n.id}`, 'aria-pressed': String(G.pick === n.id),
       'aria-label': `${layerName(n.id)}. ${STATE[x.state]}: ${n.text}`,
       onclick: () => { G.pick = G.pick === n.id ? null : n.id; renderGraph(); } },
       [el('small', { text: `${inLoop ? '⟲ ' : STATE_MARK[x.state] + ' '}${STATE[x.state]}${member(n.who) ? ' · ' + member(n.who).name : ''}` }), el('span', { text: n.text })]));
@@ -1452,7 +1555,7 @@ function renderGraph() {
   const stuck = undone.filter(i => fl.get(i.id).state === 'blocked');
   const line = (i, sub) => el('li', {}, el('button', { type: 'button', onclick: () => openKey(i.cell) }, [el('b', { text: i.text }), el('small', { text: sub })]));
   const layersShown = lay.layers.filter(z => z.l !== P.stuckLayer).length;
-  const build = lay.nodes.length ? el('details', { class: 'card build' }, [
+  const build = lay.nodes.length ? el('details', { class: 'card build', open: !!G.buildOpen, ontoggle: e => { G.buildOpen = e.target.open; } }, [
     el('summary', { class: 'label', 'data-n': '↦', text: `Барих дараалал · ${lay.nodes.length} ажил, ${layersShown} давхарга` }),
     el('ol', { class: 'recent build-list' }, lay.nodes.map(n => {
       const x = fl.get(n.id);
@@ -1474,23 +1577,25 @@ function renderGraph() {
 }
 
 /* ── Timeline: шалгуур (milestone) бүр, түүнд хүрэхэд үлдсэн ажил ── */
-/* A leading MM/DD. The year is the one that puts the date nearest today, so a 01/10 milestone
-   written in December means next January, and a 12/20 one read in January means last December. */
+/* A leading MM/DD (or MM/DD/YYYY). Without a year, the year is the one that puts the date nearest
+   today: a 01/10 milestone written in December means next January. "1.5 хоног" is not a date. */
 function milestoneDate(text) {
-  const m = /^\s*(\d{1,2})\s*[\/.]\s*(\d{1,2})/.exec(text || ''); if (!m) return null;
+  const m = /^\s*(\d{1,2})\/(\d{1,2})(?:\/(\d{4}|\d{2}))?(?![\d/.])/.exec(text || ''); if (!m) return null;
   const mo = +m[1], da = +m[2];
   if (mo < 1 || mo > 12 || da < 1 || da > 31) return null;
+  if (m[3]) { const yy = m[3].length === 2 ? 2000 + +m[3] : +m[3]; const d = new Date(yy, mo - 1, da); return d.getMonth() === mo - 1 ? d : null; }
   const now = new Date(); now.setHours(0, 0, 0, 0);
   const y = now.getFullYear();
   const options = [y - 1, y, y + 1].map(yy => new Date(yy, mo - 1, da)).filter(d => d.getMonth() === mo - 1);
   if (!options.length) return null;
   return options.reduce((best, d) => (Math.abs(d - now) < Math.abs(best - now) ? d : best));
 }
-function renderTimeline() {
+function renderTimeline() { keepFocus(drawTimeline); }
+function drawTimeline() {
   const fl = flow(), today = new Date(); today.setHours(0, 0, 0, 0);
   const P = plan(), picked = pickedGroup(P);
   const all = [...S.items.values()].filter(i => i.cell === MILESTONE_CELL);
-  const stones = all.filter(i => !picked || picked.has(i.id))
+  const stones = all.filter(i => !picked || picked.has(i.id) || !P.groupOf.has(i.id))
     .map(i => ({ i, date: milestoneDate(i.text) })).sort((a, b) => (a.date ? a.date.getTime() : 9e15) - (b.date ? b.date.getTime() : 9e15) || (b.i.at || 0) - (a.i.at || 0));
   const host = $('planView');
   if (!all.length) { host.replaceChildren(el('p', { class: 'empty', text: 'Milestones нүдэнд шалгуур нэмбэл энд цагийн дарааллаар харагдана. Эхэнд нь огноо бичнэ: 11/22 · …' })); return; }
@@ -1520,7 +1625,15 @@ function renderTimeline() {
 
 /* ── Чиглүүлэлт: #f2 бол тал, #f2-c1 бол нүд ── */
 function setHash() { const h = S.cell || `f${S.face}`; if (location.hash !== `#${h}`) { try { history.replaceState(null, '', `#${h}`); } catch (e) { location.hash = h; } } }
-function openKey(key) { if (!CELL_RE.test(key || '')) return; S.cell = key; S.face = +key[1]; setHash(); route(); window.scrollTo(0, 0); }
+/* Opening a space adds a history step, so the phone's back gesture returns to the cube. */
+function openKey(key) {
+  if (!CELL_RE.test(key || '')) return;
+  const fromHome = !S.cell;
+  S.cell = key; S.face = +key[1];
+  if (fromHome && location.hash !== `#${key}`) { try { history.pushState({ cubic: 'space' }, '', `#${key}`); } catch (e) { location.hash = key; } }
+  else setHash();
+  route(); window.scrollTo(0, 0);
+}
 function route() {
   const inArea = !!S.cell;
   $('home').hidden = inArea; $('area').hidden = !inArea;
@@ -1541,10 +1654,19 @@ function setMode(mode) {
   try { localStorage.setItem('cubic-mode', mode); } catch (e) { /* preference only */ }
 }
 function renderHome() { renderCube(); renderGrid(); renderFaceTitle(); renderTeam(); renderSearch(); }
-function renderAll() { if (S.cell) renderArea(); else renderHome(); }
+/* Redraws keep keyboard focus: a control with data-fkey gets it back if the redraw dropped it. */
+function keepFocus(draw) {
+  const a = document.activeElement, k = a && a.dataset ? a.dataset.fkey : null;
+  draw();
+  if (k && (!document.activeElement || document.activeElement === document.body)) {
+    const n = document.querySelector(`[data-fkey="${CSS.escape(k)}"]`);
+    if (n && !n.closest('[inert], [hidden]')) n.focus({ preventScroll: true });
+  }
+}
+function renderAll() { keepFocus(() => { if (S.cell) renderArea(); else renderHome(); }); }
 function queueRender(force) {
   if (isEditing() && !force) { S.renderQueued = true; return; }
-  if (isEditing() || document.querySelector('.todo.swiping')) return;
+  if (isEditing() || document.querySelector('.todo.swiping')) { S.renderQueued = true; return; }
   S.renderQueued = false; renderAll();
 }
 
@@ -1566,9 +1688,14 @@ function localStore() {
   const write = next => { localStorage.setItem(KEY, JSON.stringify(Object.fromEntries(next))); docs = next; fire(); };
   window.addEventListener('storage', e => { if (e.key === KEY) { try { docs = new Map(Object.entries(JSON.parse(e.newValue || '{}'))); fire(); } catch (x) { /* keep what we have */ } } });
   let n = 0;
+  const merge = (a, b) => { const o = { ...a }; Object.entries(b).forEach(([k, v]) => { o[k] = v && typeof v === 'object' && !Array.isArray(v) && o[k] && typeof o[k] === 'object' && !Array.isArray(o[k]) ? merge(o[k], v) : v; }); return o; };
   const doc = path => ({
     id: path.split('/').pop(),
     set: async data => { const next = new Map(docs); next.set(path, JSON.parse(JSON.stringify(data))); write(next); },
+    update: async data => {
+      if (!docs.has(path)) throw { code: 'invalid_argument', message: 'no such document' };
+      const next = new Map(docs); next.set(path, merge(docs.get(path), JSON.parse(JSON.stringify(data)))); write(next);
+    },
     delete: async () => { const next = new Map(docs); next.delete(path); write(next); },
   });
   const collection = path => ({
@@ -1581,6 +1708,7 @@ function localStore() {
 /* ── Хуваалцсан өгөгдөл ── */
 async function connect() {
   let db = null, user = null;
+  const slow = setTimeout(() => { if (!S.loaded) notice('Өгөгдөлд холбогдож чадахгүй байна. Харагдаж буй зүйл хуучирсан байж магадгүй.'); }, 10000);
   if (window.claude && window.claude.use) {
     let dl;
     [db, user, dl] = await Promise.all(['db', 'user', 'downloads'].map(n => window.claude.use(n).catch(() => null)));
@@ -1594,11 +1722,10 @@ async function connect() {
   if (!db) { S.canWrite = false; notice(S.local || !window.claude ? 'Энэ хөтөч өгөгдөл хадгалахыг зөвшөөрөхгүй байна. Өөр хөтөчөөр нээнэ үү.' : 'Хуваалцсан өгөгдөл энд нээгдсэнгүй. Claude-д нэвтэрч нээнэ үү.'); renderAll(); return; }
   if (user) {
     try { S.me = user.id ? await user.id() : null; } catch (e) { S.me = null; }
-    try { const can = user.can ? await user.can('data.write') : null; if (can === false) { S.canWrite = false; initData(); notice('Та зөвхөн унших эрхтэй. Эзэмшигчээс Contributor эрх хүсээрэй.'); } } catch (e) { /* refused writes decide */ }
+    try { const can = user.can ? await user.can('data.write') : null; S.canSaid = can; if (can === false) { S.canWrite = false; initData(); notice('Та зөвхөн унших эрхтэй. Эзэмшигчээс Contributor эрх хүсээрэй.'); } } catch (e) { /* refused writes decide */ }
   }
   const localNote = 'Энэ хуудас өгөгдлийг зөвхөн энэ хөтөч дээр хадгална. Багийн хуваалцсан хувилбар Claude дээр байна. Шилжүүлэхдээ «Өгөгдөл» хэсгийг ашиглана уу.';
-  const slow = setTimeout(() => { if (!S.loaded) notice('Өгөгдөлд холбогдож чадахгүй байна. Харагдаж буй зүйл хуучирсан байж магадгүй.'); }, 10000);
-  const loaded = () => { if (!S.loaded) { S.loaded = true; clearTimeout(slow); if (S.canWrite) notice(S.local ? localNote : ''); } };
+  const loaded = () => { if (!S.loaded) { S.loaded = true; clearTimeout(slow); if (S.canWrite && !S.sticky) notice(S.local ? localNote : ''); initData(); renderFaceTitle(); } };
   const failed = () => { clearTimeout(slow); notice('Холболт тасарлаа. Хуудсаа дахин нээнэ үү.'); };
   db.collection('faces').onSnapshot(snap => {
     snap.docs.forEach(d => {
@@ -1616,7 +1743,7 @@ async function connect() {
     if (!snap.metadata.fromCache) loaded();
     queueRender();
   }, failed);
-  if (!S.me) { notice('Таныг таньж чадсангүй, тиймээс цаг ажиллахгүй. Claude-д нэвтэрч нээнэ үү.'); return; }
+  if (!S.me) { S.sticky = true; notice('Таныг таньж чадсангүй, тиймээс цаг ажиллахгүй. Claude-д нэвтэрч нээнэ үү.'); return; }
   db.collection('people').onSnapshot(snap => {
     const mine = S.people.get(S.me);
     S.people = new Map(snap.docs.map(d => [d.id, d.data()]).filter(([, v]) => v && member(v.who)));
@@ -1629,23 +1756,30 @@ async function connect() {
     const mine = S.clocks.get(S.me);
     S.clocks = new Map(snap.docs.map(d => [d.id, d.data()]).filter(([, v]) => v && typeof v === 'object'));
     if (mine && snap.metadata.hasPendingWrites) S.clocks.set(S.me, mine);
-    if (!snap.metadata.fromCache && !mineSeen) { mineSeen = true; S.clockReady = true; reconcileClock(); }
+    if (!snap.metadata.fromCache && !mineSeen) { mineSeen = true; S.clockReady = true; reconcileClock(true); }
+    else if (S.clockReady && !document.hidden && $('awayBox').hidden && myClock() && myClock().leftAt) reconcileClock(false);
     renderClock(); if (!S.cell) renderTeam(); else renderSpaceTime();
   }, failed);
 }
 
 /* ── Эхлэл ── */
 (function start() {
+  /* The font stylesheet loads as "print" so a stalled request never holds the page; switch it on now. */
+  try { $('fonts').media = 'all'; } catch (e) { /* fonts are optional */ }
   let mode = 'cube';
   try { mode = localStorage.getItem('cubic-mode') || (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'grid' : 'cube'); } catch (e) { /* default */ }
   readHash(); initCubeInput(); initCapture(); initClock(); setMode(mode === 'grid' ? 'grid' : 'cube'); route();
   $('modeCube').addEventListener('click', () => setMode('cube'));
   $('modeGrid').addEventListener('click', () => setMode('grid'));
   $('search').addEventListener('input', renderSearch);
-  $('back').addEventListener('click', () => { S.cell = null; setHash(); route(); });
+  $('back').addEventListener('click', () => {
+    if (history.state && history.state.cubic === 'space') { history.back(); return; }
+    S.cell = null; setHash(); route();
+  });
   $('renameFace').addEventListener('click', () => {
     const host = $('faceEdit'); host.hidden = false;
-    inlineEdit(host, { value: S.faces[S.face].title, label: 'Талын нэр', onSave: v => renameFace(S.face, v) });
+    const f = S.face;
+    inlineEdit(host, { value: S.faces[f].title, label: 'Талын нэр', onSave: v => renameFace(f, v) });
     new MutationObserver((_, o) => { if (!host.querySelector('[data-editing]')) { host.hidden = true; host.replaceChildren(); o.disconnect(); } }).observe(host, { childList: true });
   });
   window.addEventListener('hashchange', () => { readHash(); route(); });

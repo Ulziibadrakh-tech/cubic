@@ -24,6 +24,8 @@ the order the rest would come in. Nothing below is committed to a date.
 | Dependencies between to-dos, derived blocked / blocking status | Done |
 | Dependency graph and milestone timeline (Plan side) | Done |
 | Backup file from inside Claude (save to Proton Drive by hand) | Done, via the `downloads` capability |
+| Topological build order: layers, picker per plan, build-order list, loop warning | Done (`plan()`, `dev/plan_tools.py`) |
+| CI on every push, security headers on Vercel | Done |
 
 ## Decided against, for a team of three
 

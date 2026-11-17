@@ -30,7 +30,8 @@ The team works mostly from phones, through Claude sessions on this repository.
 
 - Work on a branch and open a pull request; say what changed and how it was
   checked. Run `tests/check_flow.py` in the session before opening the PR and
-  paste its last line into the PR; there is no CI yet.
+  paste its last line into the PR. CI (`.github/workflows/check.yml`) runs the
+  same check on every push.
 - Merging to `main` redeploys the Vercel copy by itself. The Claude artifact
   (the team's shared data) is separate: republish `index.html` to it after the
   merge, as described above.
@@ -46,11 +47,18 @@ The team works mostly from phones, through Claude sessions on this repository.
 
 ## Rules the page must keep
 
+- **Plans are private.** This repository and the Vercel site are public. A
+  team's real plan goes into the artifact's database (or `data/`, ignored by
+  git and Vercel), never into a tracked file, a screenshot or a PR text.
 - **Data is the team's.** Never hardcode entries in the page. Never delete or
   rewrite `items` or `clock` documents unless the user asks for that exact
   change. Read with `db_list` before any `db_write`, and pass `ifVersion`.
-- **No silent loss.** Every write goes through `save()` or `writeClock()`. A
-  failed save keeps the person's text on screen and says so.
+- **No silent loss.** Every write goes through `save()` or `writeClock()`, and
+  each one through `dbWrite()` (one write at a time per document, one retry on
+  `unavailable`). A failed save keeps the person's text on screen and says so.
+  Changing a to-do is `patchItem()`, a merge of the changed fields, never a
+  rewrite of the cached document. No write before the data has loaded
+  (`canWriteNow()`), and no clock write before that person's clock has loaded.
 - **Subscribe once.** `onSnapshot` is called once per collection in
   `connect()`. Never from a render function.
 - **No writes on a tick.** The timer writes only on a change of state (start,
@@ -82,7 +90,9 @@ strings, so routing uses `#f2` and `#f2-c1`.
   (`DEFAULT_FACES`). Side and space names are English; to-do text is Mongolian.
 - A to-do may wait for others: `deps` is a list of item ids. Status is always
   derived by `flow()` (done / blocked / blocking / open), never stored.
-  `wouldLoop()` must guard every place that adds a dependency.
+  `wouldLoop()` must guard every place that adds a dependency (the editor at
+  save time, import through `dropImportLoops()`). `plan()` is the topological
+  sort (Kahn): build order, layers, loops, separate plans, implied links.
 - Two Plan spaces are views, not lists (`isViewCell`): `f1-c0` Timeline and
   `f1-c3` Dependency graph. Milestones are the to-dos in `f1-c1`; a leading
   `MM/DD` in the text is the date the Timeline sorts by.

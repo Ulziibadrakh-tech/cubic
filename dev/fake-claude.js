@@ -3,7 +3,8 @@
    survives a reload and is shared between tabs, but it is NOT the team's real data.
 
    Pretend to be someone else:  http://localhost:8800/?as=bat
-   Start clean:                 http://localhost:8800/?reset=1                      */
+   Start clean:                 http://localhost:8800/?reset=1
+   A viewer the host does not tell about (can() null) whose writes are refused: ?refuse=1   */
 (() => {
   const q = new URLSearchParams(location.search);
   const KEY = 'cubic-dev-db';
@@ -25,7 +26,13 @@
   const clone = v => JSON.parse(JSON.stringify(v));
   const merge = (a, b) => { for (const [k, v] of Object.entries(b)) a[k] = v && typeof v === 'object' && !Array.isArray(v) ? merge(a[k] && typeof a[k] === 'object' ? a[k] : {}, v) : v; return a; };
   let n = 0;
-  const doc = path => ({
+  const refuse = !!q.get('refuse');
+  const no = () => Promise.reject({ code: 'invalid_argument', message: 'write refused' });
+  const doc = path => refuse ? ({
+    id: path.split('/').pop(), path, get: async () => docSnap(path), set: no, update: no, delete: no,
+    onSnapshot: cb => { const s = { kind: 'doc', path, cb }; subs.push(s); setTimeout(() => cb(docSnap(path)), 30); return () => subs.splice(subs.indexOf(s), 1); },
+    collection: sub => collection(`${path}/${sub}`),
+  }) : ({
     id: path.split('/').pop(), path,
     get: async () => docSnap(path),
     set: async data => { docs.set(path, clone(data)); persist(); fire(); },
@@ -44,7 +51,7 @@
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const user = {
     id: async () => me, me: async () => ({ id: me, name: cap(me) }),
-    isOwner: () => me === 'obama', canEdit: () => true, can: async () => (q.get('readonly') ? false : true),
+    isOwner: () => me === 'obama', canEdit: () => true, can: async () => (q.get('readonly') ? false : refuse ? null : true),
     profiles: async ids => Object.fromEntries(ids.map(i => [i, { id: i, name: cap(i) }])),
   };
   // ?dl=1 pretends the downloads capability is granted; saved files are kept in window.__saved.

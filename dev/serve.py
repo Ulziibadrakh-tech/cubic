@@ -7,6 +7,7 @@ Then open http://localhost:8800/ . Standard library only.
 The page is served from index.html unchanged, with dev/fake-claude.js loaded
 first so sign-in, shared data and the timer work without Claude.
 """
+import json
 import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -14,6 +15,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 PORT = int(os.environ.get("PORT", "8800"))
 MARK = "<script>\n'use strict';"
+# ?bare=1 is served as Vercel serves it, with the headers from vercel.json (CSP included), so a
+# header that would break the page breaks the local check too.
+VERCEL_HEADERS = [(h["key"], h["value"]) for rule in json.loads((ROOT / "vercel.json").read_text(encoding="utf-8")).get("headers", []) for h in rule["headers"]]
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -40,6 +44,10 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
+        if "bare=1" in self.path:
+            for k, v in VERCEL_HEADERS:
+                if k != "Cache-Control":
+                    self.send_header(k, v)
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
