@@ -524,6 +524,96 @@ async def main():
         check("the device in use takes the clock back from one that went hidden", await dev_a.evaluate("!!(myClock() && myClock().openSince && !myClock().leftAt)"))
         await b4.close()
 
+    # Second review: fixes that must not come back.
+    async with async_playwright() as p5:
+        b5 = await p5.chromium.launch(executable_path=CHROME, args=["--no-sandbox"])
+        ctx5 = await b5.new_context(viewport={"width": 390, "height": 844})
+        q = await ctx5.new_page()
+        q.on("pageerror", lambda e: errors.append(str(e)))
+        await q.goto(f"{BASE}/?reset=1&as=rev2#f2-c1")
+        await q.wait_for_timeout(700)
+        await q.click("#whoBox .btn >> text=Vida")
+        await q.evaluate("""(async () => { const c = S.db.collection('items');
+          await c.doc('m1').set({ cell: 'f2-c1', text: 'Хөдөлгөх мөр', deps: [], done: false, who: '', url: '', at: 10 });
+          await c.doc('m2').set({ cell: 'f2-c1', text: 'Хоёр дахь', deps: ['m1'], done: false, who: '', url: '', at: 9 }); })()""")
+        await q.wait_for_timeout(300)
+        # Saving an edit writes only what changed: a teammate's move made meanwhile is kept.
+        await q.click("#items .item-text >> text=Хөдөлгөх мөр")
+        await q.evaluate("S.db.doc('items/m1').update({ cell: 'f3-c1' })")
+        await q.fill("#area .edit-row input", "Хөдөлгөх мөр засав")
+        await q.click("#area .edit-row .btn >> text=Хадгалах")
+        await q.wait_for_timeout(400)
+        m1 = await q.evaluate("S.items.get('m1')")
+        check("an edit saves only its own change; a teammate's move stays", m1["cell"] == "f3-c1" and m1["text"] == "Хөдөлгөх мөр засав", str(m1)[:120])
+        # A swipe that starts on an open edit box never deletes the to-do.
+        await q.click("#items .item-text >> text=Хоёр дахь")
+        lab = await q.locator("#area .dep-label").bounding_box()
+        await drag(q, lab["x"] + 200, lab["y"] + 5, lab["x"] - 100, lab["y"] + 5, hold=40)
+        await q.wait_for_timeout(500)
+        check("swiping on an open edit box does not delete the to-do", await q.evaluate("S.items.has('m2')"))
+        await q.press("#area .edit-row input", "Escape")
+        # A refused update (a to-do deleted meanwhile) does not turn the page read-only.
+        await q.evaluate("(async () => { S.canSaid = null; S.wroteOnce = false; await S.db.doc('items/gone').set({ cell: 'f2-c1', text: 'x', deps: [], done: false, who: '', url: '', at: 1 }); S.wroteOnce = false; const cached = S.items.get('gone'); await S.db.doc('items/gone').delete(); S.items.set('gone', cached); await patchItem('gone', { done: true }); })()")
+        await q.wait_for_timeout(300)
+        check("a failed update on a deleted to-do does not make the page read-only", await q.evaluate("S.canWrite") is True)
+        # Pause holds through a reload the same day.
+        await q.evaluate("pauseClock()")
+        await q.wait_for_timeout(300)
+        await q.goto("about:blank")
+        await q.goto(f"{BASE}/?as=rev2#f2-c1")                 # a fresh open of the page (no ?reset)
+        await q.wait_for_timeout(900)
+        check("a pause chosen today holds through a reload", await q.evaluate("!!(myClock() && !myClock().openSince && myClock().paused)") and await q.inner_text("#clockBtn") == "Эхлүүлэх")
+        # One person with two accounts open at once is counted once.
+        two = await q.evaluate("""(() => { const now = Date.now(), day = dayKey(now);
+          const a = { days: {}, openSince: now - 3600000, openCell: 'f0-c0', leftAt: null }, b = { days: {}, openSince: now - 3600000, openCell: 'f0-c0', leftAt: null };
+          return Math.round(personMs([a, b], day) / 60000); })()""")
+        check("two accounts open at once count one hour as one hour", two == 60, str(two))
+        # A damaged clock in a backup is ignored, and an exporter's running stretch counts up to the export.
+        back = await q.evaluate("""(() => { const t = Date.now(); const d = readImport(JSON.stringify({ app: 'cubic', exportedAt: new Date(t).toISOString(),
+            clock: { bad: { days: { '2026-11-17': null } }, run: { days: {}, openSince: t - 7200000, openCell: 'f0-c0', leftAt: null } } }));
+          const p = planImport(d); const run = p.clock.find(([k]) => k === 'run');
+          return { bad: p.clock.some(([k, v]) => k === 'bad' && Object.keys(v.days).length), runMin: run ? Math.round(Object.values(run[1].days).reduce((t, x) => t + x.ms, 0) / 60000) : -1 }; })()""")
+        check("a damaged backup clock is cleaned, a running stretch counts up to the export", back["bad"] is False and back["runMin"] == 120, str(back))
+        # A laptop asleep with the page in front: the gap is asked about, not counted.
+        await q.evaluate("startClock()")
+        await q.wait_for_timeout(300)
+        gap = await q.evaluate("""(async () => { const c = myClock(); await writeClock(x => { x.openSince = Date.now() - 3 * 3600000; });
+          const since = Date.now() - 3 * 3600000 + 60000; await writeClock(x => { x.leftAt = since; }); reconcileClock(false);
+          return !document.getElementById('awayBox').hidden; })()""")
+        check("time away (sleep or hidden) brings the question instead of counting", gap is True)
+        # Typing on while an add is saving keeps what was typed after Enter.
+        await q.goto(f"{BASE}/?as=rev2#f2-c1")
+        await q.wait_for_timeout(600)
+        await q.evaluate("""(() => { const orig = S.db.doc; S.db.doc = p => { const d = orig(p); const set = d.set; d.set = async v => { await new Promise(r => setTimeout(r, 400)); return set(v); }; return d; }; })()""")
+        await q.fill("#newText", "Нэг")
+        await q.press("#newText", "Enter")
+        await q.type("#newText", " дараагийнх")
+        await q.wait_for_timeout(900)
+        check("text typed while a to-do saves is kept", (await q.input_value("#newText")).strip() == "дараагийнх", await q.input_value("#newText"))
+        # Plans: the picked plan stays; small-plan milestones stay on the timeline; a bridge is not called a loop.
+        await q.goto(f"{BASE}/?reset=1&as=rev2b#f1-c3")
+        await q.wait_for_timeout(700)
+        await q.click("#whoBox .btn >> text=Anand")
+        await q.evaluate("""(async () => { const c = S.db.collection('items');
+          for (let k = 0; k < 6; k++) await c.doc('p' + k).set({ cell: 'f2-c2', text: 'P ' + k, deps: k ? ['p' + (k - 1)] : [], done: false, who: '', url: '', at: 2000 + k, editedAt: 2000 + k });
+          for (let k = 0; k < 6; k++) await c.doc('q' + k).set({ cell: 'f3-c2', text: 'Q ' + k, deps: k ? ['q' + (k - 1)] : [], done: false, who: '', url: '', at: 1000 + k, editedAt: 1000 + k });
+          await c.doc('t1').set({ cell: 'f2-c2', text: 'T', deps: [], done: false, who: '', url: '', at: 5 });
+          await c.doc('ms').set({ cell: 'f1-c1', text: '11/25 Жижиг шалгуур', deps: ['t1'], done: false, who: '', url: '', at: 6 }); })()""")
+        await q.wait_for_timeout(500)
+        first = await q.evaluate("G.group")
+        await q.evaluate("patchItem('q2', { done: true })")
+        await q.wait_for_timeout(500)
+        check("a teammate's tick in another plan does not switch the picked plan", await q.evaluate("G.group") == first and first is not None, str(first))
+        await q.goto(f"{BASE}/?as=rev2b#f1-c0")
+        await q.wait_for_timeout(600)
+        check("a milestone in a small plan stays on the timeline", "Жижиг шалгуур" in await q.inner_text("#planView"))
+        loops = await q.evaluate("""(() => { const save = new Map(S.items); const mk = (id, deps) => S.items.set(id, { id, cell: 'f2-c2', text: id, deps, done: false, at: 1 });
+          mk('A', ['B']); mk('B', ['A']); mk('X', ['A']); mk('C', ['X', 'D']); mk('D', ['C']);
+          const L = plan().loop.slice().sort().join(''); S.items = save; return L; })()""")
+        check("a to-do between two loops is not called part of a loop", loops == "ABCD", loops)
+        check("a milestone date may be followed by a period", await q.evaluate("!!milestoneDate('11/22. Нээлт') && milestoneDate('1.5 хоног') === null"))
+        await b5.close()
+
     check("no script errors", not errors, "; ".join(errors[:3]))
     print(f"\n{sum(results)}/{len(results)} checks passed")
     sys.exit(0 if all(results) else 1)

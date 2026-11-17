@@ -236,6 +236,8 @@ select.field { padding: 8px 10px; font-size: 16px; }
 .file-btn { position: relative; overflow: hidden; display: inline-flex; align-items: center; }
 .file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .file-btn:has(input:focus-visible) { outline: 3px solid var(--accent); outline-offset: 2px; }
+.file-btn:has(input:disabled) { opacity: .45; }
+.file-btn:has(input:disabled) input { cursor: default; }
 .plan { list-style: none; margin: 0; padding: 0; border-top: var(--rule) solid var(--line); }
 .plan li { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--hair); font-size: 14px; }
 .plan b { font-variant-numeric: tabular-nums; }
@@ -515,7 +517,40 @@ const isViewCell = k => k === TIMELINE_CELL || k === GRAPH_CELL;
 const TEAM = [{ id: 'vida', name: 'Vida' }, { id: 'anand', name: 'Anand' }, { id: 'obama', name: 'Obama' }];
 const member = id => TEAM.find(m => m.id === id) || null;
 
+/* ── Screen language: Mongolian by default, English on the МН/EN toggle (kept per viewer). ──
+   To-do text, side and space names are the team's own words and are never translated. A string
+   is a key here; a function takes the numbers or names it shows. */
+const L = { mn: {}, en: {} };
+const tr = (key, ...a) => { const v = (L[S.lang] && key in L[S.lang]) ? L[S.lang][key] : L.mn[key]; return typeof v === 'function' ? v(...a) : (v == null ? key : v); };
+Object.assign(L.mn, {
+  addWait: 'Өгөгдөл ачаалагдаж байна. Түр хүлээгээд дахин дарна уу.', addFailed: 'Нэмж чадсангүй. Бичсэн зүйл тань хэвээр байна.',
+  loading: 'Ачаалж байна…', noTodos: 'Одоогоор ажил алга.', nTodos: n => `${n} ажил`,
+  fileBig: 'Файл хэт том байна.', fileUnreadable: 'Файлыг уншиж чадсангүй.',
+  impNothing: 'Оруулах зүйл олдсонгүй.', impDone: n => `Орууллаа: ${n} өөрчлөлт.`, impWait: 'Өгөгдөл ачаалагдаж байна. Түр хүлээгээд дахин шалгана уу.',
+  clockFailed: 'Цагийн өөрчлөлт хадгалагдсангүй.',
+  nLost: 'Холболт тасарлаа. Хуудсаа дахин нээнэ үү.', nNoStorage: 'Энэ хөтөч өгөгдөл хадгалахыг зөвшөөрөхгүй байна. Өөр хөтөчөөр нээнэ үү.',
+  nNoDb: 'Хуваалцсан өгөгдөл энд нээгдсэнгүй. Claude-д нэвтэрч нээнэ үү.', nReadOnly: 'Та зөвхөн унших эрхтэй. Эзэмшигчээс Contributor эрх хүсээрэй.',
+  nNoId: 'Таныг таньж чадсангүй, тиймээс цаг ажиллахгүй. Claude-д нэвтэрч нээнэ үү.', nSlow: 'Өгөгдөлд холбогдож чадахгүй байна. Харагдаж буй зүйл хуучирсан байж магадгүй.',
+  nLocal: 'Энэ хуудас өгөгдлийг зөвхөн энэ хөтөч дээр хадгална. Багийн хуваалцсан хувилбар Claude дээр байна. Шилжүүлэхдээ «Өгөгдөл» хэсгийг ашиглана уу.',
+  editEmpty: 'Хоосон байж болохгүй.', editFailed: 'Хадгалж чадсангүй. Бичсэн зүйл тань хэвээр байна.',
+  loopSkipped: n => `${n} хамаарал тойрог үүсгэх тул нэмсэнгүй.`, moved: w => `«${w}» руу зөөлөө.`, deleted: 'Устгалаа.',
+});
+Object.assign(L.en, {
+  addWait: 'The data is still loading. Wait a moment and press again.', addFailed: 'Could not add it. Your text is still here.',
+  loading: 'Loading…', noTodos: 'No to-dos yet.', nTodos: n => `${n} ${n === 1 ? 'to-do' : 'to-dos'}`,
+  fileBig: 'The file is too large.', fileUnreadable: 'Could not read the file.',
+  impNothing: 'Nothing to import was found.', impDone: n => `Imported: ${n} ${n === 1 ? 'change' : 'changes'}.`, impWait: 'The data is still loading. Wait a moment and check again.',
+  clockFailed: 'The timer change was not saved.',
+  nLost: 'The connection was lost. Please open the page again.', nNoStorage: 'This browser does not allow saving data. Please open it in another browser.',
+  nNoDb: 'The shared data did not open here. Sign in to Claude and open it there.', nReadOnly: 'You can only read here. Ask the owner for Contributor access.',
+  nNoId: 'We could not tell who you are, so the timer is off. Sign in to Claude and open it there.', nSlow: 'Cannot reach the data. What you see may be out of date.',
+  nLocal: 'This page keeps data in this browser only. The team’s shared copy is on Claude. To move data, use “Data”.',
+  editEmpty: 'It cannot be empty.', editFailed: 'Could not save. Your text is still here.',
+  loopSkipped: n => `${n} ${n === 1 ? 'dependency was' : 'dependencies were'} not added: ${n === 1 ? 'it' : 'they'} would make a loop.`, moved: w => `Moved to “${w}”.`, deleted: 'Deleted.',
+});
+
 const S = {
+  lang: 'mn', lastInput: Date.now(),
   db: null, user: null, me: null, canWrite: true, loaded: false, local: false,
   faces: DEFAULT_FACES.map(f => ({ title: f.title, cells: f.cells.slice(), editedAt: 0, stored: false })),
   items: new Map(), people: new Map(), clocks: new Map(), clockReady: false, peopleReady: false,
@@ -549,8 +584,10 @@ const writeLines = new Map();
 function dbWrite(path, op, data) {
   const run = () => (op === 'delete' ? S.db.doc(path).delete() : S.db.doc(path)[op](data));
   const once = async () => {
-    try { return await run(); }
-    catch (e) { if (e && e.code === 'unavailable') { await new Promise(res => setTimeout(res, 300 + Math.floor(Math.random() * 500))); return run(); } throw e; }
+    try {
+      try { return await run(); }
+      catch (e) { if (e && e.code === 'unavailable') { await new Promise(res => setTimeout(res, 300 + Math.floor(Math.random() * 500))); return await run(); } throw e; }
+    } catch (e) { throw { code: e && e.code, message: e && e.message, op }; }
   };
   const next = (writeLines.get(path) || Promise.resolve()).catch(() => {}).then(once);
   writeLines.set(path, next);
@@ -568,22 +605,37 @@ async function save(fn) {
 /* When the host does not say whether this viewer may write (can() is null), the first refused write
    says it: the page turns read-only instead of failing on every tap. */
 function refusedWrite(e) {
-  if (!e || e.code !== 'invalid_argument' || S.canSaid === true || S.wroteOnce || !S.canWrite) return false;
-  S.canWrite = false; S.sticky = true;
+  if (!e || e.code !== 'invalid_argument' || e.op !== 'set' || S.canSaid === true || S.wroteOnce || !S.canWrite) return false;
+  S.canWrite = false;
   $('whoBox').hidden = true; $('awayBox').hidden = true;
-  notice('Та зөвхөн унших эрхтэй. Эзэмшигчээс Contributor эрх хүсээрэй.');
-  initData(); renderAll(); renderClock();
+  refreshNotice(); initData(); renderAll(); renderClock();
   return true;
 }
+/* The notice line, worked out from the state with the most important first, so a later event never
+   hides an earlier, more important one (a lost connection outranks "read-only", which outranks
+   "slow", which outranks the Vercel note). */
+function refreshNotice() {
+  notice(S.lost ? tr('nLost')
+    : S.noDb ? (S.local || !window.claude ? tr('nNoStorage') : tr('nNoDb'))
+    : S.db && !S.canWrite ? tr('nReadOnly')
+    : S.idChecked && S.db && !S.me ? tr('nNoId')
+    : S.slow && !S.loaded ? tr('nSlow')
+    : S.local && S.loaded ? tr('nLocal') : '');
+}
+/* Import and export wait for everything they read or write: sides, to-dos, people and clocks. */
+const dataReady = () => !!(S.loaded && S.peopleReady && S.clockReady);
 /* Writes wait until the shared data has arrived, so nothing is written over what is not yet seen. */
 const canWriteNow = () => !!(S.canWrite && S.db && S.loaded);
 function notice(text) { const n = $('notice'); n.hidden = !text; n.textContent = text || ''; }
 let undoTimer = null;
+/* The message (and its undo) stays while focus or a finger is on it, then 7 s. */
 function toast(text, undo) {
-  $('toastText').textContent = text; $('toast').hidden = false;
+  const t = $('toast');
+  $('toastText').textContent = text; t.hidden = false;
   $('toastUndo').hidden = !undo;
-  $('toastUndo').onclick = () => { $('toast').hidden = true; if (undo) undo(); };
-  clearTimeout(undoTimer); undoTimer = setTimeout(() => { $('toast').hidden = true; }, 7000);
+  $('toastUndo').onclick = () => { t.hidden = true; if (undo) undo(); };
+  const later = ms => { clearTimeout(undoTimer); undoTimer = setTimeout(() => { if (!t.matches(':focus-within, :hover')) t.hidden = true; else later(2000); }, ms); };
+  later(7000);
 }
 
 /* ── Хүмүүс: Claude-ийн хэрэглэгч бүр гурвын нэг болж сонгоно ── */
@@ -652,26 +704,37 @@ function inlineEdit(host, { value, label, onSave, cell, itemId }) {
   const original = [...host.childNodes];
   host.replaceChildren(row);
   input.focus(); input.select();
-  const close = () => { host.replaceChildren(...original); queueRender(true); };
+  /* Closing puts the tapped button back and gives it focus, so keyboard users stay in place. */
+  const close = () => {
+    host.replaceChildren(...original);
+    const back = original.find(n => n.nodeType === 1 && (n.matches('button') ? n : n.querySelector('button')));
+    if (back) (back.matches('button') ? back : back.querySelector('button')).focus({ preventScroll: true });
+    queueRender(true);
+  };
   const commit = async () => {
     const v = input.value.trim(), to = picker ? picker.value : null;
-    if (!v) { err.hidden = false; err.textContent = 'Хоосон байж болохгүй.'; return; }
+    if (!v) { err.hidden = false; err.textContent = tr('editEmpty'); return; }
     const depsSame = before.length === chosen.length && before.every(d => chosen.includes(d));
     if (v === value && (!picker || to === cell) && depsSame) return close();
     saveBtn.disabled = true;
-    let deps = chosen.slice();
-    if (itemId) {
-      /* Apply what this editor added and removed to the to-do as it is now, so a dependency someone
-         else added meanwhile stays, and an addition that would now close a loop is left out. */
-      const now = depsOf(S.items.get(itemId) || {});
+    /* Only what this editor changed is written, so a teammate's move, rename or new dependency made
+       while it was open is kept. Dependencies: what was added and removed is applied to the stored
+       list as it is now (ids of deleted to-dos stay, an undo may bring them back); an addition that
+       would now close a loop is left out. */
+    const changes = {};
+    if (v !== value) changes.text = v;
+    if (picker && to !== cell) changes.cell = to;
+    if (itemId && !depsSame) {
+      const cur = S.items.get(itemId) || {};
+      const now = [...new Set(Array.isArray(cur.deps) ? cur.deps : [])].filter(d => d !== itemId);
       const added = chosen.filter(d => !before.includes(d)), removed = before.filter(d => !chosen.includes(d));
       const safe = added.filter(d => !wouldLoop(itemId, d));
-      deps = [...new Set([...now.filter(d => !removed.includes(d)), ...safe])];
-      if (safe.length < added.length) toast(`${added.length - safe.length} хамаарал тойрог үүсгэх тул нэмсэнгүй.`);
+      changes.deps = [...new Set([...now.filter(d => !removed.includes(d)), ...safe])];
+      if (safe.length < added.length) toast(tr('loopSkipped', added.length - safe.length));
     }
-    const ok = await onSave(v, to, deps);
+    const ok = await onSave(v, to, changes);
     saveBtn.disabled = false;
-    if (ok) close(); else { err.hidden = false; err.textContent = 'Хадгалж чадсангүй. Бичсэн зүйл тань хэвээр байна.'; }
+    if (ok) close(); else { err.hidden = false; err.textContent = tr('editFailed'); }
   };
   saveBtn.addEventListener('click', commit);
   cancelBtn.addEventListener('click', close);
@@ -681,7 +744,7 @@ function inlineEdit(host, { value, label, onSave, cell, itemId }) {
   });
 }
 /* Only an edit in the view on screen holds back redraws; one left open in the hidden view does not. */
-const isEditing = () => !!(S.cell ? $('area') : $('home')).querySelector('[data-editing]');
+const isEditing = () => [...(S.cell ? $('area') : $('home')).querySelectorAll('[data-editing]')].some(n => n.getClientRects().length > 0);
 
 /* ── Бичилт ── */
 const stamp = () => ({ editedBy: S.me || null, editedAt: Date.now() });
@@ -711,11 +774,13 @@ function patchItem(id, patch) {
   if (!S.items.has(id)) return Promise.resolve(false);
   return save(() => dbWrite(`items/${id}`, 'update', { ...patch, ...stamp() }));
 }
-function moveItem(id, text, to, deps) {
+/* Writes only the fields the editor changed (text, cell, deps). */
+function moveItem(id, changes) {
   const cur = S.items.get(id); if (!cur) return Promise.resolve(false);
+  if (!Object.keys(changes).length) return Promise.resolve(true);
   const from = cur.cell;
-  return patchItem(id, { text, cell: to, deps: Array.isArray(deps) ? deps : depsOf(cur) }).then(ok => {
-    if (ok && to !== from) toast(`«${whereIs(to)}» руу зөөлөө.`, () => patchItem(id, { cell: from }));
+  return patchItem(id, changes).then(ok => {
+    if (ok && changes.cell && changes.cell !== from) toast(tr('moved', whereIs(changes.cell)), () => patchItem(id, { cell: from }));
     return ok;
   });
 }
@@ -724,7 +789,9 @@ function removeItem(id) {
   const { id: _omit, ...body } = cur;
   save(() => dbWrite(`items/${id}`, 'delete')).then(ok => {
     if (!ok) { queueRender(true); return; }
-    toast('Устгалаа.', () => save(() => dbWrite(`items/${id}`, 'set', body)));
+    /* Undo brings the to-do back through the loop guard: while it was gone, someone may have made
+       what it waited for wait on it. */
+    toast(tr('deleted'), () => { const x = { id, body: { ...body } }; dropImportLoops([x]); save(() => dbWrite(`items/${id}`, 'set', x.body)); });
   });
 }
 
@@ -791,17 +858,32 @@ function plan() {
       if (!indeg.get(u)) ready.push(u);
     });
   }
-  /* What Kahn could not place is a loop or waits behind one. Peel off the ones only waiting
-     behind (nobody left waits on them); what stays is the loop itself. */
+  /* What Kahn could not place is in a loop or waits behind one. The loops themselves are the
+     strongly connected components with more than one to-do (Tarjan); a to-do between two loops,
+     or behind one, is stuck but not part of a loop, and removing its links fixes nothing. */
   const placed = new Set(order);
   const stuck = new Set(ids.filter(id => !placed.has(id)));
-  const behind = new Set(stuck);
-  let peeled = true;
-  while (peeled) {
-    peeled = false;
-    behind.forEach(id => { if (!(users.get(id) || []).some(u => behind.has(u))) { behind.delete(id); peeled = true; } });
+  const sccOf = new Map(), loop = [];
+  {
+    let index = 0, comp = 0;
+    const idx = new Map(), low = new Map(), onStack = new Set(), stack = [];
+    const visit = v => {
+      idx.set(v, index); low.set(v, index); index += 1; stack.push(v); onStack.add(v);
+      deps.get(v).forEach(w => {
+        if (!stuck.has(w)) return;
+        if (!idx.has(w)) { visit(w); low.set(v, Math.min(low.get(v), low.get(w))); }
+        else if (onStack.has(w)) low.set(v, Math.min(low.get(v), idx.get(w)));
+      });
+      if (low.get(v) === idx.get(v)) {
+        const members = [];
+        let w;
+        do { w = stack.pop(); onStack.delete(w); members.push(w); sccOf.set(w, comp); } while (w !== v);
+        if (members.length > 1) loop.push(...members);
+        comp += 1;
+      }
+    };
+    stuck.forEach(v => { if (!idx.has(v)) visit(v); });
   }
-  const loop = [...behind];
   const top = order.length ? Math.max(...order.map(id => layer.get(id))) + 1 : 0;
   stuck.forEach(id => { layer.set(id, top); order.push(id); });
   /* Arrows: a dependency is implied when another dependency of the same to-do already waits for it. */
@@ -817,7 +899,8 @@ function plan() {
   let implied = 0;
   ids.forEach(id => {
     const ds = deps.get(id);
-    const keep = ds.filter(d => !ds.some(o => o !== d && reach(o).has(d)));
+    /* Within one loop everything reaches everything; that is not "implied", so those arrows stay. */
+    const keep = ds.filter(d => !ds.some(o => o !== d && reach(o).has(d) && !(sccOf.has(o) && sccOf.get(o) === sccOf.get(d))));
     implied += ds.length - keep.length; direct.set(id, keep);
   });
   /* Groups: union-find over the waiting links. A group is named by its latest dated milestone,
@@ -833,7 +916,7 @@ function plan() {
     const name = dated.length ? dated[0].id : members[members.length - 1];
     const fresh = Math.max(...members.map(id => Math.max(S.items.get(id).at || 0, S.items.get(id).editedAt || 0)));
     return { key: name, label: S.items.get(name).text, members: new Set(members), size: members.length, fresh };
-  }).sort((a, b) => b.size - a.size || b.fresh - a.fresh);
+  }).sort((a, b) => b.size - a.size || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));   /* a stable order for the chips */
   const groupOf = new Map();
   groups.forEach(g => g.members.forEach(id => groupOf.set(id, g.key)));
   return { ids, order, layer, loop, stuck, stuckLayer: stuck.size ? top : -1, deps, direct, implied, groups, groupOf };
@@ -846,7 +929,9 @@ function pickedGroup(P) {
   if (G.group === 'all') return null;
   if (G.group === 'other' && big.length < P.groups.length) return { key: 'other', has: id => !big.some(g => g.members.has(id)) };
   let g = P.groups.find(x => x.key === G.group && x.size >= GROUP_MIN);
-  if (!g) g = big.slice().sort((a, b) => b.fresh - a.fresh)[0];
+  /* First visit: the plan worked on most recently. The choice is then kept, so a teammate's tick in
+     another plan does not switch the view under the person. */
+  if (!g) { g = big.slice().sort((a, b) => b.fresh - a.fresh)[0]; if (g) G.group = g.key; }
   return g ? { key: g.key, has: id => g.members.has(id) } : null;
 }
 function groupChips(P, picked, redraw) {
@@ -862,7 +947,8 @@ function groupChips(P, picked, redraw) {
 }
 
 function countFor(key) {
-  if (!S.loaded) return 'Ачаалж байна…';
+  if (!S.db) return '';
+  if (!S.loaded) return tr('loading');
   if (key === GRAPH_CELL) { let b = 0; flow().forEach(x => { if (x.state === 'blocked') b += 1; }); return b ? `${b} гацсан` : 'Гацсан ажилгүй'; }
   if (key === TIMELINE_CELL) { let m = 0; S.items.forEach(i => { if (i.cell === MILESTONE_CELL && !i.done) m += 1; }); return m ? `${m} шалгуур үлдсэн` : 'Шалгуургүй'; }
 
@@ -1006,7 +1092,7 @@ function renderSearch() {
 function nextWho(cur) { const order = ['', ...TEAM.map(m => m.id)]; return order[(order.indexOf(cur || '') + 1) % order.length]; }
 function attachSwipe(row, onRemove) {
   let sx = 0, sy = 0, dx = 0, active = false, locked = false, t0 = 0;
-  row.addEventListener('pointerdown', e => { if (e.target.closest('input, a, select, button:not(.item-text)')) return; active = true; locked = false; sx = e.clientX; sy = e.clientY; dx = 0; t0 = e.timeStamp; });
+  row.addEventListener('pointerdown', e => { if (row.querySelector('[data-editing]') || e.target.closest('input, a, select, textarea, [data-editing], button:not(.item-text)')) return; active = true; locked = false; sx = e.clientX; sy = e.clientY; dx = 0; t0 = e.timeStamp; });
   row.addEventListener('pointermove', e => {
     if (!active) return;
     dx = e.clientX - sx; const dy = e.clientY - sy;
@@ -1051,10 +1137,10 @@ function renderArea() {
   const list = [...S.items.values()].filter(i => i.cell === S.cell)
     .sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0) || (b.at || 0) - (a.at || 0));
   $('itemsEmpty').hidden = list.length > 0;
-  $('itemsEmpty').textContent = S.loaded ? 'Одоогоор ажил алга.' : 'Ачаалж байна…';
+  $('itemsEmpty').textContent = !S.db ? '' : S.loaded ? tr('noTodos') : tr('loading');
   $('swipeHint').hidden = !S.canWrite;
   const opened = ROWS.cell !== S.cell;
-  if (opened) { ROWS.cell = S.cell; ROWS.seen = new Set(); ROWS.done = new Set(list.filter(i => i.done).map(i => i.id)); }
+  if (opened) { ROWS.cell = S.cell; ROWS.seen = new Set(); ROWS.done = new Set(list.filter(i => i.done).map(i => i.id)); $('captureErr').hidden = true; }
   /* Keyboard focus survives the redraw: back to the same control, or to the next row after a delete. */
   const active = document.activeElement, itemsBox = $('items');
   const fkey = active && itemsBox.contains(active) && active.dataset ? active.dataset.fkey || null : null;
@@ -1066,7 +1152,7 @@ function renderArea() {
     const textHost = el('div');
     textHost.append(S.canWrite
       ? el('button', { type: 'button', class: 'editable item-text', text: i.text, title: 'Засах',
-          onclick: () => inlineEdit(textHost, { value: i.text, label: 'Ажлыг засах', cell: i.cell, itemId: i.id, onSave: (v, to, deps) => moveItem(i.id, v, to, deps) }) })
+          onclick: () => inlineEdit(textHost, { value: i.text, label: 'Ажлыг засах', cell: i.cell, itemId: i.id, onSave: (v, to, changes) => moveItem(i.id, changes) }) })
       : el('span', { class: 'item-text', text: i.text }));
     main.append(textHost);
     const x = fl.get(i.id);
@@ -1100,14 +1186,15 @@ function showLeftover(lines, cell) {
 function initCapture() {
   $('capture').addEventListener('submit', async e => {
     e.preventDefault();
-    const text = $('newText').value.trim(), err = $('captureErr'), cell = S.cell; err.hidden = true;
-    if (!text) { $('newText').focus(); return; }
-    if (!canWriteNow() || !cell) { err.hidden = false; err.textContent = 'Өгөгдөл ачаалагдаж байна. Түр хүлээгээд дахин дарна уу.'; return; }
+    const box = $('newText'), text = box.value.trim(), err = $('captureErr'), cell = S.cell; err.hidden = true;
+    if (!text) { box.focus(); return; }
+    if (!canWriteNow() || !cell) { err.hidden = false; err.textContent = tr('addWait'); return; }
     $('addBtn').disabled = true;
     const ok = await addItem(text, cell);
     $('addBtn').disabled = false;
-    if (ok) { $('newText').value = ''; $('newText').focus(); }
-    else { err.hidden = false; err.textContent = 'Нэмж чадсангүй. Бичсэн зүйл тань хэвээр байна.'; }
+    /* Clear only what was saved: anything typed after Enter stays in the box. */
+    if (ok) { const now = box.value; box.value = now.trim() === text ? '' : now.startsWith(text) ? now.slice(text.length).trimStart() : now; box.focus(); }
+    else { err.hidden = false; err.textContent = tr('addFailed'); }
   });
   $('newText').addEventListener('paste', async e => {
     const lines = ((e.clipboardData && e.clipboardData.getData('text')) || '').split(/\r?\n/)
@@ -1132,6 +1219,23 @@ function fmt(ms) {
   return h ? `${h} ц ${String(m % 60).padStart(2, '0')} мин` : `${m} мин`;
 }
 const myClock = () => S.clocks.get(S.me) || null;
+/* A clock document as the page uses it, or null when it is not one. A damaged or hand-made record
+   (from a backup) must not break the team card or the space line for everyone. */
+const isMs = v => typeof v === 'number' && Number.isFinite(v) && v >= 0;
+function cleanClock(v) {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
+  const days = {};
+  if (v.days && typeof v.days === 'object' && !Array.isArray(v.days)) {
+    Object.entries(v.days).forEach(([k, d]) => {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !d || typeof d !== 'object' || !isMs(d.ms)) return;
+      const bySpace = {};
+      if (d.bySpace && typeof d.bySpace === 'object') Object.entries(d.bySpace).forEach(([c, ms]) => { if (isMs(ms)) bySpace[c] = ms; });
+      days[k] = { ms: d.ms, bySpace };
+    });
+  }
+  return { days, openSince: isMs(v.openSince) ? v.openSince : null, openCell: typeof v.openCell === 'string' ? v.openCell : null,
+    leftAt: isMs(v.leftAt) ? v.leftAt : null, paused: v.paused === true, pausedAt: isMs(v.pausedAt) ? v.pausedAt : null };
+}
 /* A stretch from start to end, cut at each local midnight: [[day, ms], ...]. */
 function byDay(start, end) {
   const out = [];
@@ -1158,17 +1262,24 @@ let clockChain = Promise.resolve();
 function writeClock(mutate) {
   if (!S.db || !S.me || !S.canWrite || !S.clockReady) return Promise.resolve(false);
   clockChain = clockChain.then(async () => {
-    const cur = JSON.parse(JSON.stringify(myClock() || { days: {} }));
+    const prev = myClock();
+    const cur = JSON.parse(JSON.stringify(prev || { days: {} }));
     mutate(cur);
     S.clocks.set(S.me, cur); renderClock(); renderTeam();
     try { await dbWrite(`clock/${S.me}`, 'set', cur); S.wroteOnce = true; return true; }
-    catch (e) { if (!refusedWrite(e)) setSync('failed', 'Цагийн өөрчлөлт хадгалагдсангүй.'); return false; }
+    catch (e) {
+      /* What was not stored is not shown: put the previous clock back. */
+      if (prev) S.clocks.set(S.me, prev); else S.clocks.delete(S.me);
+      if (!refusedWrite(e)) setSync('failed', tr('clockFailed'));
+      renderClock(); renderTeam();
+      return false;
+    }
   });
   return clockChain;
 }
 const here = () => S.cell || 'home';
 function startClock() { return writeClock(c => { closeStretch(c, Date.now()); c.openSince = Date.now(); c.openCell = here(); c.leftAt = null; c.paused = false; }); }
-function pauseClock() { $('awayBox').hidden = true; return writeClock(c => { closeStretch(c, c.leftAt || Date.now()); c.paused = true; }); }
+function pauseClock() { $('awayBox').hidden = true; return writeClock(c => { closeStretch(c, c.leftAt || Date.now()); c.paused = true; c.pausedAt = Date.now(); }); }
 function moveClock() { const c = myClock(); if (c && c.openSince && !c.leftAt && c.openCell !== here()) startClock(); }
 /* Time on `day`: closed stretches plus the open one, cut at midnight. Time after leaving is not
    shown until the person says it was work (leftAt is cleared then). */
@@ -1179,6 +1290,14 @@ function liveMs(c, day) {
   return closed + byDay(c.openSince, Math.max(c.openSince, end)).reduce((t, [d, ms]) => t + (d === day ? ms : 0), 0);
 }
 function weekMs(c) { let t = 0; for (let k = 0; k < 7; k++) t += liveMs(c, dayKey(Date.now() - k * 86400000)); return t; }
+/* One person's clocks (one per Claude account): all closed stretches, and the open stretch of one
+   clock only, so the same hour on two devices is not counted twice. */
+const liveClock = clocks => clocks.find(c => c.openSince && !c.leftAt) || clocks.find(c => c.openSince) || null;
+function personMs(clocks, day) {
+  const live = liveClock(clocks);
+  return clocks.reduce((t, c) => t + liveMs(c === live ? c : { ...c, openSince: null }, day), 0);
+}
+function personWeekMs(clocks) { let t = 0; for (let k = 0; k < 7; k++) t += personMs(clocks, dayKey(Date.now() - k * 86400000)); return t; }
 function statusOf(c) {
   if (!c) return { cls: '', text: 'Нэвтрээгүй' };
   if (!c.openSince) return { cls: '', text: 'Цаг зогссон' };
@@ -1203,24 +1322,24 @@ function renderTeam() {
     const clocks = uids.map(u => S.clocks.get(u)).filter(Boolean);
     const live = clocks.find(c => c.openSince && !c.leftAt) || clocks.find(c => c.openSince) || clocks[0] || null;
     const st = statusOf(live);
-    const today = clocks.reduce((t, c) => t + liveMs(c, dayKey(Date.now())), 0), week = clocks.reduce((t, c) => t + weekMs(c), 0);
+    const today = personMs(clocks, dayKey(Date.now())), week = personWeekMs(clocks);
     let open = 0; S.items.forEach(i => { if (i.who === m.id && !i.done) open += 1; });
     return el('li', {}, [el('span', { class: 'who', 'data-who': m.id, 'aria-hidden': 'true', text: m.name[0] }),
-      el('div', {}, [el('b', { text: m.name }), el('small', { text: S.loaded && S.peopleReady ? `${st.text} · ${open} ажил` : 'Ачаалж байна…' })]),
+      el('div', {}, [el('b', { text: m.name }), el('small', { text: !S.db ? '' : S.loaded && S.peopleReady && S.clockReady ? `${st.text} · ${tr('nTodos', open)}` : tr('loading') })]),
       el('div', { class: 'nums' }, [el('div', { text: fmt(today) }), el('small', { text: `7 хоног ${fmt(week)}` })])]);
   }));
 }
 function renderSpaceTime() {
   const box = $('spaceTime'); if (!S.cell) return;
   const byPerson = new Map();   /* one line per person, even with two accounts */
-  S.clocks.forEach((c, id) => {
+  S.clocks.forEach((c, id) => { const key = whoOf(id) || id; if (!byPerson.has(key)) byPerson.set(key, { name: nameOfUid(id), clocks: [] }); byPerson.get(key).clocks.push(c); });
+  const parts = [...byPerson.values()].map(p => {
     let ms = 0;
-    Object.values(c.days || {}).forEach(d => { ms += (d.bySpace && d.bySpace[S.cell]) || 0; });
-    if (c.openSince && c.openCell === S.cell && !c.leftAt) ms += Math.max(0, Date.now() - c.openSince);
-    const key = whoOf(id) || id;
-    byPerson.set(key, { name: nameOfUid(id), ms: ((byPerson.get(key) || {}).ms || 0) + ms });
-  });
-  const parts = [...byPerson.values()].filter(x => x.ms >= 60000).map(x => `${x.name} ${fmt(x.ms)}`);
+    p.clocks.forEach(c => Object.values(c.days || {}).forEach(d => { ms += (d.bySpace && d.bySpace[S.cell]) || 0; }));
+    const live = liveClock(p.clocks);
+    if (live && live.openCell === S.cell) ms += Math.max(0, (live.leftAt || Date.now()) - live.openSince);
+    return { name: p.name, ms };
+  }).filter(x => x.ms >= 60000).map(x => `${x.name} ${fmt(x.ms)}`);
   box.hidden = !parts.length; box.textContent = parts.length ? `Энэ нүдэнд: ${parts.join(' · ')}` : '';
 }
 /* Opening the workspace starts the timer. Coming back to it (another app, the screen locked) keeps
@@ -1228,7 +1347,12 @@ function renderSpaceTime() {
 function reconcileClock(opening) {
   if (!S.clockReady || !S.me || !S.canWrite || document.hidden) return;
   const c = myClock(), box = $('awayBox');
-  if (!c || !c.openSince) { box.hidden = true; if (opening || !c || !c.paused) startClock(); return; }
+  if (!c || !c.openSince) {
+    box.hidden = true;
+    const pausedToday = c && c.paused && (!opening || (c.pausedAt && dayKey(c.pausedAt) === dayKey(Date.now())));
+    if (!pausedToday) startClock();
+    return;
+  }
   const leftAt = c.leftAt || null, gone = leftAt ? Date.now() - leftAt : 0;
   if (!leftAt) { box.hidden = true; moveClock(); return; }
   if (gone > AWAY_MAX_MS) { box.hidden = true; writeClock(x => { closeStretch(x, leftAt); }).then(startClock); return; }
@@ -1249,7 +1373,16 @@ function initClock() {
     if (document.hidden) { if (c && c.openSince && !c.leftAt) writeClock(x => { x.leftAt = Date.now(); }); }
     else reconcileClock(false);
   });
-  setInterval(() => { renderClock(); if (!S.cell) renderTeam(); else renderSpaceTime(); }, 15000);
+  /* A laptop asleep with the page in front never hides it. A gap between ticks longer than the away
+     question's limit means the person was gone from the last tick: ask, as after leaving. */
+  let lastTick = Date.now();
+  setInterval(() => {
+    const now = Date.now(), c = myClock();
+    if (now - lastTick > AWAY_ASK_MS && c && c.openSince && !c.leftAt && S.clockReady) { const since = lastTick; writeClock(x => { x.leftAt = since; }).then(() => reconcileClock(false)); }
+    lastTick = now;
+    renderClock(); if (!S.cell) renderTeam(); else renderSpaceTime();
+  }, 15000);
+  ['pointerdown', 'keydown'].forEach(t => document.addEventListener(t, () => { S.lastInput = Date.now(); }, { capture: true, passive: true }));
 }
 
 /* ── Өгөгдөл гаргах, оруулах ──
@@ -1267,11 +1400,12 @@ function exportData() {
   };
 }
 const csvCell = v => { let s = v == null ? '' : String(v); if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`; return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
-const CSV_HEAD = ['id', 'cell', 'side', 'space', 'text', 'owner', 'done', 'url', 'at', 'editedAt', 'deps'];
+const CSV_HEAD = ['id', 'cell', 'side', 'space', 'text', 'owner', 'done', 'url', 'at', 'editedAt', 'deps', 'by', 'editedBy'];
 function exportCsv() {
   const rows = [...S.items.values()].sort((a, b) => (a.cell > b.cell ? 1 : a.cell < b.cell ? -1 : (a.at || 0) - (b.at || 0))).map(i => {
     const ok = CELL_RE.test(i.cell || ''), f = ok ? +i.cell[1] : -1, c = ok ? +i.cell[4] : -1, face = S.faces[f] || { title: '', cells: [] };
-    return [i.id, i.cell, face.title, face.cells[c] || '', i.text, i.who || '', i.done ? 1 : 0, i.url || '', i.at || '', i.editedAt || '', depsOf(i).join(' ')];
+    return [i.id, i.cell, face.title, face.cells[c] || '', i.text, i.who || '', i.done ? 1 : 0, i.url || '', i.at || '', i.editedAt || '',
+      [...new Set(Array.isArray(i.deps) ? i.deps : [])].join(' '), i.by || '', i.editedBy || ''];
   });
   return '﻿' + [CSV_HEAD, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n');
 }
@@ -1316,9 +1450,9 @@ function readImport(text) {
     }).filter(Boolean);
     const obj = x => (x && typeof x === 'object' && !Array.isArray(x) ? x : {});
     const people = Object.entries(obj(d.people)).filter(([k, v]) => /^[^/\s]{1,120}$/.test(k) && v && member(v.who));
-    const clock = Object.entries(obj(d.clock)).filter(([k, v]) => /^[^/\s]{1,120}$/.test(k) && v && typeof v === 'object');
-    if (!items.length && !faces.length && !people.length && !clock.length) throw plainError('Оруулах зүйл олдсонгүй.');
-    return { items, skipped, faces, people, clock };
+    const clock = Object.entries(obj(d.clock)).filter(([k]) => /^[^/\s]{1,120}$/.test(k)).map(([k, v]) => [k, cleanClock(v)]).filter(([, v]) => v);
+    if (!items.length && !faces.length && !people.length && !clock.length) throw plainError(tr('impNothing'));
+    return { items, skipped, faces, people, clock, exportedAt: Date.parse(d.exportedAt) || 0 };
   }
   const rows = parseCsv(text);
   const head = (rows.shift() || []).map(h => h.trim().toLowerCase());
@@ -1328,7 +1462,7 @@ function readImport(text) {
     const g = name => (col(name) >= 0 ? (r[col(name)] || '').trim().replace(/^'(?=[=+\-@\t\r])/, '') : '');
     const id = g('id');
     const deps = col('deps') >= 0 ? g('deps').split(/\s+/).filter(Boolean) : undefined;
-    return { id: /^[^/\s]{1,120}$/.test(id) ? id : null, body: cleanItem({ cell: g('cell'), text: g('text'), who: g('owner'), done: g('done'), url: g('url'), at: g('at'), editedAt: g('editedat'), deps }) };
+    return { id: /^[^/\s]{1,120}$/.test(id) ? id : null, body: cleanItem({ cell: g('cell'), text: g('text'), who: g('owner'), done: g('done'), url: g('url'), at: g('at'), editedAt: g('editedat'), deps, by: g('by'), editedBy: g('editedby') }) };
   });
   const kept = items.filter(x => x.body);
   if (!kept.length) throw plainError('Оруулах ажил олдсонгүй.');
@@ -1340,7 +1474,8 @@ function planImport(d) {
   d.items.forEach(({ id, body: given }) => {
     const cur = id && S.items.get(id);
     /* A row without a deps column (an older CSV) keeps the to-do's dependencies. */
-    const body = { ...given, deps: Array.isArray(given.deps) ? given.deps : cur && Array.isArray(cur.deps) ? cur.deps.slice() : [] };
+    const body = { ...given, deps: Array.isArray(given.deps) ? given.deps : cur && Array.isArray(cur.deps) ? cur.deps.slice() : [],
+      by: given.by || (cur && cur.by) || null, editedBy: given.editedBy || (cur && cur.editedBy) || null };
     if (!cur) plan.add.push({ id: id || S.db.collection('items').doc().id, body });
     else if (sameItem(cur, body)) plan.same += 1;
     else if ((body.editedAt || 0) > (cur.editedAt || 0)) plan.update.push({ id, body });
@@ -1353,9 +1488,15 @@ function planImport(d) {
     if (differs && (!cur.stored || x.editedAt > (cur.editedAt || 0))) plan.faces.push({ f: x.f, ...next, editedAt: x.editedAt });
   });
   d.people.forEach(([k, v]) => { if (!S.people.has(k)) plan.people.push([k, { who: v.who, at: +v.at || Date.now() }]); });
-  /* An imported clock may hold an open stretch from the other copy; its end is unknown, so it is
-     closed where it was last seen (when the person left, else where it started). */
-  d.clock.forEach(([k, v]) => { if (!S.clocks.has(k)) { const c = JSON.parse(JSON.stringify(v)); if (c.openSince) closeStretch(c, c.leftAt || c.openSince); c.paused = false; plan.clock.push([k, c]); } });
+  /* An imported clock may hold an open stretch from the other copy (the timer runs while the page
+     is open). It is closed when the person left, else when the file was exported, never later
+     than now: that time was worked there. */
+  d.clock.forEach(([k, v]) => {
+    if (S.clocks.has(k)) return;
+    const c = JSON.parse(JSON.stringify(v));
+    if (c.openSince) closeStretch(c, c.leftAt || Math.min(Date.now(), Math.max(c.openSince, d.exportedAt || c.openSince)));
+    c.paused = false; plan.clock.push([k, c]);
+  });
   plan.loops = dropImportLoops([...plan.add, ...plan.update]);
   return plan;
 }
@@ -1391,13 +1532,17 @@ function dropImportLoops(incoming) {
   return dropped;
 }
 const planSize = p => p.add.length + p.update.length + p.faces.length + p.people.length + p.clock.length;
+/* The plan may sit on screen for a while: every write is checked again against the data as it is
+   when written, so a teammate's newer edit, or a record that appeared meanwhile, is not overwritten.
+   p.written counts what was actually written. */
 async function applyImport(p) {
+  p.written = 0;
   return save(async () => {
-    for (const x of p.faces) await dbWrite(`faces/f${x.f}`, 'set', { title: x.title, cells: x.cells, editedBy: S.me || null, editedAt: Math.max(x.editedAt || 0, Date.now()) });
-    for (const x of p.add) await dbWrite(`items/${x.id}`, 'set', x.body);
-    for (const x of p.update) await dbWrite(`items/${x.id}`, 'set', x.body);
-    for (const [k, v] of p.people) await dbWrite(`people/${k}`, 'set', v);
-    for (const [k, v] of p.clock) await dbWrite(`clock/${k}`, 'set', v);
+    for (const x of p.faces) { await dbWrite(`faces/f${x.f}`, 'set', { title: x.title, cells: x.cells, editedBy: S.me || null, editedAt: Math.max(x.editedAt || 0, Date.now()) }); p.written += 1; }
+    for (const x of p.add) { if (x.wrote) continue; if (S.items.has(x.id)) continue; await dbWrite(`items/${x.id}`, 'set', x.body); x.wrote = true; p.written += 1; }
+    for (const x of p.update) { const cur = S.items.get(x.id); if (x.wrote || (cur && (cur.editedAt || 0) >= (x.body.editedAt || 0))) continue; await dbWrite(`items/${x.id}`, 'set', x.body); x.wrote = true; p.written += 1; }
+    for (const [k, v] of p.people) { if (S.people.has(k)) continue; await dbWrite(`people/${k}`, 'set', v); p.written += 1; }
+    for (const [k, v] of p.clock) { if (S.clocks.has(k)) continue; await dbWrite(`clock/${k}`, 'set', v); p.written += 1; }
   });
 }
 /* Inside Claude the page may not download itself: the downloads capability asks the
@@ -1429,14 +1574,14 @@ function renderImportPlan(p) {
   go.addEventListener('click', async () => {
     go.disabled = true; cancel.disabled = true;
     const ok = await applyImport(p);
-    if (ok) { box.replaceChildren(el('p', { class: 'ok', text: `Орууллаа: ${total} өөрчлөлт.` })); $('importText').value = ''; $('importFile').value = ''; }
+    if (ok) { box.replaceChildren(el('p', { class: 'ok', text: tr('impDone', p.written) })); $('importText').value = ''; $('importFile').value = ''; }
     else { go.disabled = false; cancel.disabled = false; msg.hidden = false; msg.className = 'err'; msg.textContent = 'Бүгд хадгалагдсангүй. Дахин дарвал үлдсэнийг нь нэмнэ.'; }
   });
   box.replaceChildren(...[list, total ? null : el('p', { class: 'fine', text: 'Энд бүгд байгаа. Нэмэх зүйл алга.' }), el('div', { class: 'btns', style: 'margin-top:10px' }, [go, cancel]), msg].filter(Boolean));
 }
 function checkImport(text) {
   const err = $('importErr'); err.hidden = true; $('importPlan').hidden = true;
-  if (!canWriteNow()) { err.hidden = false; err.textContent = 'Өгөгдөл ачаалагдаж байна. Түр хүлээгээд дахин шалгана уу.'; return; }
+  if (!canWriteNow() || !dataReady()) { err.hidden = false; err.textContent = tr('impWait'); return; }
   try { renderImportPlan(planImport(readImport(text))); }
   catch (e) { err.hidden = false; err.textContent = e && e.plain ? e.message : 'Уншиж чадсангүй.'; }
 }
@@ -1445,7 +1590,8 @@ function initData() {
   const canSave = S.local || !!S.downloads;
   $('exportJson').hidden = $('exportCsv').hidden = $('backupHint').hidden = !canSave;
   $('importBox').hidden = !S.canWrite || !S.db;
-  ['exportJson', 'exportCsv', 'exportCopy', 'importCheck'].forEach(id => { $(id).disabled = !S.loaded; });
+  /* A backup or a restore taken before everything has arrived would be wrong, so both wait. */
+  ['exportJson', 'exportCsv', 'exportCopy', 'importCheck', 'importFile'].forEach(id => { $(id).disabled = !dataReady(); });
   $('exportJson').onclick = async () => { if (await download(`cubic-${todayStamp()}.json`, JSON.stringify(exportData(), null, 2), 'application/json')) exportMsg('Файл хадгалагдлаа.'); };
   $('exportCsv').onclick = async () => { if (await download(`cubic-${todayStamp()}.csv`, exportCsv(), 'text/csv;charset=utf-8')) exportMsg('Файл хадгалагдлаа.'); };
   $('exportCopy').onclick = async () => {
@@ -1454,11 +1600,17 @@ function initData() {
     catch (e) { area.hidden = false; area.value = text; area.focus(); area.select(); exportMsg('Автоматаар хуулж чадсангүй. Доорх бичвэрийг бүгдийг нь хуулна уу.'); }
   };
   $('importCheck').onclick = () => checkImport($('importText').value);
-  $('importFile').addEventListener('change', async e => {
+  /* One handler (initData runs again as data arrives). The picker is cleared after every read, so
+     the same file can be picked again after "Болих". */
+  $('importFile').onchange = async e => {
     const file = e.target.files && e.target.files[0]; if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { $('importErr').hidden = false; $('importErr').textContent = 'Файл хэт том байна.'; return; }
-    try { checkImport(await file.text()); } catch (x) { $('importErr').hidden = false; $('importErr').textContent = 'Файлыг уншиж чадсангүй.'; }
-  });
+    try {
+      if (file.size > 5 * 1024 * 1024) { $('importErr').hidden = false; $('importErr').textContent = tr('fileBig'); return; }
+      const text = await file.text();
+      $('importText').value = text; checkImport(text);
+    } catch (x) { $('importErr').hidden = false; $('importErr').textContent = tr('fileUnreadable'); }
+    finally { e.target.value = ''; }
+  };
 }
 
 /* ── Dependency graph: зүүнээс баруун тийш, хүлээж буй ажил нь зүүн талдаа ──
@@ -1580,7 +1732,7 @@ function drawGraph() {
 /* A leading MM/DD (or MM/DD/YYYY). Without a year, the year is the one that puts the date nearest
    today: a 01/10 milestone written in December means next January. "1.5 хоног" is not a date. */
 function milestoneDate(text) {
-  const m = /^\s*(\d{1,2})\/(\d{1,2})(?:\/(\d{4}|\d{2}))?(?![\d/.])/.exec(text || ''); if (!m) return null;
+  const m = /^\s*(\d{1,2})\/(\d{1,2})(?:\/(\d{4}|\d{2}))?(?!\d|\/|\.\d)/.exec(text || ''); if (!m) return null;
   const mo = +m[1], da = +m[2];
   if (mo < 1 || mo > 12 || da < 1 || da > 31) return null;
   if (m[3]) { const yy = m[3].length === 2 ? 2000 + +m[3] : +m[3]; const d = new Date(yy, mo - 1, da); return d.getMonth() === mo - 1 ? d : null; }
@@ -1595,7 +1747,10 @@ function drawTimeline() {
   const fl = flow(), today = new Date(); today.setHours(0, 0, 0, 0);
   const P = plan(), picked = pickedGroup(P);
   const all = [...S.items.values()].filter(i => i.cell === MILESTONE_CELL);
-  const stones = all.filter(i => !picked || picked.has(i.id) || !P.groupOf.has(i.id))
+  /* Milestones of the picked plan, plus any milestone that belongs to no big plan (linked to nothing,
+     or in a small one): those are dates too and must not vanish. */
+  const inBig = id => P.groups.some(g => g.size >= GROUP_MIN && g.members.has(id));
+  const stones = all.filter(i => !picked || picked.has(i.id) || !inBig(i.id))
     .map(i => ({ i, date: milestoneDate(i.text) })).sort((a, b) => (a.date ? a.date.getTime() : 9e15) - (b.date ? b.date.getTime() : 9e15) || (b.i.at || 0) - (a.i.at || 0));
   const host = $('planView');
   if (!all.length) { host.replaceChildren(el('p', { class: 'empty', text: 'Milestones нүдэнд шалгуур нэмбэл энд цагийн дарааллаар харагдана. Эхэнд нь огноо бичнэ: 11/22 · …' })); return; }
@@ -1624,7 +1779,7 @@ function drawTimeline() {
 }
 
 /* ── Чиглүүлэлт: #f2 бол тал, #f2-c1 бол нүд ── */
-function setHash() { const h = S.cell || `f${S.face}`; if (location.hash !== `#${h}`) { try { history.replaceState(null, '', `#${h}`); } catch (e) { location.hash = h; } } }
+function setHash() { const h = S.cell || `f${S.face}`; if (location.hash !== `#${h}`) { try { history.replaceState(S.cell ? history.state : null, '', `#${h}`); } catch (e) { location.hash = h; } } }
 /* Opening a space adds a history step, so the phone's back gesture returns to the cube. */
 function openKey(key) {
   if (!CELL_RE.test(key || '')) return;
@@ -1708,7 +1863,7 @@ function localStore() {
 /* ── Хуваалцсан өгөгдөл ── */
 async function connect() {
   let db = null, user = null;
-  const slow = setTimeout(() => { if (!S.loaded) notice('Өгөгдөлд холбогдож чадахгүй байна. Харагдаж буй зүйл хуучирсан байж магадгүй.'); }, 10000);
+  const slow = setTimeout(() => { S.slow = true; refreshNotice(); }, 10000);
   if (window.claude && window.claude.use) {
     let dl;
     [db, user, dl] = await Promise.all(['db', 'user', 'downloads'].map(n => window.claude.use(n).catch(() => null)));
@@ -1719,14 +1874,18 @@ async function connect() {
   }
   S.db = db; S.user = user;
   initData();
-  if (!db) { S.canWrite = false; notice(S.local || !window.claude ? 'Энэ хөтөч өгөгдөл хадгалахыг зөвшөөрөхгүй байна. Өөр хөтөчөөр нээнэ үү.' : 'Хуваалцсан өгөгдөл энд нээгдсэнгүй. Claude-д нэвтэрч нээнэ үү.'); renderAll(); return; }
+  if (!db) { clearTimeout(slow); S.canWrite = false; S.noDb = true; refreshNotice(); renderAll(); return; }
   if (user) {
     try { S.me = user.id ? await user.id() : null; } catch (e) { S.me = null; }
-    try { const can = user.can ? await user.can('data.write') : null; S.canSaid = can; if (can === false) { S.canWrite = false; initData(); notice('Та зөвхөн унших эрхтэй. Эзэмшигчээс Contributor эрх хүсээрэй.'); } } catch (e) { /* refused writes decide */ }
+    try { const can = user.can ? await user.can('data.write') : null; S.canSaid = can; if (can === false) { S.canWrite = false; initData(); } } catch (e) { /* refused writes decide */ }
   }
-  const localNote = 'Энэ хуудас өгөгдлийг зөвхөн энэ хөтөч дээр хадгална. Багийн хуваалцсан хувилбар Claude дээр байна. Шилжүүлэхдээ «Өгөгдөл» хэсгийг ашиглана уу.';
-  const loaded = () => { if (!S.loaded) { S.loaded = true; clearTimeout(slow); if (S.canWrite && !S.sticky) notice(S.local ? localNote : ''); initData(); renderFaceTitle(); } };
-  const failed = () => { clearTimeout(slow); notice('Холболт тасарлаа. Хуудсаа дахин нээнэ үү.'); };
+  S.idChecked = true; refreshNotice();
+  /* The page counts as loaded when both the sides and the to-dos have arrived from the server. */
+  const arrived = () => {
+    if (S.loaded || !S.facesReady || !S.itemsReady) return;
+    S.loaded = true; clearTimeout(slow); refreshNotice(); initData(); renderFaceTitle();
+  };
+  const failed = () => { clearTimeout(slow); S.lost = true; refreshNotice(); };
   db.collection('faces').onSnapshot(snap => {
     snap.docs.forEach(d => {
       const m = /^f([0-5])$/.exec(d.id), v = d.data(); if (!m || !v) return;
@@ -1735,29 +1894,30 @@ async function connect() {
       if (Array.isArray(v.cells)) v.cells.slice(0, 4).forEach((t, c) => { if (typeof t === 'string' && t) f.cells[c] = t; });
       f.editedAt = +v.editedAt || 0; f.stored = true;
     });
-    if (!snap.metadata.fromCache) loaded();
+    if (!snap.metadata.fromCache) { S.facesReady = true; arrived(); }
     queueRender();
   }, failed);
   db.collection('items').onSnapshot(snap => {
     S.items = new Map(snap.docs.map(d => [d.id, { id: d.id, ...d.data() }]).filter(([, v]) => typeof v.text === 'string'));
-    if (!snap.metadata.fromCache) loaded();
+    if (!snap.metadata.fromCache) { S.itemsReady = true; arrived(); }
     queueRender();
   }, failed);
-  if (!S.me) { S.sticky = true; notice('Таныг таньж чадсангүй, тиймээс цаг ажиллахгүй. Claude-д нэвтэрч нээнэ үү.'); return; }
+  /* People and clocks are read by everyone (the team card needs them); only choosing a name and
+     the timer need to know who this viewer is. */
   db.collection('people').onSnapshot(snap => {
-    const mine = S.people.get(S.me);
+    const mine = S.me && S.people.get(S.me);
     S.people = new Map(snap.docs.map(d => [d.id, d.data()]).filter(([, v]) => v && member(v.who)));
     if (mine && snap.metadata.hasPendingWrites) S.people.set(S.me, mine);
-    if (!snap.metadata.fromCache && !S.peopleReady) { S.peopleReady = true; if (!whoOf(S.me)) askWho(); }
+    if (!snap.metadata.fromCache && !S.peopleReady) { S.peopleReady = true; initData(); if (S.me && !whoOf(S.me)) askWho(); }
     renderClock(); queueRender();
   }, failed);
-  let mineSeen = false;
   db.collection('clock').onSnapshot(snap => {
-    const mine = S.clocks.get(S.me);
-    S.clocks = new Map(snap.docs.map(d => [d.id, d.data()]).filter(([, v]) => v && typeof v === 'object'));
+    const mine = S.me && S.clocks.get(S.me);
+    S.clocks = new Map(snap.docs.map(d => [d.id, cleanClock(d.data())]).filter(([, v]) => v));
     if (mine && snap.metadata.hasPendingWrites) S.clocks.set(S.me, mine);
-    if (!snap.metadata.fromCache && !mineSeen) { mineSeen = true; S.clockReady = true; reconcileClock(true); }
-    else if (S.clockReady && !document.hidden && $('awayBox').hidden && myClock() && myClock().leftAt) reconcileClock(false);
+    if (!snap.metadata.fromCache && !S.clockReady) { S.clockReady = true; initData(); reconcileClock(true); }
+    /* Same account on two devices: the one being used takes the clock back from one that went hidden. */
+    else if (S.clockReady && !document.hidden && $('awayBox').hidden && myClock() && myClock().leftAt && Date.now() - S.lastInput < AWAY_ASK_MS) reconcileClock(false);
     renderClock(); if (!S.cell) renderTeam(); else renderSpaceTime();
   }, failed);
 }
