@@ -9,6 +9,9 @@ Prints PASS/FAIL per check and exits non-zero if any failed.
 import asyncio, re
 import json
 import sys
+import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 from playwright.async_api import async_playwright
@@ -52,6 +55,67 @@ async def open_data(pg):
     await menu(pg)
     await pg.evaluate("document.getElementById('dataCard').open = true")
     await pg.wait_for_timeout(100)
+
+
+def sb(name, data=None):
+    """A test hook of the stand-in Supabase in dev/serve.py: POST `data`, or GET the dump."""
+    req = urllib.request.Request(f"{BASE}/sb/__test/{name}", data=None if data is None else json.dumps(data).encode(),
+                                 method="GET" if data is None else "POST", headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=10) as r:
+        return json.loads(r.read())
+
+
+def sb_row(path):
+    return next((r for r in sb("dump")["rows"] if r["path"] == path), None)
+
+
+def sb_api(method, path, body=None, token=None):
+    """A request to the stand-in Supabase as a teammate's own phone would make it: (status, JSON)."""
+    headers = {"apikey": "sb_publishable_dev", "Content-Type": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    req = urllib.request.Request(f"{BASE}/sb{path}", data=None if body is None else json.dumps(body).encode(), method=method, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            text = r.read()
+            return r.status, (json.loads(text) if text else None)
+    except urllib.error.HTTPError as e:
+        return e.code, json.loads(e.read() or b"null")
+
+
+def sb_token(email, password):
+    return sb_api("POST", "/auth/v1/token?grant_type=password", {"email": email, "password": password})[1]["access_token"]
+
+
+def sb_refresh_works(refresh_token):
+    return sb_api("POST", "/auth/v1/token?grant_type=refresh_token", {"refresh_token": refresh_token})[0] == 200
+
+
+def sb_text(text):
+    return next((r for r in sb("dump")["rows"] if r["col"] == "items" and r["data"].get("text") == text), None)
+
+
+async def sign_in(pg, email, password):
+    """The Vercel copy's sign-in page (email and password)."""
+    await pg.wait_for_selector("#login .signin", state="visible", timeout=6000)
+    await pg.fill("#siEmail", email)
+    await pg.fill("#siPass", password)
+    await pg.press("#siPass", "Enter")
+
+
+async def until(pg, js, ms=5000):
+    """True once the expression holds in the page, False if it does not within `ms`. It asks with
+    evaluate(): wait_for_function compiles its test with eval, which the Vercel CSP forbids."""
+    end = time.monotonic() + ms / 1000
+    while True:
+        try:
+            if await pg.evaluate(js):
+                return True
+        except Exception:
+            pass   # the page is loading again, or the test is not true yet
+        if time.monotonic() >= end:
+            return False
+        await asyncio.sleep(0.1)
 
 
 async def drag(pg, x1, y1, x2, y2, steps=8, hold=0):
@@ -1119,6 +1183,548 @@ async def main():
             await c.wait_for_timeout(500)
             await c.screenshot(path=f"{SHOTS}/home.png")
         await b7.close()
+
+    # The Vercel copy with the team's database (Supabase), against the stand-in in dev/serve.py
+    # (?bare=1&remote=1): sign-in, two phones sharing to-dos, the sign-in running out, sign-out,
+    # failures that keep the text, export and import. Then the archive note in the Claude copy.
+    async with async_playwright() as p8:
+        b8 = await p8.chromium.launch(executable_path=CHROME, args=["--no-sandbox"])
+        sb("reset", {})
+        R = f"{BASE}/?bare=1&remote=1"
+        rerrs = []
+
+        async def phone():
+            c = await b8.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2, accept_downloads=True)
+            await c.add_init_script("window.__csp = []; document.addEventListener('securitypolicyviolation', e => window.__csp.push(e.violatedDirective + ' ' + e.blockedURI));")
+            pg = await c.new_page()
+            pg.on("pageerror", lambda e: (errors.append(str(e)), rerrs.append(str(e))))
+            return pg
+
+        A = await phone()
+        await A.goto(R + "#f2-c1")
+        await A.wait_for_timeout(700)
+        d = sb("dump")
+        fields = await A.evaluate("""(() => { const e = document.getElementById('siEmail'), p = document.getElementById('siPass');
+            return e && p ? [e.type, e.autocomplete, e.inputMode, p.type, p.autocomplete, getComputedStyle(e).fontSize, getComputedStyle(p).fontSize] : null; })()""")
+        check("remote: with no sign-in the sign-in page shows, the cube is inert behind it, and no data is read",
+              await A.locator("#login .signin").is_visible() and await A.evaluate("document.getElementById('page').inert") is True
+              and not [k for k in d["ok"] if "/rest/" in k] and await A.inner_text("#loginTitle") == "Sign in", str(d["counts"]))
+        check("remote: the email and password fields suit phones and password managers (16 px, no zoom)",
+              fields == ["email", "username", "email", "password", "current-password", "16px", "16px"], str(fields))
+        if SHOTS:
+            await A.screenshot(path=f"{SHOTS}/signin.png")
+            await A.emulate_media(color_scheme="dark")
+            await A.screenshot(path=f"{SHOTS}/signin_dark.png")
+            await A.emulate_media(color_scheme="light")
+        # Wrong password, too many tries, no connection: plain words, and still on the sign-in page.
+        await sign_in(A, "vida@test.invalid", "not-the-password")
+        await A.wait_for_timeout(500)
+        wrong = await A.inner_text("#siErr")
+        focus = await A.evaluate("document.activeElement && document.activeElement.id")
+        sb("fail", {"count": 1, "status": 429, "match": "/auth/v1/token"})
+        await A.press("#siPass", "Enter")
+        await A.wait_for_timeout(500)
+        busy = await A.inner_text("#siErr")
+        sb("fail", {"count": 1, "drop": True, "match": "/auth/v1/token"})
+        await A.press("#siPass", "Enter")
+        await A.wait_for_timeout(500)
+        offline = await A.inner_text("#siErr")
+        sb("fail", {"count": 1, "status": 503, "match": "/auth/v1/token"})
+        await A.press("#siPass", "Enter")
+        await A.wait_for_timeout(500)
+        server = await A.inner_text("#siErr")
+        check("remote: a wrong password says so in plain words, keeps the sign-in page and the focus in the form",
+              wrong == "Wrong email or password." and await A.locator("#login .signin").is_visible() and focus == "siPass", f"{wrong} {focus}")
+        check("remote: too many tries and no connection are said in plain words",
+              busy == "Too many tries. Wait a minute and try again." and offline == "No connection. Check the internet and try again.", f"{busy} | {offline}")
+        check("remote: a server error (5xx, a paused project) is not called a lost connection",
+              server == "Could not sign in: the team’s server is not answering. Try again later, or tell the team’s owner.", server)
+        # The error line is readable on the sign-in page in the light theme (4.5:1 for 15 px bold text).
+        err_ratio = await A.evaluate("""(() => { const lum = c => { const [r, g, b] = c.match(/\\d+(\\.\\d+)?/g).slice(0, 3).map(Number).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+            const e = document.getElementById('siErr'); let n = e, bg = 'rgb(255, 255, 255)';
+            for (; n; n = n.parentElement) { const c = getComputedStyle(n).backgroundColor; if (c && !/rgba\\(0, 0, 0, 0\\)|transparent/.test(c)) { bg = c; break; } }
+            const a = lum(getComputedStyle(e).color), b = lum(bg); return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05); })()""")
+        check("remote: the sign-in error line passes 4.5:1 contrast in the light theme", err_ratio >= 4.5, f"{err_ratio:.2f}")
+        # Sign in, pick a name, the workspace.
+        await A.fill("#siPass", "vida-pass-1")
+        await A.press("#siPass", "Enter")
+        await login(A, "Vida")
+        users = {u["email"].split("@")[0]: u["id"] for u in sb("dump")["users"]}
+        ready = await until(A, "S.loaded && S.peopleReady && S.clockReady")
+        check("remote: signing in leads to the who-picker, then the workspace, with no 'this browser only' note",
+              ready and await A.evaluate("S.me") == users["vida"] and await A.get_attribute("#meBtn", "data-who") == "vida"
+              and await A.evaluate("document.getElementById('notice').hidden") and await A.evaluate("!S.local"), await A.inner_text("#notice"))
+        check("remote: no request blocked by the Vercel security headers, no script error",
+              await A.evaluate("window.__csp.length") == 0 and not rerrs, f"{await A.evaluate('window.__csp')} {rerrs[:2]}")
+        # A new to-do is on the server: version 1, by this account.
+        await A.fill("#newText", "Remote first")
+        await A.press("#newText", "Enter")
+        await A.wait_for_timeout(500)
+        row = sb_text("Remote first")
+        iid = row["path"].split("/", 1)[1] if row else "none"
+        check("remote: a new to-do is stored on the server: version 1, by this account",
+              row and row["version"] == 1 and row["updated_by"] == users["vida"] and row["deleted"] is False and row["data"].get("by") == users["vida"], str(row)[:160])
+        # The second phone (another account) sees it within seconds and ticks it; the first phone
+        # shows it ticked, and its bell counts the change.
+        B = await phone()
+        await B.goto(R + "#f2-c1")
+        await sign_in(B, "anand@test.invalid", "anand-pass-1")
+        await login(B, "Anand")
+        check("remote: the second phone sees the new to-do within seconds", await until(B, f"S.items.has('{iid}') && !!document.getElementById('chk-{iid}')", 6000))
+        u0 = await A.evaluate("unreadUpdates()")
+        await B.check(f"#chk-{iid}")
+        ticked = await until(A, f"!!(S.items.get('{iid}') || {{}}).done && document.getElementById('chk-{iid}').checked", 5000)
+        await A.wait_for_timeout(200)
+        u1 = await A.evaluate("unreadUpdates()")
+        check("remote: the first phone shows it ticked, and the bell counts the change",
+              ticked and u1 == u0 + 1 and await A.locator("#bellBadge").is_visible(), f"{u0} -> {u1}")
+        # Two phones change different fields of one to-do at the same time: both changes stay.
+        await asyncio.gather(A.evaluate(f"patchItem('{iid}', {{ text: 'Remote first, edited' }})"), B.evaluate(f"patchItem('{iid}', {{ who: 'obama' }})"))
+        both = f"(S.items.get('{iid}') || {{}}).text === 'Remote first, edited' && (S.items.get('{iid}') || {{}}).who === 'obama'"
+        same = await until(A, both, 5000) and await until(B, both, 5000)
+        row = sb_row(f"items/{iid}")
+        check("remote: two phones changing different fields of one to-do at once both keep their change",
+              same and row["data"]["text"] == "Remote first, edited" and row["data"]["who"] == "obama" and row["data"]["done"] is True, str(row["data"])[:160])
+        # Delete: the row is only marked, its data kept; the other phone drops it; undo brings it back.
+        v0 = row["version"]
+        await A.click(f"[data-fkey='x:{iid}']")
+        await A.wait_for_timeout(400)
+        row = sb_row(f"items/{iid}")
+        gone = await until(B, f"!S.items.has('{iid}') && !document.getElementById('chk-{iid}')", 5000)
+        check("remote: a delete only marks the row (its data kept), and the other phone drops the to-do",
+              row["deleted"] is True and row["data"].get("text") == "Remote first, edited" and row["version"] == v0 + 1 and gone, str(row)[:160])
+        await A.click("#toastUndo")
+        back = await until(B, f"S.items.has('{iid}')", 5000)
+        row = sb_row(f"items/{iid}")
+        check("remote: undo brings it back on both phones, and the version keeps rising",
+              back and row["deleted"] is False and row["version"] == v0 + 2 and await A.evaluate(f"S.items.has('{iid}')"), str(row)[:120])
+        # A reload keeps the sign-in.
+        await A.reload()
+        check("remote: after a reload the phone is still signed in",
+              await until(A, "S.loaded === true", 6000) and await A.locator("#login").is_hidden() and await A.evaluate("S.me") == users["vida"] and await A.evaluate(f"S.items.has('{iid}')"))
+        # The access token runs out (a 2 s lifetime): the next write still saves, after a refresh.
+        refreshes = sb("dump")["counts"].get("POST /auth/v1/token?grant_type=refresh_token", 0)
+        sb("lifetime", {"seconds": 2})
+        await A.wait_for_timeout(2300)
+        await A.fill("#newText", "After a refresh")
+        await A.press("#newText", "Enter")
+        await A.wait_for_timeout(800)
+        d = sb("dump")
+        sb("lifetime", {"seconds": 3600})
+        check("remote: when the access token runs out, the next write still saves after a refresh",
+              sb_text("After a refresh") and d["counts"].get("POST /auth/v1/token?grant_type=refresh_token", 0) > refreshes
+              and await A.inner_text("#sync") == "Saved" and await A.locator("#login").is_hidden(), str(d["counts"]))
+        # The sign-in cannot be refreshed any more (its refresh tokens revoked): the next request
+        # brings the sign-in page back, and the text being typed is not lost silently. Phone C asks
+        # the server rarely (poll=60000), so that next request is the save itself.
+        C = await phone()
+        await C.goto(f"{R}&poll=60000#f3-c0")
+        await sign_in(C, "obama@test.invalid", "obama-pass-1")
+        await login(C, "Obama")
+        await until(C, "S.loaded && S.clockReady", 5000)
+        await C.wait_for_timeout(300)
+        await C.fill("#newText", "Typed before the sign-in ran out")
+        sb("revoke", {"email": "obama@test.invalid", "access": True})
+        await C.press("#newText", "Enter")
+        again = await until(C, "!!document.querySelector('#login .signin')", 5000)
+        await C.wait_for_timeout(300)
+        check("remote: when the sign-in can no longer be refreshed, the sign-in page comes back over the page",
+              again and await C.evaluate("document.getElementById('page').inert") is True and "signed out" in (await C.inner_text("#login")).lower()
+              and await C.input_value("#siEmail") == "obama@test.invalid", (await C.inner_text("#login")).replace("\n", " | ")[:160])
+        check("remote: the text being typed is not lost silently: it stays, and the page says it was not saved",
+              await C.input_value("#newText") == "Typed before the sign-in ran out" and "Your text is still here" in await C.inner_text("#captureErr")
+              and await C.inner_text("#sync") == "Not saved. Please try again.", await C.inner_text("#captureErr"))
+        await C.fill("#siPass", "obama-pass-1")
+        await C.press("#siPass", "Enter")
+        resumed = await until(C, "document.getElementById('login').hidden && !document.getElementById('page').inert", 5000)
+        back_focus = await C.evaluate("document.activeElement && document.activeElement.id")
+        check("remote: after signing in again, focus is back in the box that was being typed in", back_focus == "newText", str(back_focus))
+        await C.press("#newText", "Enter")
+        await C.wait_for_timeout(700)
+        check("remote: signing in again carries on where it was, and the text then saves",
+              resumed and sb_text("Typed before the sign-in ran out") and await C.input_value("#newText") == "")
+        # Change the password (phone C): wrong current, too short, the same, then right.
+        await menu(C)
+        if SHOTS:
+            await C.screenshot(path=f"{SHOTS}/menu_account.png")
+        await C.click("#pwBtn")
+        await C.fill("#pwCur", "wrong-current")
+        await C.fill("#pwNew", "obama-pass-2")
+        await C.click("#pwSave")
+        await C.wait_for_timeout(500)
+        m_wrong = await C.inner_text("#pwMsg")
+        puts = sb("dump")["counts"].get("PUT /auth/v1/user", 0)
+        await C.fill("#pwCur", "obama-pass-1")
+        await C.fill("#pwNew", "short")
+        await C.click("#pwSave")
+        await C.wait_for_timeout(300)
+        m_short = await C.inner_text("#pwMsg")
+        asked = sb("dump")["counts"].get("PUT /auth/v1/user", 0) - puts
+        await C.fill("#pwNew", "obama-pass-1")
+        await C.click("#pwSave")
+        await C.wait_for_timeout(500)
+        m_same = await C.inner_text("#pwMsg")
+        if SHOTS:
+            await C.screenshot(path=f"{SHOTS}/menu_password.png")
+        sb("fail", {"count": 1, "status": 503, "match": "PUT /auth/v1/user"})
+        await C.fill("#pwNew", "obama-pass-2")
+        await C.click("#pwSave")
+        await C.wait_for_timeout(500)
+        m_5xx = await C.inner_text("#pwMsg")
+        check("remote: a server error while changing the password is a plain failure, not a lost connection",
+              m_5xx == "Could not change the password. Please try again.", m_5xx)
+        await C.click("#pwSave")
+        await C.wait_for_timeout(500)
+        m_ok = await C.inner_text("#pwMsg")
+        check("remote: changing the password says what is wrong in plain words (too short is caught on the phone)",
+              m_wrong == "Your current password is not right." and m_short == "Use 8 or more characters." and asked == 0 and m_same == "That is already your password.",
+              f"{m_wrong} | {m_short} ({asked}) | {m_same}")
+        check("remote: the right current password and a good new one: 'Password changed.'", m_ok == "Password changed." and await C.locator("#pwForm").is_hidden(), m_ok)
+        logouts = sb("dump")["counts"].get("POST /auth/v1/logout", 0)
+        # On a slow connection: the button stays off and says so, and this browser has forgotten the
+        # sign-in before the server is even asked to end it.
+        at_logout = []
+
+        async def slow(route):
+            if "/auth/v1/logout" in route.request.url:
+                at_logout.append(await C.evaluate("localStorage.getItem('cubic-session')"))
+            await asyncio.sleep(0.8)
+            await route.continue_()
+        await C.route("**/sb/**", slow)
+        await C.click("#signOutBtn")
+        await C.wait_for_timeout(300)
+        busy_btn = await C.evaluate("[document.getElementById('signOutBtn').disabled, document.getElementById('signOutBtn').textContent]")
+        out = await until(C, "!!document.querySelector('#login .signin')", 10000)
+        await C.unroute("**/sb/**", slow)
+        check("remote: Sign out stays busy ('Signing out…') and forgets the sign-in here before asking the server",
+              busy_btn == [True, "Signing out…"] and at_logout == [None], f"{busy_btn} {at_logout}")
+        await sign_in(C, "obama@test.invalid", "obama-pass-1")
+        await C.wait_for_timeout(500)
+        old_fails = await C.inner_text("#siErr") == "Wrong email or password."
+        await C.fill("#siPass", "obama-pass-2")
+        await C.press("#siPass", "Enter")
+        new_works = await until(C, "S.loaded === true && document.getElementById('login').hidden", 6000)
+        check("remote: Sign out works; then the old password fails and the new one signs in",
+              out and old_fails and new_works and sb("dump")["counts"].get("POST /auth/v1/logout", 0) == logouts + 1, f"{out} {old_fails} {new_works}")
+        # An account that is not on the team: told so, with Sign out, and Sign out works.
+        G = await phone()
+        await G.goto(R)
+        await sign_in(G, "guest@test.invalid", "guest-pass-1")
+        told = await until(G, "!!document.getElementById('siOut')", 5000)
+        said = await G.inner_text("#login")
+        if SHOTS:
+            await G.screenshot(path=f"{SHOTS}/not_member.png")
+        logouts = sb("dump")["counts"].get("POST /auth/v1/logout", 0)
+        await G.click("#siOut")
+        form_again = await until(G, "!!document.querySelector('#login .signin')", 6000)
+        check("remote: an account not on the team is told so, with Sign out, and Sign out works",
+              told and "not on the team yet" in said and "guest@test.invalid" in said and form_again
+              and sb("dump")["counts"].get("POST /auth/v1/logout", 0) == logouts + 1 and await G.evaluate("localStorage.getItem('cubic-session')") is None,
+              said.replace("\n", " | ")[:160])
+        # Signing out with a token that has run out on the server (the page left open for an hour, a
+        # phone that just woke): the server refuses that token, so it is refreshed and the logout sent
+        # again. Afterwards the old refresh token no longer works anywhere.
+        await sign_in(G, "guest@test.invalid", "guest-pass-1")
+        await until(G, "!!document.getElementById('siOut')", 5000)
+        old_rt = json.loads(await G.evaluate("localStorage.getItem('cubic-session')"))["refresh_token"]
+        sb("lifetime", {"seconds": 1})   # the stand-in judges every token by the lifetime now in force
+        await G.wait_for_timeout(1300)
+        oks = sb("dump")["ok"].get("POST /auth/v1/logout", 0)
+        await G.click("#siOut")
+        await until(G, "!!document.querySelector('#login .signin')", 8000)
+        ended = sb("dump")["ok"].get("POST /auth/v1/logout", 0) == oks + 1 and not sb_refresh_works(old_rt)
+        sb("lifetime", {"seconds": 3600})
+        check("remote: signing out with a token that ran out still ends the sign-in on the server",
+              ended and await G.evaluate("localStorage.getItem('cubic-session')") is None, str(sb("dump")["counts"].get("POST /auth/v1/logout")))
+        # A write refused twice (503): "Not saved", the text stays. Refused once: tried again, saved.
+        sb("fail", {"count": 2, "status": 503, "match": "rpc/doc_set", "body": '"p_path":"items/'})
+        await A.fill("#newText", "A flaky write")
+        await A.press("#newText", "Enter")
+        await A.wait_for_timeout(1800)
+        check("remote: a write refused twice says 'Not saved' and keeps the text on screen",
+              await A.inner_text("#sync") == "Not saved. Please try again." and await A.input_value("#newText") == "A flaky write"
+              and not sb_text("A flaky write") and "Your text is still here" in await A.inner_text("#captureErr"), await A.inner_text("#sync"))
+        sb("fail", {"count": 1, "status": 503, "match": "rpc/doc_set", "body": '"p_path":"items/'})
+        await A.press("#newText", "Enter")
+        await A.wait_for_timeout(1800)
+        check("remote: a write refused once is tried again and saved", sb_text("A flaky write") and await A.input_value("#newText") == "" and await A.inner_text("#sync") == "Saved")
+        sb("fail", {"clear": True})
+        # Polls failing for longer than lostAfterMs (3 s here): "connection lost"; answers again: it goes.
+        sb("fail", {"count": -1, "drop": True, "match": "GET /rest/v1/docs"})
+        lost = await until(A, "document.getElementById('notice').textContent.includes('connection was lost')", 8000)
+        sb("fail", {"clear": True})
+        found = await until(A, "document.getElementById('notice').hidden", 6000)
+        check("remote: polls failing for a while bring the 'connection lost' note, and it goes when the server answers", lost and found)
+        # Export and import on the team's database.
+        await open_data(A)
+        exp = json.loads(await A.evaluate("JSON.stringify(exportData())"))
+        await A.fill("#importText", json.dumps({"app": "cubic", "items": [{"id": "imported-remote-1", "cell": "f3-c1", "text": "Imported on the remote copy", "editedAt": 1}]}))
+        await A.click("#importCheck")
+        await A.wait_for_timeout(200)
+        plan_txt = await A.inner_text("#importPlan")
+        await A.click("#importPlan .btn >> text=Import (")
+        await A.wait_for_timeout(600)
+        row = sb_row("items/imported-remote-1")
+        async with A.expect_download() as dl:
+            await A.click("#exportJson")
+        fname = (await dl.value).suggested_filename
+        check("remote: export and import work on the team's database (the import lands on the server)",
+              any(i["id"] == iid for i in exp["items"]) and "New to-dos" in plan_txt and row and row["data"]["text"] == "Imported on the remote copy"
+              and await A.evaluate("S.items.has('imported-remote-1')") and fname.endswith(".json"), plan_txt.replace("\n", " "))
+        # This browser offers no share sheet for the file (no Web Share here), so it is a download: the
+        # hint and the message say where it goes, never that it was saved.
+        dl_words = [await A.inner_text("#backupHint"), await A.inner_text("#exportMsg")]
+        check("remote: without a share sheet the backup is a download, and the page says to look in Downloads (not 'saved')",
+              await A.evaluate("typeof navigator.share") != "function" and "Downloads" in dl_words[0] and "Proton Drive" in dl_words[0]
+              and dl_words[1] == "Look for the file in Downloads, then move it to Proton Drive.", str(dl_words))
+        await close_sheet(A)
+        # The archive note is for the Claude copy only: here a meta/home document changes nothing.
+        await A.evaluate("S.db.doc('meta/home').set({ url: 'https://example.com/' })")
+        await A.wait_for_timeout(700)
+        check("remote: a meta/home note does not make the Vercel copy read-only", await A.evaluate("S.canWrite") is True and await A.evaluate("document.getElementById('notice').hidden"))
+        check("remote: no request blocked by the security headers and no script error on any phone",
+              all([await pg.evaluate("window.__csp.length") == 0 for pg in (A, B, C, G)]) and not rerrs, "; ".join(rerrs[:2]))
+        # Polling: a change that becomes visible late (stamped up to the 15 s overlap before) is still
+        # picked up; a quiet spell after many changes fetches nothing again (phone E alone, 1 s overlap).
+        sb("late", {"email": "anand@test.invalid", "path": "items/late-1", "data": {"cell": "f2-c1", "text": "Came in late", "deps": [], "at": 1, "editedAt": 1}, "seconds": 10})
+        check("remote: a change stamped up to 15 s before it became visible is still picked up", await until(A, "S.items.has('late-1')", 4000))
+        for pg in (A, B, C, G):
+            await pg.context.close()
+        rerrs.clear()   # the later phones are checked on their own below
+        E = await phone()
+        await E.goto(f"{R}&overlap=1000#f2-c1")
+        await sign_in(E, "vida@test.invalid", "vida-pass-1")
+        await until(E, "S.loaded && S.clockReady", 6000)
+        await E.evaluate("""(async () => { for (let k = 0; k < 12; k++) await S.db.doc('items/burst-' + k).set({ cell: 'f2-c2', text: 'Burst ' + k, deps: [], done: false, who: '', url: '', at: k + 1 }); })()""")
+        await E.wait_for_timeout(2500)
+        quiet0 = sb("dump")["rows_out"]
+        await E.wait_for_timeout(2000)
+        quiet = sb("dump")["rows_out"] - quiet0
+        sb("late", {"email": "anand@test.invalid", "path": "items/late-2", "data": {"cell": "f2-c1", "text": "Also late", "deps": [], "at": 2}, "seconds": 0.5})
+        check("remote: a quiet spell after many changes fetches nothing again, and a new change still arrives",
+              quiet == 0 and await until(E, "S.items.has('late-2') && S.items.has('burst-11')", 3000), f"{quiet} rows fetched while quiet")
+        # A teammate's change made while this phone's polls fail still arrives once they work again,
+        # even when this phone saved something of its own meanwhile: its own write must not move the
+        # poll window past what it has not read (phone W, 2 s overlap).
+        anand = sb_token("anand@test.invalid", "anand-pass-1")
+        teammate = lambda fn, args: sb_api("POST", f"/rest/v1/rpc/{fn}", args, anand)[0]
+        W = await phone()
+        await W.goto(f"{R}&overlap=2000#f2-c1")
+        await sign_in(W, "vida@test.invalid", "vida-pass-1")
+        await until(W, "S.loaded && S.clockReady", 6000)
+        teammate("doc_set", {"p_path": "items/w1", "p_data": {"cell": "f2-c1", "text": "A teammate line", "deps": [], "done": False, "who": "", "url": "", "at": 1, "editedAt": 1}})
+        seen_w1 = await until(W, "(S.items.get('w1') || {}).text === 'A teammate line'", 4000)
+        sb("fail", {"count": -1, "status": 503, "match": "GET /rest/v1/docs"})
+        await W.wait_for_timeout(600)
+        teammate("doc_update", {"p_path": "items/w1", "p_patch": {"done": True, "editedAt": 2}})
+        await W.wait_for_timeout(2600)
+        own = await W.evaluate("addItem('An own line while polls fail', 'f2-c1')")
+        sb("fail", {"clear": True})
+        check("remote: a teammate's change made while polls failed still arrives after this phone saved something of its own",
+              seen_w1 and own is True and await until(W, "!!(S.items.get('w1') || {}).done", 4000), str(await W.evaluate("JSON.stringify(S.items.get('w1'))")))
+        # Many changed rows read in pages (5 a page here): a row that changes between two pages is
+        # read again at the end, and no other row is skipped (pages follow the last row, not a count).
+        K = await phone()
+        await K.goto(f"{R}&page=5&overlap=1000#f2-c1")
+        await sign_in(K, "vida@test.invalid", "vida-pass-1")
+        await until(K, "S.loaded && S.clockReady", 8000)
+        await K.wait_for_timeout(1500)
+        sb("fail", {"count": -1, "status": 503, "match": "GET /rest/v1/docs"})
+        await K.wait_for_timeout(400)
+        for k in range(12):
+            teammate("doc_set", {"p_path": f"items/pg{k:02d}", "p_data": {"cell": "f2-c2", "text": f"Paged {k}", "deps": [], "done": False, "who": "", "url": "", "at": k + 1}})
+        touched = []
+
+        async def page_two(route):
+            if not touched and ("or=" in route.request.url or "offset=5" in route.request.url):
+                touched.append(teammate("doc_update", {"p_path": "items/pg00", "p_patch": {"done": True}}))
+            await route.continue_()
+        await K.route("**/sb/rest/v1/docs?*", page_two)
+        sb("fail", {"clear": True})
+        paged = "Array.from({ length: 12 }, (_, k) => 'pg' + String(k).padStart(2, '0'))"
+        all_in = await until(K, f"{paged}.every(k => S.items.has(k)) && !!S.items.get('pg00').done", 6000)
+        missing = await K.evaluate(f"{paged}.filter(k => !S.items.has(k))")
+        await K.unroute("**/sb/rest/v1/docs?*", page_two)
+        check("remote: a row changed while a poll reads its pages is read again, and no other row is skipped", touched == [200] and all_in, f"{touched} missing {missing}")
+        # PostgREST answers a function's P0002 (no such document) with 500: still "not found", sent once,
+        # not retried as a busy server.
+        updates0 = sb("dump")["counts"].get("POST /rest/v1/rpc/doc_update", 0)
+        code = await K.evaluate("dbWrite('items/never-there', 'update', { done: true }).then(() => 'saved', e => e.code)")
+        sent = sb("dump")["counts"].get("POST /rest/v1/rpc/doc_update", 0) - updates0
+        check("remote: changing a to-do that is gone is 'not found' (P0002 is a 500), asked once and not retried", code == "not_found" and sent == 1, f"{code} {sent}")
+        for pg in (E, W, K):
+            await pg.context.close()
+        # Signed in, but the team's data cannot be reached yet: the sign-in page says so while it waits,
+        # then goes on by itself.
+        sb("fail", {"count": -1, "status": 503, "match": "rpc/is_member"})
+        H = await phone()
+        await H.goto(R)
+        await sign_in(H, "anand@test.invalid", "anand-pass-1")
+        await H.wait_for_timeout(1200)
+        waiting = [await H.inner_text("#siErr"), await H.evaluate("[document.getElementById('siGo').disabled, document.getElementById('siGo').textContent]")]
+        sb("fail", {"clear": True})
+        through = await until(H, "S.loaded === true && document.getElementById('login').hidden", 8000)
+        check("remote: while the team's data cannot be reached after signing in, the sign-in page says so, then goes on by itself",
+              waiting == ["Still trying to reach the team’s data…", [True, "Signing in…"]] and through, str(waiting))
+        await H.context.close()
+        # Two tabs of one browser: one signs out while the other's refresh is on its way (answered by
+        # the server, the answer still on the wire). It lands after the sign-out and is not kept: the
+        # browser stays signed out, and that sign-in is ended on the server too.
+        sb("lifetime", {"seconds": 30})   # under a minute: each request refreshes first
+        tabs = await b8.new_context(viewport={"width": 390, "height": 844})
+        await tabs.add_init_script("window.__csp = []; document.addEventListener('securitypolicyviolation', e => window.__csp.push(e.violatedDirective + ' ' + e.blockedURI));")
+        X1, X2 = await tabs.new_page(), await tabs.new_page()
+        for pg in (X1, X2):
+            pg.on("pageerror", lambda e: (errors.append(str(e)), rerrs.append(str(e))))
+        await X1.goto(R + "#f2-c1")
+        await sign_in(X1, "vida@test.invalid", "vida-pass-1")
+        await until(X1, "S.loaded && S.clockReady", 6000)
+        await X1.evaluate("pauseClock()")   # no timer to save first: the sign-out itself is what is raced
+        await X2.goto(R + "#f2-c1")
+        await until(X2, "S.loaded === true", 6000)
+        held, gate = {}, asyncio.Event()
+
+        async def hold(route):
+            if "grant_type=refresh_token" in route.request.url and "body" not in held:
+                sb("lifetime", {"seconds": 3600})   # the sign-in this refresh brings lasts an hour, as on Supabase
+                resp = await route.fetch()
+                held["body"] = await resp.json()
+                await gate.wait()
+                await route.fulfill(response=resp)
+            else:
+                await route.continue_()
+        await X2.route("**/sb/auth/v1/token*", hold)
+        for _ in range(50):
+            if "body" in held:
+                break
+            await asyncio.sleep(0.1)
+        await menu(X1)
+        oks = sb("dump")["ok"].get("POST /auth/v1/logout", 0)
+        await X1.click("#signOutBtn")
+        forgot = await until(X1, "localStorage.getItem('cubic-session') === null", 4000)
+        gate.set()
+        out1 = await until(X1, "!!document.querySelector('#login .signin')", 12000)
+        out2 = await until(X2, "!!document.querySelector('#login .signin')", 5000)
+        X3 = await tabs.new_page()
+        await X3.goto(R + "#f2-c1")
+        fresh = await until(X3, "!!document.querySelector('#login .signin')", 6000)
+        left = [await X3.evaluate("localStorage.getItem('cubic-session')"), await X3.evaluate("S.items.size")]
+        sb("lifetime", {"seconds": 3600})
+        check("remote: a refresh that lands after Sign out in another tab is not kept: the browser stays signed out, on the server too",
+              "body" in held and forgot and out1 and out2 and fresh and left == [None, 0] and sb("dump")["ok"].get("POST /auth/v1/logout", 0) == oks + 1
+              and not sb_refresh_works(held["body"]["refresh_token"]), f"{'body' in held} {forgot} {out1} {out2} {fresh} {left}")
+        await tabs.close()
+        # With a share sheet that takes the file (a phone), the backup goes there, where Proton Drive is
+        # offered, and the hint and the message say so. (Web Share is stubbed: this browser has none.)
+        P = await phone()
+        await P.context.add_init_script("""Object.defineProperty(Navigator.prototype, 'canShare', { configurable: true, value: d => !!(d && d.files && d.files.length) });
+            Object.defineProperty(Navigator.prototype, 'share', { configurable: true, value: async d => { window.__shared = (d.files || []).map(f => f.name); } });""")
+        await P.goto(R + "#f2-c1")
+        await sign_in(P, "vida@test.invalid", "vida-pass-1")
+        await until(P, "S.loaded && S.peopleReady && S.clockReady", 6000)
+        await open_data(P)
+        hint = await P.inner_text("#backupHint")
+        downloads = []
+        P.on("download", lambda d: downloads.append(d))
+        await P.click("#exportJson")
+        await P.wait_for_timeout(500)
+        shared, said = await P.evaluate("window.__shared || null"), await P.inner_text("#exportMsg")
+        check("remote: with a share sheet the backup goes there (Proton Drive is offered), and the page says so",
+              "Proton Drive as the place to save" in hint and bool(shared) and shared[0].endswith(".json") and not downloads and said == "The file went to the place you chose.",
+              f"{hint} | {shared} | {said}")
+        check("remote: no request blocked by the security headers and no script error on the later phones",
+              await P.evaluate("window.__csp.length") == 0 and not rerrs, "; ".join(rerrs[:2]))
+        await P.context.close()
+        sb("reset", {})
+
+        # In Claude (fake-claude): once meta/home names the new home, this copy is read-only and links
+        # there; without it, it is writable as before.
+        Z = await (await b8.new_context(viewport={"width": 390, "height": 844})).new_page()
+        Z.on("pageerror", lambda e: errors.append(str(e)))
+        dev_db = "JSON.parse(localStorage.getItem('cubic-dev-db') || '{}')"
+        await Z.goto(f"{BASE}/?reset=1&as=arch#f2-c1")
+        await Z.wait_for_timeout(700)
+        await login(Z, "Vida")
+        writable = await Z.evaluate("S.canWrite") is True and await Z.locator("#capture").is_visible()
+        # When the owner archives it, this person is half-way through an edit and their timer runs.
+        await Z.fill("#newText", "A line being edited")
+        await Z.press("#newText", "Enter")
+        await Z.wait_for_timeout(300)
+        zid = await Z.evaluate("([...S.items.values()].find(i => i.text === 'A line being edited') || {}).id")
+        await Z.click(f"[data-fkey='e:{zid}']")
+        await Z.fill("[data-editing] input", "Half-typed, not saved yet")
+        running = await Z.evaluate("!!(myClock() && myClock().openSince && !leftOf(myClock()))")
+        await Z.evaluate("S.db.doc('meta/home').set({ url: 'https://example.com/' })")      # the owner, after the move
+        await Z.wait_for_timeout(400)
+        typed = "(() => { const i = document.querySelector('[data-editing] input'); return i ? i.value : null; })()"
+        kept = await Z.evaluate(typed)
+        if await Z.locator("[data-editing] button[data-t='save']").count():
+            await Z.click("[data-editing] button[data-t='save']")
+            await Z.wait_for_timeout(300)
+        after_save = [await Z.evaluate(typed), await Z.inner_text("#sync"), await Z.evaluate(f"({dev_db}['items/{zid}'] || {{}}).text")]
+        check("Claude copy: an edit open when the copy is archived keeps its text; Save then writes nothing and says why",
+              kept == "Half-typed, not saved yet" and after_save == [kept, "Not saved: this copy is read-only.", "A line being edited"], f"{kept} {after_save}")
+        clock = await Z.evaluate(f"{dev_db}['clock/arch'] || null")
+        check("Claude copy: a timer running when the copy is archived is stopped then, with its time kept",
+              running and clock and clock.get("openSince") is None and sum(d["ms"] for d in clock["days"].values()) > 0, str(clock)[:160])
+        if await Z.locator("[data-editing] button[data-t='cancel']").count():
+            await Z.click("[data-editing] button[data-t='cancel']")
+            await Z.wait_for_timeout(300)
+        live = await Z.evaluate("S.canWrite") is False and not await Z.locator("#capture").is_visible()
+        await Z.click("#chatBtn")
+        await Z.wait_for_timeout(300)
+        chat = [await Z.locator("#chatForm").is_visible(), await Z.evaluate("(() => { const p = document.getElementById('chatRo'); return p && !p.hidden ? p.textContent : null; })()"),
+                await Z.evaluate("(() => { const a = document.querySelector('#chatRo a'); return a ? a.getAttribute('href') : null; })()")]
+        await close_sheet(Z)
+        check("Claude copy: the chat offers no box to write in and says where the team works now",
+              chat == [False, "This copy is read-only now. The team works at https://example.com/.", "https://example.com/"], str(chat))
+        # Someone's timer that never stopped (no leftAt), in the archived copy: it counts only up to
+        # the archive (meta/home's `at`, half an hour ago here), and nobody shows as working.
+        await Z.evaluate("""(async () => {
+            await S.db.doc('people/ghost').set({ who: 'obama', at: 1 });
+            await S.db.doc('clock/ghost').set({ days: {}, openSince: Date.now() - 3600000, openCell: 'f2-c1', leftAt: null, paused: false, pausedAt: null });
+            await S.db.doc('meta/home').set({ url: 'https://example.com/', at: Date.now() - 1800000 }); })()""")
+        await Z.goto(f"{BASE}/?as=arch2#f2-c1")                                              # someone who never picked a name
+        await Z.wait_for_timeout(900)
+        note = await Z.inner_text("#notice")
+        link = await Z.evaluate("(() => { const a = document.querySelector('#notice a'); return a ? [a.getAttribute('href'), a.target, a.rel, a.textContent] : null; })()")
+        stored = await Z.evaluate(f"Object.keys({dev_db}).filter(k => k.endsWith('/arch2'))")
+        obama = """(() => { const uids = [...S.people.entries()].filter(([, v]) => v.who === 'obama').map(([k]) => k);
+            const clocks = uids.map(u => S.clocks.get(u)).filter(Boolean); return [statusOf(liveClock(clocks) || clocks[0] || null).text, personWeekMs(clocks)]; })()"""
+        ghost = await Z.evaluate(obama)
+        if SHOTS:
+            await Z.screenshot(path=f"{SHOTS}/archived.png")
+        await Z.wait_for_timeout(1500)
+        ghost2 = await Z.evaluate(obama)
+        check("Claude copy: once meta/home names the new home, the page is read-only and links there",
+              writable and live and note == "This copy is read-only now. The team works at https://example.com/."
+              and link == ["https://example.com/", "_blank", "noopener noreferrer", "https://example.com/"], f"{note} {link}")
+        check("Claude copy: read-only means no who-picker, no timer and no writes",
+              await Z.evaluate("S.canWrite") is False and await Z.locator("#login").is_hidden() and not await Z.locator("#capture").is_visible() and stored == [], str(stored))
+        check("Claude copy: in an archived copy nobody shows as working; a timer that never stopped counts up to the archive only",
+              ghost[0] == "Timer stopped" and ghost2 == ghost and abs(ghost[1] - 1800000) < 60000, f"{ghost} {ghost2}")
+        # The db gives no order between collections: with the meta answer late (700 ms), an archived copy
+        # still shows no who-picker and starts no timer before it knows.
+        await Z.goto(f"{BASE}/?as=arch3&late=meta:700#f2-c1")
+        await Z.wait_for_timeout(350)
+        early = [await Z.locator("#login").is_visible(), await Z.evaluate(f"Object.keys({dev_db}).filter(k => k.endsWith('/arch3'))")]
+        await Z.wait_for_timeout(1100)
+        later = [await Z.evaluate("S.canWrite"), await Z.locator("#login").is_visible(), await Z.evaluate(f"Object.keys({dev_db}).filter(k => k.endsWith('/arch3'))")]
+        check("Claude copy: with the meta answer late, an archived copy shows no who-picker and starts no timer",
+              early == [False, []] and later == [False, False, []], f"{early} {later}")
+        await Z.evaluate("S.db.doc('meta/home').delete()")
+        await Z.goto(f"{BASE}/?as=arch#f2-c1")
+        await Z.wait_for_timeout(900)
+        check("Claude copy: without meta/home it is writable as before",
+              await Z.evaluate("S.canWrite") is True and await Z.locator("#capture").is_visible() and await Z.evaluate("document.getElementById('notice').hidden"))
+        # Not archived, the meta answer late: the who-picker and the timer wait for it, then start.
+        await Z.goto(f"{BASE}/?as=arch4&late=meta:700#f2-c1")
+        await Z.wait_for_timeout(350)
+        waited = [await Z.locator("#login").is_visible(), await Z.evaluate(f"'clock/arch4' in {dev_db}")]
+        shown = await until(Z, "!!document.querySelector('#login .login-card')", 2500)
+        check("Claude copy: with the meta answer late and no move, the who-picker and the timer wait for it, then start",
+              waited == [False, False] and shown and await until(Z, f"'clock/arch4' in {dev_db} && !!myClock().openSince", 2000), str(waited))
+        await b8.close()
 
     check("no script errors", not errors, "; ".join(errors[:3]))
     print(f"\n{sum(results)}/{len(results)} checks passed")

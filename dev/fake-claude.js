@@ -4,7 +4,8 @@
 
    Pretend to be someone else:  http://localhost:8800/?as=bat
    Start clean:                 http://localhost:8800/?reset=1
-   A viewer the host does not tell about (can() null) whose writes are refused: ?refuse=1   */
+   A viewer the host does not tell about (can() null) whose writes are refused: ?refuse=1
+   One collection answering late (the db gives no order between collections): ?late=meta:600   */
 (() => {
   const q = new URLSearchParams(location.search);
   const KEY = 'cubic-dev-db';
@@ -21,7 +22,10 @@
     const list = [...docs.keys()].filter(k => k.startsWith(path + '/') && k.split('/').length === depth).sort().map(docSnap);
     return { docs: list, size: list.length, empty: !list.length, docChanges: () => [], metadata: meta };
   };
-  const fire = () => subs.forEach(s => s.cb(s.kind === 'doc' ? docSnap(s.path) : colSnap(s.path)));
+  /* A listener hears nothing before its first answer (that answer carries everything up to then). */
+  const fire = () => subs.forEach(s => { if (s.ready) s.cb(s.kind === 'doc' ? docSnap(s.path) : colSnap(s.path)); });
+  const [lateCol, lateMs] = (q.get('late') || '').split(':');
+  const first = (s, snap) => setTimeout(() => { if (!subs.includes(s)) return; s.ready = true; s.cb(snap()); }, s.path === lateCol ? (+lateMs || 600) : 30);
   window.addEventListener('storage', e => { if (e.key === KEY) { docs = load(); fire(); } });
   const clone = v => JSON.parse(JSON.stringify(v));
   const merge = (a, b) => { for (const [k, v] of Object.entries(b)) a[k] = v && typeof v === 'object' && !Array.isArray(v) ? merge(a[k] && typeof a[k] === 'object' ? a[k] : {}, v) : v; return a; };
@@ -30,7 +34,7 @@
   const no = () => Promise.reject({ code: 'invalid_argument', message: 'write refused' });
   const doc = path => refuse ? ({
     id: path.split('/').pop(), path, get: async () => docSnap(path), set: no, update: no, delete: no,
-    onSnapshot: cb => { const s = { kind: 'doc', path, cb }; subs.push(s); setTimeout(() => cb(docSnap(path)), 30); return () => subs.splice(subs.indexOf(s), 1); },
+    onSnapshot: cb => { const s = { kind: 'doc', path, cb }; subs.push(s); first(s, () => docSnap(path)); return () => subs.splice(subs.indexOf(s), 1); },
     collection: sub => collection(`${path}/${sub}`),
   }) : ({
     id: path.split('/').pop(), path,
@@ -38,7 +42,7 @@
     set: async data => { docs.set(path, clone(data)); persist(); fire(); },
     update: async data => { if (!docs.has(path)) throw { code: 'invalid_argument', message: 'no such document' }; docs.set(path, merge(clone(docs.get(path)), clone(data))); persist(); fire(); },
     delete: async () => { docs.delete(path); persist(); fire(); },
-    onSnapshot: cb => { const s = { kind: 'doc', path, cb }; subs.push(s); setTimeout(() => cb(docSnap(path)), 30); return () => subs.splice(subs.indexOf(s), 1); },
+    onSnapshot: cb => { const s = { kind: 'doc', path, cb }; subs.push(s); first(s, () => docSnap(path)); return () => subs.splice(subs.indexOf(s), 1); },
     collection: sub => collection(`${path}/${sub}`),
   });
   const query = (path, field, dir, max) => {
@@ -46,7 +50,7 @@
     return {
       orderBy: (f, d) => query(path, f, d, max), limit: k => query(path, field, dir, k),
       get: async () => shape(colSnap(path)),
-      onSnapshot: cb => { const s = { kind: 'col', path, cb: snap => cb(shape(snap)) }; subs.push(s); setTimeout(() => s.cb(colSnap(path)), 30); return () => subs.splice(subs.indexOf(s), 1); },
+      onSnapshot: cb => { const s = { kind: 'col', path, cb: snap => cb(shape(snap)) }; subs.push(s); first(s, () => colSnap(path)); return () => subs.splice(subs.indexOf(s), 1); },
     };
   };
   const collection = path => ({
@@ -55,7 +59,7 @@
     add: async data => { const d = collection(path).doc(); await d.set(data); return d; },
     get: async () => colSnap(path),
     orderBy: (f, d) => query(path, f, d, 0),
-    onSnapshot: cb => { const s = { kind: 'col', path, cb }; subs.push(s); setTimeout(() => cb(colSnap(path)), 30); return () => subs.splice(subs.indexOf(s), 1); },
+    onSnapshot: cb => { const s = { kind: 'col', path, cb }; subs.push(s); first(s, () => colSnap(path)); return () => subs.splice(subs.indexOf(s), 1); },
   });
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const user = {

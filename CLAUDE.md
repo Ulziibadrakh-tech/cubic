@@ -1,9 +1,11 @@
 # Working on CUBIC
 
-CUBIC is one file, `index.html`, published as a Claude artifact. Keep it one
-file: no build step, no framework, no dependencies beyond the two Google Fonts.
+CUBIC is one file, `index.html`. Vercel serves it as the team's home, with the
+team's data in Supabase; it is also the Claude artifact below, the first copy,
+until that is archived. Keep it one file: no build step, no framework, no
+dependencies beyond the two Google Fonts (no supabase-js either).
 
-## The live artifact
+## The Claude artifact (the first copy)
 
 - Slug: `e702c5a1-64a8-4f1c-9d1b-7dfb135f1869`
 - URL: https://claude.ai/artifact/VXX9JmKG23SPdy8pm1ZMSp
@@ -15,31 +17,65 @@ file: no build step, no framework, no dependencies beyond the two Google Fonts.
 - Collections: `faces`, `items`, `people`, `clock`, `chat` (messages:
   `{by: account id, text, at}`), `team` (`team/<vida|anand|obama>`: `{city, tz}`
   for the world clock), `seen` (`seen/<account id>`: when that person last
-  looked at updates and chat).
+  looked at updates and chat), `meta` (`meta/home`: `{url, at?}`, written by
+  the owner once the team has moved; the Claude copy then turns read-only and
+  links there. The page never writes `meta`).
+- Archive rules (Claude copy only): nothing is written and nobody is asked who
+  they are until meta's first answer from the server (`metaKnown()`). Once
+  `meta/home` is there, `save()` refuses and keeps the text, the chat box gives
+  way to the link, the page's running timer is closed with one last write, and
+  a timer left open counts only up to `at` (`endOf()`). A cached answer may
+  turn the copy read-only, never back. Redraw with `queueRender()`.
 
 To publish: read the current version with `get_artifact`, then republish
 `index.html` with that `base_version`. Capabilities carry forward. Never create
 a second artifact for the same workspace: the team's data is tied to this one.
 
+## The team's database (Supabase)
+
+- Project `ubecsmzurrloglegwfsf` (https://ubecsmzurrloglegwfsf.supabase.co).
+  The page holds its URL and publishable key (`REMOTE_DEFAULT`): public by
+  design, it only lets a browser ask. Never put the secret or service-role
+  key in the page or the repository.
+- Schema: `supabase/schema.sql` (not deployed). One table, `public.docs`, with
+  the same paths as the artifact. Members only (`public.members`). Writes only
+  through `doc_set`, `doc_update` (top-level merge) and `doc_delete` (marks
+  `deleted`, keeps the data); each write bumps `version`.
+- Never turn on public sign-ups or anonymous sign-ins. Never hard-delete rows:
+  open pages learn of a delete only through the `deleted` mark.
+- Adding a person: dashboard → Authentication → Users → Add user → Create new
+  user, auto-confirm on; then the account's id goes into `public.members` (a
+  Claude session with the Supabase token can do it). No email is ever sent:
+  the owner resets a forgotten password in the dashboard.
+- A free project pauses after a week without use; wake it in the dashboard.
+- The move: `dev/supabase_load.py DIR` (dry run; `--write` writes) loads an
+  ArtifactData export (`DIR/<collection>/<id>.json`, kept in `data/`): English
+  versions become the text, open timers are closed, newer documents win,
+  nothing is deleted, a row deleted on Vercel stays deleted unless the
+  document changed after the delete, `seen` stays behind. Its output never
+  shows a document's words. Never run it with `--write` from a check. Then
+  the owner writes `meta/home` into the artifact.
+
 ## GitHub and Vercel
 
 - Code lives at https://github.com/Ulziibadrakh-tech/cubic (branch `main`).
-- Vercel serves the same `index.html` as a static site. Without
-  `window.claude` the page uses `localStore()`: data stays in that browser,
-  and the page says so. The artifact remains the team's shared copy.
-- Moving data between them is the "Data" export/import. Import only adds
-  or updates newer records; it never deletes.
+- Vercel serves the same `index.html` as a static site: the sign-in page, then
+  the team's database through `remoteStore()`. `window.CUBIC_REMOTE = null`
+  (dev only) means no team database: `localStore()`, data in that browser,
+  and the page says so.
+- Moving data by hand is the "Data" export/import. Import only adds or
+  updates newer records; it never deletes.
 
 ## Working from a phone
 
 The team works mostly from phones, through Claude sessions on this repository.
 
 - Work on a branch and open a pull request; say what changed and how it was
-  checked. Run `tests/check_flow.py` in the session before opening the PR and
-  paste its last line into the PR. CI (`.github/workflows/check.yml`) runs the
-  same check on every push.
+  checked. Run `tests/check_flow.py` (and `tests/check_loader.py`) in the
+  session before opening the PR and paste the last line into the PR. CI
+  (`.github/workflows/check.yml`) runs the same checks on every push.
 - Merging to `main` redeploys the Vercel copy by itself. The Claude artifact
-  (the team's shared data) is separate: republish `index.html` to it after the
+  is separate: until it is archived, republish `index.html` to it after the
   merge, as described above.
 - For any visible change, attach phone-sized screenshots to the PR
   (`py tests/check_flow.py - shots` writes them) so it can be judged on a phone.
@@ -47,9 +83,15 @@ The team works mostly from phones, through Claude sessions on this repository.
 ## Before changing the page
 
 1. Run `py dev/serve.py` and `py tests/check_flow.py`. All checks must pass
-   before and after. `?bare=1` serves the page as Vercel does.
+   before and after. `?bare=1` serves the page as Vercel does, with no team
+   database; `?bare=1&remote=1` adds the stand-in Supabase in `dev/serve.py`
+   (accounts there, test hooks under `/sb/__test/`); `?bare=1&remote=live` is
+   the real project, for a person checking by hand only, never the checks.
 2. `dev/serve.py` finds the main script by the marker `<script>\n'use strict';`.
    Keep that marker.
+3. The stand-in answers exactly like Supabase (status codes, JSON shapes,
+   versions). When the page starts using another endpoint or field, add it
+   there the same way.
 
 ## Rules the page must keep
 
@@ -58,7 +100,19 @@ The team works mostly from phones, through Claude sessions on this repository.
   git and Vercel), never into a tracked file, a screenshot or a PR text.
 - **Data is the team's.** Never hardcode entries in the page. Never delete or
   rewrite `items` or `clock` documents unless the user asks for that exact
-  change. Read with `db_list` before any `db_write`, and pass `ifVersion`.
+  change. Read with `db_list` before any `db_write`, and pass `ifVersion`. On
+  Supabase, write only through the three functions (or the loader), and read
+  the rows you are about to change first.
+- **One shape, three stores.** `remoteStore()` (Vercel) and `localStore()`
+  have the shape of Claude's db and user; nothing above `connect()` knows
+  which one it runs on (only the account controls look at `S.remote`).
+- **The Vercel store.** One full read after sign-in, then polls for rows
+  changed since the newest one seen, with 15 s of overlap. Polls page by key
+  (`updated_at`, then `path`), never by offset, and only rows from a poll move
+  the window on (a row from the page's own write does not). A row is taken
+  only when its `version` is newer. Sign out forgets the sign-in in this
+  browser first, then ends it on the server under the `cubic-refresh` lock; a
+  refresh answer that lands after that is never kept.
 - **No silent loss.** Every write goes through `save()` or `writeClock()`, and
   each one through `dbWrite()` (one write at a time per document, one retry on
   `unavailable`). The one exception is `markSeen()`: a `seen/<id>` mark is not
@@ -68,8 +122,8 @@ The team works mostly from phones, through Claude sessions on this repository.
   rewrite of the cached document. No write before the data has loaded
   (`canWriteNow()`), and no clock write before that person's clock has loaded.
 - **Subscribe once.** `onSnapshot` is called once per collection in
-  `connect()` (faces, items, people, clock, chat, team, seen). Never from a
-  render function.
+  `connect()` (meta, faces, items, people, clock, chat, team, seen). Never
+  from a render function.
 - **No writes on a tick.** The timer writes only on a change of state (start,
   pause, change of space, leaving, returning). Running totals are computed on
   screen from `openSince`.
@@ -107,9 +161,14 @@ strings, so routing uses `#f2` and `#f2-c1`.
 - Home is the top bar (wordmark, bell, chat, the person) and the cube.
   Nothing else: the timer, search, "All spaces", the team with its world
   clock, data and backup, and the theme live in the menu (the person button).
+- On Vercel the sign-in page (`signInPage`: email and password, accounts made
+  by the owner) comes first; the 10-second "slow" note counts only from
+  sign-in on. A sign-in that runs out brings it back over the page, and
+  nothing under it is redrawn away. "Change password" and "Sign out" are in
+  the menu's person card (Vercel only).
 - The login page (`showLogin`) asks which of the three this account is, once.
-  It is not a password: the Claude account (or this browser, off Claude) is
-  the identity. "Switch person" in the menu brings it back.
+  It is not a password: the account (the Vercel sign-in, the Claude account,
+  or this browser) is the identity. "Switch person" in the menu brings it back.
 - Sheets (`openSheet`/`closeSheets`) make the page under them inert; Escape
   closes them. Only one is open at a time.
 

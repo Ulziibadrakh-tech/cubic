@@ -3,14 +3,19 @@
 A shared workspace for the Best-shot team, shown as a cube you can turn: six
 sides, four spaces per side, 24 places to think and decide together.
 
-Live page (the team's shared data): https://claude.ai/artifact/VXX9JmKG23SPdy8pm1ZMSp
-(private to its owner until shared from the page's Share menu)
-
 Code: https://github.com/Ulziibadrakh-tech/cubic
 
-The same `index.html` is also deployed on Vercel. There it has no Claude
-sign-in or shared database, so it keeps data **in that browser only** and says
-so on screen. Use "Data" in the menu (export/import) to move data between the two.
+The same `index.html` runs in two places:
+
+- **Vercel (the team's home).** The page asks for an email and password and keeps
+  the team's data in a Supabase database (`supabase/schema.sql`). Accounts are
+  made by the team's owner; there are no public sign-ups.
+- **Claude** (https://claude.ai/artifact/VXX9JmKG23SPdy8pm1ZMSp), the team's
+  first copy, with its data in the artifact's own database. Once the data has
+  moved, the owner writes `meta/home` there and that copy turns read-only with
+  a link to the new home.
+
+"Data" in the menu (export/import) still moves data between copies by hand.
 
 ## What it does today
 
@@ -18,9 +23,20 @@ The screen is in English. On a phone, home is only the top bar and the cube:
 the bell ("For you"), the chat, and the person, who opens the menu (timer,
 search, all spaces, the team with its world clock, data and backup, theme).
 
-- **Login.** On first visit a full-screen page asks "Who is working?": Vida,
-  Anand or Obama, with each one's role, city and local time. The Claude account
-  (or this browser, off Claude) is the identity; this only picks the name.
+- **Sign-in (Vercel).** Email and password, for accounts the team's owner
+  made. Wrong password, too many tries, no connection and a server that does
+  not answer are said in plain words. Forgot your password? Ask the owner to reset it (no email is ever
+  sent). An account that is not on the team yet is told so. The menu shows who
+  is signed in, and has "Change password" (the current one is asked for) and
+  "Sign out". Sign out forgets the sign-in in this browser at once (its other
+  tabs show the sign-in page too) and ends it on the server; a refresh still on
+  its way when you sign out is never kept. If the sign-in runs out while the
+  page is open, the sign-in page comes back over it, what you typed stays where
+  it was, and once you sign in again you are back where you were.
+- **Login.** Then, once, a full-screen page asks "Who is working?": Vida,
+  Anand or Obama, with each one's role, city and local time. The account (the
+  Vercel sign-in, or the Claude account inside Claude) is the identity; this
+  only picks the name.
 - **Cube.** Drag the cube freely; it carries on with the speed of the drag and
   settles on the nearest side. Arrow keys work when it has focus. "All spaces"
   in the menu lists the same 24 spaces without 3D. Links such as `#f0-c2` open a
@@ -56,9 +72,12 @@ search, all spaces, the team with its world clock, data and backup, theme).
   (with undo). Paste several lines into "New to-do" to add one to-do per line;
   list bullets and numbers are stripped.
 - **Data.** Export everything (sides, to-dos, people, time) as JSON,
-  or the to-dos as CSV (with a `deps` column). Inside Claude the file is saved
+  or the to-dos as CSV (with a `deps` column). Inside Claude it is saved
   through the page's download permission; on a phone the share sheet offers
-  Proton Drive. "Copy" always works. Import takes a JSON export or a
+  Proton Drive. On Vercel the phone's own share sheet is used when it takes the
+  file (Proton Drive is offered there too); otherwise the browser downloads it,
+  and the page says to look in Downloads and move it to Proton Drive (it never
+  claims a download was saved). "Copy" always works. Import takes a JSON export or a
   CSV with at least `cell` and `text` columns, shows what will change, and
   writes only after you confirm. Import never deletes: a to-do with the same
   id is replaced only if the imported one was edited later; a CSV without a
@@ -75,9 +94,12 @@ on purpose for a team of three.
 | Path | What it is |
 |---|---|
 | `index.html` | The whole product: markup, styles and script in one file. This is what gets published. |
-| `dev/serve.py` | Local server. Serves `index.html` with stand-in data so it runs without Claude. |
-| `dev/fake-claude.js` | The stand-in for sign-in and shared data. Stores data in the browser's localStorage. |
-| `tests/check_flow.py` | Phone-sized browser check of the main flows (159 checks). |
+| `dev/serve.py` | Local server. Serves `index.html` with stand-in data so it runs without Claude, and a stand-in Supabase for the Vercel copy (`?bare=1&remote=1`). |
+| `dev/fake-claude.js` | The stand-in for sign-in and shared data inside Claude. Stores data in the browser's localStorage. |
+| `supabase/schema.sql` | The team's database on Supabase: one table of documents, members only, writes through three functions. Not deployed. |
+| `dev/supabase_load.py` | Copies the Claude copy's data into Supabase (the move). Dry run unless `--write`. |
+| `tests/check_flow.py` | Phone-sized browser check of the main flows, both copies (211 checks). |
+| `tests/check_loader.py` | Checks of the loader's changes and SQL on made-up data. |
 | `dev/plan_tools.py` | Turns a plan (tasks, what each waits for, milestones) into a CUBIC import file in topological order, and checks it. |
 | `tests/fixtures/plan-shape.json` | A neutral 41-task plan with a real shape, used by the checks. |
 | `data/` | Real plans and backups. Not tracked by git and not deployed: this repository is public. |
@@ -101,7 +123,14 @@ Open http://localhost:8800/ . Local data is separate from the team's real data.
 - Second person: http://localhost:8800/?as=second
 - Read-only view: http://localhost:8800/?readonly=1
 - Clear local data: http://localhost:8800/?reset=1
-- As on Vercel (no stand-in, browser-only data): http://localhost:8800/?bare=1
+- As on Vercel, with no team database (data in this browser only): http://localhost:8800/?bare=1
+- As on Vercel, with a stand-in team database on the local server:
+  http://localhost:8800/?bare=1&remote=1 . Accounts: `vida@test.invalid` /
+  `vida-pass-1`, `anand@test.invalid` / `anand-pass-1`, `obama@test.invalid` /
+  `obama-pass-1`, and `guest@test.invalid` / `guest-pass-1` (signs in, but is not
+  on the team). It is kept in memory: restarting the server clears it.
+- As on Vercel, against the real Supabase project (by hand only, never in the
+  checks): http://localhost:8800/?bare=1&remote=live
 
 ## Check it
 
@@ -110,27 +139,29 @@ pip install playwright
 playwright install chromium
 py dev/serve.py                 # keep running in one window
 py tests/check_flow.py          # in another
+py tests/check_loader.py        # the loader, on made-up data (no browser, no database)
 ```
 
 ## Publish a change
 
-The live page is a Claude artifact. Its code is `index.html`; its data lives in
-the artifact's own database and is not in this folder.
-
-Ask Claude, in a session with this folder connected: "publish index.html to
-the CUBIC artifact". Claude republishes the file to the same page; the data and
-the link stay as they are. See `CLAUDE.md` for the exact identifiers.
-
-Vercel deploys from GitHub on every push to `main` (once the repo is linked
-in Vercel). It's a static site: no build step, framework preset "Other".
-`vercel.json` sets a Content-Security-Policy (only Google Fonts besides the
-page itself), no framing, and no camera, microphone or location. The local
+Vercel deploys from GitHub on every push to `main`. It's a static site: no
+build step, framework preset "Other". `vercel.json` sets a
+Content-Security-Policy (Google Fonts and the team's Supabase project besides
+the page itself), no framing, and no camera, microphone or location. The local
 server applies the same headers to `?bare=1`, and a check fails if the policy
 blocks anything the page uses.
 
+The Claude artifact is separate: until it is archived, ask Claude, in a session
+with this folder connected, to "publish index.html to the CUBIC artifact".
+Claude republishes the file to the same page; the data and the link stay as
+they are. See `CLAUDE.md` for the exact identifiers.
+
 ## Where the data lives
 
-Seven collections in the artifact's database:
+On Vercel: the Supabase project, table `public.docs`, one row per document
+(`path` such as `items/<id>`, `data`, `deleted`, `version`, `updated_at`,
+`updated_by`). Inside Claude: the artifact's own database, until that copy is
+archived. The documents are the same in both:
 
 | Path | One document per | Fields |
 |---|---|---|
@@ -141,21 +172,60 @@ Seven collections in the artifact's database:
 | `chat/<id>` | chat message | `by` (account id), `text`, `at` |
 | `team/<vida\|anand\|obama>` | team member | `city`, `tz` (for the world clock) |
 | `seen/<person id>` | signed-in person | `updates`, `chat` (when they last looked) |
+| `meta/home` | (one) | `url`: where the team works now; `at` (optional): when it moved. The owner writes it after the move; the Claude copy then turns read-only (no writes, no timer, no chat box) and counts a timer left running only up to `at` (else up to when the page saw the note). The page never writes `meta`. |
 
 A side that has never been renamed has no document; the page falls back to the
 names in `DEFAULT_FACES`. Times are milliseconds since 1970, UTC. Day keys use
 the viewer's local date.
 
+## The team's database (Supabase)
+
+- **Schema.** `supabase/schema.sql` (run it in the SQL editor; it can be run
+  again). One table of JSON documents. Only accounts listed in
+  `public.members` can read or write; the page writes only through
+  `doc_set`, `doc_update` (a merge of the fields given) and `doc_delete`
+  (which only marks the row `deleted`: nothing is ever removed, so undo works
+  and every open page hears about it). Each write gets a `version` that only
+  goes up; pages ask every few seconds for what changed.
+- **Adding a person.** Supabase dashboard, Authentication, Users, Add user,
+  Create new user, with "auto confirm" on. Then the account's id goes into
+  `public.members` (a Claude session with the Supabase token can do it). The
+  person signs in and picks their name once.
+- **Passwords.** At least 8 characters. Changing one asks for the current one.
+  Supabase's own mail does not reach the team, so there is no "forgot password"
+  email: the owner sets a new password in the dashboard.
+- **Never** turn on public sign-ups or anonymous sign-ins, never hard-delete
+  rows, and never put the secret key or the service-role key in the page or in
+  this repository. The publishable key in `index.html` is public by design: it
+  only lets a browser ask, and the database decides.
+- A free Supabase project pauses after a week without use; open it in the
+  dashboard to wake it.
+- **The move from Claude.** Save the artifact's documents into `data/` (as
+  ArtifactData `list` with `out_dir` writes them: `data/<folder>/<collection>/<id>.json`),
+  then `python3 dev/supabase_load.py data/<folder>` shows what would change, and
+  `--write` writes it. It turns to-dos that carry an English version into that
+  English, closes open timers, never deletes, and never overwrites a newer
+  document. Run again (a later export), it leaves deleted what the team deleted
+  on Vercel since, unless that to-do was changed after the delete. Its output
+  names documents by path, space and length only, never their words. Then the
+  owner writes `meta/home` `{ "url": "https://…", "at": <ms now> }` into the
+  Claude copy.
+
 ## Known limits
 
-- Sign-in is the Claude account. The page cannot have its own passwords.
+- On Vercel, accounts are email and password, made by the owner; inside Claude
+  the Claude account signs in.
 - A person with the page open on two devices at once can get a skewed timer.
 - The timer measures "timer running", not proven work.
-- Anyone with Contributor access can edit any entry, including another
-  person's timer document. Fine for three people who trust each other.
-- Not yet tested with two real people editing at the same moment. Edits to a
-  to-do change only the fields touched (a merge), so two people changing
-  different things on the same to-do both keep their change.
+- Anyone on the team (a member on Vercel, Contributor access inside Claude)
+  can edit any entry, including another person's timer document. Fine for
+  three people who trust each other.
+- Edits to a to-do change only the fields touched (a merge), so two people
+  changing different things on the same to-do both keep their change (the
+  checks run two phones against the stand-in database). Not yet tried by two
+  real people at the same moment.
+- On Vercel a change made elsewhere shows within a few seconds (the page asks
+  every 3 s while it is in front, every 30 s in the background).
 
 ## Plan side: dependencies, graph, timeline
 
