@@ -1,5 +1,6 @@
-# Runs on every push and pull request: the plan tool on the neutral example plan, then the
-# phone-sized browser check of the page (tests/check_flow.py) against dev/serve.py.
+# Runs on every push and pull request: the plan tool on the neutral example plan, the loader's
+# checks (tests/check_loader.py), then the phone-sized browser check of the page
+# (tests/check_flow.py) against dev/serve.py and its stand-in Supabase.
 name: check
 
 on:
@@ -25,6 +26,8 @@ jobs:
           python -m playwright install --with-deps chromium
       - name: Plan tool (topological sort) on the example plan
         run: python dev/plan_tools.py tests/fixtures/plan-shape.json
+      - name: Loader for the move to Supabase (made-up data, no database)
+        run: python tests/check_loader.py
       - name: Start the local server
         run: |
           python dev/serve.py > serve.log 2>&1 &

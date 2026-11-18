@@ -6,3 +6,4 @@ README.md
 *.py
 data/
 .github/
+supabase/
