@@ -11,9 +11,9 @@ The same `index.html` runs in two places:
   the team's data in a Supabase database (`supabase/schema.sql`). Accounts are
   made by the team's owner; there are no public sign-ups.
 - **Claude** (https://claude.ai/artifact/VXX9JmKG23SPdy8pm1ZMSp), the team's
-  first copy, with its data in the artifact's own database. Once the data has
-  moved, the owner writes `meta/home` there and that copy turns read-only with
-  a link to the new home.
+  first copy, with its data in the artifact's own database. The data has moved:
+  `meta/home` there points to the Vercel site, so that copy is read-only with a
+  link to the new home.
 
 "Data" in the menu (export/import) still moves data between copies by hand.
 
@@ -168,10 +168,8 @@ the page itself), no framing, and no camera, microphone or location. The local
 server applies the same headers to `?bare=1`, and a check fails if the policy
 blocks anything the page uses.
 
-The Claude artifact is separate: until it is archived, ask Claude, in a session
-with this folder connected, to "publish index.html to the CUBIC artifact".
-Claude republishes the file to the same page; the data and the link stay as
-they are. See `CLAUDE.md` for the exact identifiers.
+The Claude artifact is archived (read-only, with a link to Vercel), so a change
+is no longer published there. See `CLAUDE.md` for the exact identifiers.
 
 ## Where the data lives
 
