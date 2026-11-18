@@ -847,6 +847,27 @@ async def main():
         await pg5.keyboard.press("ArrowRight")
         await pg5.wait_for_timeout(700)
         check("arrow keys turn the cube when it has focus", await pg5.evaluate("S.face") != face0)
+        # At rest only the side facing you shows its words and tiles. The two sides seen past it, at a steep
+        # angle, are clean colour (words drawn nearly edge-on look broken on a phone), and the corners are
+        # rounded only a little, so the edges meet. While a finger drags, a side's words come in as it turns
+        # toward you and go as it turns away; with reduced motion they change without a fade.
+        await pg5.evaluate("showFace(0)")
+        await pg5.wait_for_timeout(1100)
+        seen = "[...document.querySelectorAll('#cube > .face')].map(n => Math.round(100 * +getComputedStyle(n.firstElementChild).opacity) / 100)"
+        rest = await pg5.evaluate(seen)
+        turning = []
+        for ry in (-30, -60):
+            await pg5.evaluate(f"(() => {{ document.getElementById('cube').classList.add('dragging'); S.rx = 0; S.ry = {ry}; applyCube(); }})()")
+            turning.append(await pg5.evaluate(seen))
+        await pg5.evaluate("(() => { document.getElementById('cube').classList.remove('dragging'); showFace(0); })()")
+        radius = await pg5.evaluate("parseFloat(getComputedStyle(document.querySelector('#cube .face')).borderTopLeftRadius)")
+        await pg5.emulate_media(reduced_motion="reduce")
+        still = await pg5.evaluate("getComputedStyle(document.querySelector('#cube .face-name')).transitionDuration")
+        await pg5.emulate_media(reduced_motion="no-preference")
+        check("at rest only the side facing you shows its words; the sides seen at an angle are clean colour; dragging brings a side's words in as it turns to you",
+              rest == [1, 0, 0, 0, 0, 0] and 0 < turning[0][0] <= 1 and 0 < turning[0][1] < 1 and turning[1][0] == 0 and turning[1][1] == 1
+              and radius <= 8 and still == "0s", f"{rest} {turning} {radius} {still}")
+        await pg5.wait_for_timeout(1100)
         await pg5.emulate_media(color_scheme="dark")
         ratio = await pg5.evaluate("""(() => { const lum = c => { const [r, g, b] = c.match(/\\d+(\\.\\d+)?/g).slice(0, 3).map(Number).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
           const cs = getComputedStyle(document.getElementById('exportJson')); const a = lum(cs.color), b = lum(cs.backgroundColor);

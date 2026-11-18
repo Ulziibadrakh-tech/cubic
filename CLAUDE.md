@@ -253,7 +253,11 @@ strings, so routing uses `#f2` and `#f2-c1`.
   milestones dated today or earlier need). Nothing stores when a to-do was
   ticked, so it never invents a history.
 - The cube should feel physical: free drag, momentum, a soft settle. Do not
-  replace it with fixed step animations.
+  replace it with fixed step animations. A side's words and tiles show only
+  as it faces you (`--see` per face, from `facing()` in `applyCube()`), so the
+  sides seen at a steep angle are clean colour; words drawn nearly edge-on
+  look broken on a phone. Face corners stay rounded only a little, so the
+  edges meet.
 - Time is shown per person and per space, never as a ranking.
 - Chat is one shared conversation. Updates are worked out from the to-dos
   (who changed one last, when, and `act`: add, done, undone, owner, move,

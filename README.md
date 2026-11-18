@@ -38,7 +38,8 @@ search, all spaces, the team with its world clock, data and backup, theme).
   Vercel sign-in, or the Claude account inside Claude) is the identity; this
   only picks the name.
 - **Cube.** Drag the cube freely; it carries on with the speed of the drag and
-  settles on the nearest side. Arrow keys work when it has focus. "All spaces"
+  settles on the nearest side. A side's words show as it turns toward you, so
+  the sides seen at an angle are plain colour. Arrow keys work when it has focus. "All spaces"
   in the menu lists the same 24 spaces without 3D. Links such as `#f0-c2` open a
   space directly.
 - **Spaces are to-do lists.** Type a line and press Enter. Tick it when done,
