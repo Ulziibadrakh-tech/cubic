@@ -1,11 +1,17 @@
 # Working on CUBIC
 
-CUBIC is one file, `index.html`. Vercel serves it as the team's home, with the
-team's data in Supabase; it is also the Claude artifact below, the first copy,
-until that is archived. Keep it one file: no build step, no framework, no
-dependencies beyond the two Google Fonts (no supabase-js either).
+CUBIC is one file, `index.html`. Vercel serves it as the team's home
+(https://cubic-three.vercel.app), with the team's data in Supabase. The Claude
+artifact below was the first copy; it is archived. Keep it one file: no build
+step, no framework, no dependencies beyond the two Google Fonts (no
+supabase-js either).
 
-## The Claude artifact (the first copy)
+## The Claude artifact (the first copy, archived)
+
+- Archived on 2026-11-18: `meta/home` there points to
+  https://cubic-three.vercel.app, so that copy is read-only and links to
+  Vercel. Write nothing more there and do not republish it; its last export is
+  in `data/` (ignored by git).
 
 - Slug: `e702c5a1-64a8-4f1c-9d1b-7dfb135f1869`
 - URL: https://claude.ai/artifact/VXX9JmKG23SPdy8pm1ZMSp
@@ -80,8 +86,7 @@ The team works mostly from phones, through Claude sessions on this repository.
   session before opening the PR and paste the last line into the PR. CI
   (`.github/workflows/check.yml`) runs the same checks on every push.
 - Merging to `main` redeploys the Vercel copy by itself. The Claude artifact
-  is separate: until it is archived, republish `index.html` to it after the
-  merge, as described above.
+  is archived, so nothing is republished there.
 - For any visible change, attach phone-sized screenshots to the PR
   (`py tests/check_flow.py - shots` writes them) so it can be judged on a phone.
 
